@@ -34,6 +34,7 @@ AC_CONFIG_HEADERS([config.h])
 
 # Check for libraries, headers, data etc here.
 AX_BOOST_BASE([1.66],, [AC_MSG_ERROR([libfoo needs Boost, but it was not found in your system])])
+AX_BOOST_PROGRAM_OPTIONS()
 AX_BOOST_TIMER()
 
 PKG_CHECK_MODULES([BOTAN], [botan-2])

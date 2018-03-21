@@ -7,7 +7,7 @@
 
 #include <iostream>
 
-#include <boost/timer/timer.hpp>
+#include <boost/program_options.hpp>
 
 #include <botan/auto_rng.h>
 #include <botan/p11_module.h>
@@ -22,49 +22,73 @@
 #include "p11des3enc.hpp"
 #include "p11aesenc.hpp"
 
-namespace btn = Botan;
-namespace btnp11 = Botan::PKCS11;
+namespace po = boost::program_options;
+namespace p11 = Botan::PKCS11;
 
 
-int main()
+int main(int argc, char **argv)
 {
     std::cout << "p11perftest: a small utility to measure speed of PKCS#11 operations" << std::endl;
     std::cout << "-------------------------------------------------------------------" << std::endl;
 
+    int argslot;
+    po::options_description desc("available options");
 
-    btnp11::Module module( "/usr/local/lib/softhsm/libsofthsm2.so" );
+    desc.add_options()
+	("help,h", "print help message")
+	("library,l", po::value< std::string >(), "PKCS#11 library path")
+	("slot", po::value<int>(&argslot)->default_value(0), "slot index to use")
+	("password,p", po::value< std::string >(), "password for token in slot");
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);
+
+    if(vm.count("help")) {
+	std::cout << desc << std::endl;
+    }
+
+    if (vm.count("library")==0 || vm.count("password")==0 ) {
+	std::cerr << "You must at least specify a library or a password argument" << std::endl;
+	std::cerr << desc << std::endl;
+	return 1;
+    }
+
+    p11::Module module( vm["library"].as<std::string>() );
 
     // Sometimes useful if a newly connected token is not detected by the PKCS#11 module
     module.reload();
 
-    btnp11::Info info = module.get_info();
+    p11::Info info = module.get_info();
 
     // print library version
-    std::cout << "Library version: "
+    std::cout << "Library Path: " << vm["library"].as<std::string>() << std::endl
+	      << "Library version: "
 	      << std::to_string( info.libraryVersion.major ) << "."
 	      << std::to_string( info.libraryVersion.minor ) << std::endl;
 
     // only slots with connected token
-    std::vector<btnp11::SlotId> slots = btnp11::Slot::get_available_slots( module, true );
+    std::vector<p11::SlotId> slots = p11::Slot::get_available_slots( module, true );
 
-    // use first slot
-    btnp11::Slot slot( module, slots.at( 0 ) );
+    p11::Slot slot( module, slots.at( argslot ) );
 
     // print firmware version of the slot
-    btnp11::SlotInfo slot_info = slot.get_slot_info();
+    p11::SlotInfo slot_info = slot.get_slot_info();
     std::cout << "Slot firmware version: "
 	      << std::to_string( slot_info.firmwareVersion.major ) << "."
 	      << std::to_string( slot_info.firmwareVersion.minor ) << std::endl;
 
     // print firmware version of the token
-    btnp11::TokenInfo token_info = slot.get_token_info();
+    p11::TokenInfo token_info = slot.get_token_info();
     std::cout << "Token firmware version: "
 	      << std::to_string( token_info.firmwareVersion.major ) << "."
 	      << std::to_string( token_info.firmwareVersion.minor ) << std::endl;
 
-    auto session = btnp11::Session(slot, false);
+    auto session = p11::Session(slot, false);
 
-    session.login(btnp11::UserType::User, btnp11::secure_string{ 'c', 'h', 'a', 'n', 'g', 'e', 'i', 't'});
+    std::string argpwd = vm["password"].as<std::string>();
+    p11::secure_string pwd( argpwd.data(), argpwd.data()+argpwd.length() );
+    session.login(p11::UserType::User, pwd );
 
     std::string test1 { "12345678" };
     std::vector<uint8_t> testvec1(test1.data(),test1.data()+test1.length());

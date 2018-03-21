@@ -17,7 +17,7 @@ p11perftest_SOURCES = 	p11benchmark.cpp \
 			p11perftest.cpp
 
 
-p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_TIMER_LIB)
+p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_TIMER_LIB) $(BOOST_PROGRAM_OPTIONS_LIB)
 
 
 #p11perftest_CXXFLAGS = $(BOTAN_CFLAGS) $(BOOST_CPPFLAGS)

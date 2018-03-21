@@ -1134,6 +1134,7 @@ AC_SUBST([am__untar])
 ]) # _AM_PROG_TAR
 
 m4_include([m4/ax_boost_base.m4])
+m4_include([m4/ax_boost_program_options.m4])
 m4_include([m4/ax_boost_timer.m4])
 m4_include([m4/ax_cxx_compile_stdcxx.m4])
 m4_include([m4/ax_cxx_compile_stdcxx_11.m4])

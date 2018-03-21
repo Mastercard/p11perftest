@@ -95,6 +95,7 @@ bin_PROGRAMS = p11perftest$(EXEEXT)
 subdir = src
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_boost_base.m4 \
+	$(top_srcdir)/m4/ax_boost_program_options.m4 \
 	$(top_srcdir)/m4/ax_boost_timer.m4 \
 	$(top_srcdir)/m4/ax_cxx_compile_stdcxx.m4 \
 	$(top_srcdir)/m4/ax_cxx_compile_stdcxx_11.m4 \
@@ -112,7 +113,8 @@ am_p11perftest_OBJECTS = p11benchmark.$(OBJEXT) p11rsasig.$(OBJEXT) \
 	p11des3enc.$(OBJEXT) p11aesenc.$(OBJEXT) p11perftest.$(OBJEXT)
 p11perftest_OBJECTS = $(am_p11perftest_OBJECTS)
 am__DEPENDENCIES_1 =
-p11perftest_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+p11perftest_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -183,6 +185,7 @@ AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BOOST_CPPFLAGS = @BOOST_CPPFLAGS@
 BOOST_LDFLAGS = @BOOST_LDFLAGS@
+BOOST_PROGRAM_OPTIONS_LIB = @BOOST_PROGRAM_OPTIONS_LIB@
 BOOST_TIMER_LIB = @BOOST_TIMER_LIB@
 BOTAN_CFLAGS = @BOTAN_CFLAGS@
 BOTAN_LIBS = @BOTAN_LIBS@
@@ -288,7 +291,7 @@ p11perftest_SOURCES = p11benchmark.cpp \
 			p11aesenc.cpp \
 			p11perftest.cpp
 
-p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_TIMER_LIB)
+p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_TIMER_LIB) $(BOOST_PROGRAM_OPTIONS_LIB)
 all: all-am
 
 .SUFFIXES:
