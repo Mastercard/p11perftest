@@ -28,17 +28,21 @@ namespace p11 = Botan::PKCS11;
 
 int main(int argc, char **argv)
 {
-    std::cout << "p11perftest: a small utility to measure speed of PKCS#11 operations" << std::endl;
-    std::cout << "-------------------------------------------------------------------" << std::endl;
+    std::cout << "-- p11perftest: a small utility to benchmark PKCS#11 operations --" << std::endl;
+    std::cout << "------------------------------------------------------------------" << std::endl;
+    std::cout << "Author: Eric Devolder <eric.devolder@mastercard.com>" << std::endl;
+    std::cout << "(c)2018 Mastercard" << std::endl;
 
     int argslot;
+    int argiter;
     po::options_description desc("available options");
 
     desc.add_options()
 	("help,h", "print help message")
 	("library,l", po::value< std::string >(), "PKCS#11 library path")
-	("slot", po::value<int>(&argslot)->default_value(0), "slot index to use")
-	("password,p", po::value< std::string >(), "password for token in slot");
+	("slot,s", po::value<int>(&argslot)->default_value(0), "slot index to use")
+	("password,p", po::value< std::string >(), "password for token in slot")
+	("iterations,i", po::value<int>(&argiter)->default_value(1000), "Number of iterations");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -102,20 +106,35 @@ int main(int argc, char **argv)
     // big vector
     std::vector<uint8_t> testveclarge(8000, 64);
 
-    P11RSASigBenchmark b1( session, "rsasigner");
-    b1.execute(testvec1, 1000);
-    b1.execute(testvec2, 1000);
-    b1.execute(testveclarge, 1000);
+    P11RSASigBenchmark rsa1( session, "rsa-1");
+    rsa1.execute(testvec1, argiter);
+    rsa1.execute(testvec2, argiter);
+    rsa1.execute(testveclarge, argiter);
 
-    P11DES3EncBenchmark b2( session, "des2encryptor");
-    b2.execute(testvec1, 10000);
-    b2.execute(testvec2, 10000);
-    b2.execute(testveclarge, 10000);
+    P11RSASigBenchmark rsa2( session, "rsa-2");
+    rsa2.execute(testvec1, argiter);
+    rsa2.execute(testvec2, argiter);
+    rsa2.execute(testveclarge, argiter);
 
-    P11AESEncBenchmark b3( session, "aes256encryptor");
-    b3.execute(testvec3, 10000);
-    b3.execute(testvec2, 10000);
-    b3.execute(testveclarge, 10000);
+    P11DES3EncBenchmark des1( session, "des-1");
+    des1.execute(testvec1, argiter);
+    des1.execute(testvec2, argiter);
+    des1.execute(testveclarge, argiter);
+
+    P11DES3EncBenchmark des2( session, "des-2");
+    des2.execute(testvec1, argiter);
+    des2.execute(testvec2, argiter);
+    des2.execute(testveclarge, argiter);
+
+    P11AESEncBenchmark aes1( session, "aes-1");
+    aes1.execute(testvec3, argiter);
+    aes1.execute(testvec2, argiter);
+    aes1.execute(testveclarge, argiter);
+
+    P11AESEncBenchmark aes2( session, "aes-2");
+    aes2.execute(testvec3, argiter);
+    aes2.execute(testvec2, argiter);
+    aes2.execute(testveclarge, argiter);
 
     session.logoff();
 

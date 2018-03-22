@@ -14,8 +14,8 @@ using namespace Botan::PKCS11;
 
 class P11Benchmark
 {
-    const std::string &m_name;
-    const std::string &m_label;
+    const std::string m_name;
+    const std::string m_label;
     ObjectClass m_objectclass;
 
 protected:
