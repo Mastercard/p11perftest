@@ -2,7 +2,7 @@
 
 
 P11RSASigBenchmark::P11RSASigBenchmark(Session &session, const std::string &label) :
-    P11Benchmark( session, "RSA Signature (EMSA4(SHA-256))", label, ObjectClass::PrivateKey ) { }
+    P11Benchmark( session, "RSA Signature (EMSA3(SHA-256))", label, ObjectClass::PrivateKey ) { }
 
 
 
