@@ -110,7 +110,8 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_p11perftest_OBJECTS = p11benchmark.$(OBJEXT) p11rsasig.$(OBJEXT) \
-	p11des3enc.$(OBJEXT) p11aesenc.$(OBJEXT) p11perftest.$(OBJEXT)
+	p11des3ecb.$(OBJEXT) p11des3cbc.$(OBJEXT) p11aesecb.$(OBJEXT) \
+	p11aescbc.$(OBJEXT) p11perftest.$(OBJEXT)
 p11perftest_OBJECTS = $(am_p11perftest_OBJECTS)
 am__DEPENDENCIES_1 =
 p11perftest_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
@@ -130,8 +131,9 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/build-aux/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/p11aesenc.Po \
-	./$(DEPDIR)/p11benchmark.Po ./$(DEPDIR)/p11des3enc.Po \
+am__depfiles_remade = ./$(DEPDIR)/p11aescbc.Po \
+	./$(DEPDIR)/p11aesecb.Po ./$(DEPDIR)/p11benchmark.Po \
+	./$(DEPDIR)/p11des3cbc.Po ./$(DEPDIR)/p11des3ecb.Po \
 	./$(DEPDIR)/p11perftest.Po ./$(DEPDIR)/p11rsasig.Po
 am__mv = mv -f
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
@@ -287,8 +289,10 @@ AM_CPPFLAGS = $(BOTAN_CFLAGS) $(BOOST_CPPFLAGS)
 AM_LDFLAGS = $(BOTAN_LDFLAGS) $(BOOST_LDFLAGS)
 p11perftest_SOURCES = p11benchmark.cpp \
 			p11rsasig.cpp \
-			p11des3enc.cpp \
-			p11aesenc.cpp \
+			p11des3ecb.cpp \
+			p11des3cbc.cpp \
+			p11aesecb.cpp \
+			p11aescbc.cpp \
 			p11perftest.cpp
 
 p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_TIMER_LIB) $(BOOST_PROGRAM_OPTIONS_LIB)
@@ -378,9 +382,11 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11aesenc.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11aescbc.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11aesecb.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11benchmark.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11des3enc.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11des3cbc.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11des3ecb.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11perftest.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11rsasig.Po@am__quote@ # am--include-marker
 
@@ -531,9 +537,11 @@ clean: clean-am
 clean-am: clean-binPROGRAMS clean-generic mostlyclean-am
 
 distclean: distclean-am
-		-rm -f ./$(DEPDIR)/p11aesenc.Po
+		-rm -f ./$(DEPDIR)/p11aescbc.Po
+	-rm -f ./$(DEPDIR)/p11aesecb.Po
 	-rm -f ./$(DEPDIR)/p11benchmark.Po
-	-rm -f ./$(DEPDIR)/p11des3enc.Po
+	-rm -f ./$(DEPDIR)/p11des3cbc.Po
+	-rm -f ./$(DEPDIR)/p11des3ecb.Po
 	-rm -f ./$(DEPDIR)/p11perftest.Po
 	-rm -f ./$(DEPDIR)/p11rsasig.Po
 	-rm -f Makefile
@@ -581,9 +589,11 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-		-rm -f ./$(DEPDIR)/p11aesenc.Po
+		-rm -f ./$(DEPDIR)/p11aescbc.Po
+	-rm -f ./$(DEPDIR)/p11aesecb.Po
 	-rm -f ./$(DEPDIR)/p11benchmark.Po
-	-rm -f ./$(DEPDIR)/p11des3enc.Po
+	-rm -f ./$(DEPDIR)/p11des3cbc.Po
+	-rm -f ./$(DEPDIR)/p11des3ecb.Po
 	-rm -f ./$(DEPDIR)/p11perftest.Po
 	-rm -f ./$(DEPDIR)/p11rsasig.Po
 	-rm -f Makefile

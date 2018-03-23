@@ -1,5 +1,5 @@
 #AC_INIT([FULL-PACKAGE-NAME], [VERSION], [BUG-REPORT-ADDRESS], [TAR-NAME], [URL])
-AC_INIT([p11perftest], [0.1.0], [eric.devolder@mastercard.com], [p11perftest], [http://www.example.com])
+AC_INIT([p11perftest], [0.1.0], [eric.devolder@mastercard.com], [p11perftest], [https://www.mastercard.com])
 
 # Put autotools auxiliary files in a subdir, so they don't clutter top dir.
 AC_CONFIG_AUX_DIR([build-aux])

@@ -19,8 +19,10 @@
 #include "../config.h"
 
 #include "p11rsasig.hpp"
-#include "p11des3enc.hpp"
-#include "p11aesenc.hpp"
+#include "p11des3ecb.hpp"
+#include "p11des3cbc.hpp"
+#include "p11aesecb.hpp"
+#include "p11aescbc.hpp"
 
 namespace po = boost::program_options;
 namespace p11 = Botan::PKCS11;
@@ -28,10 +30,11 @@ namespace p11 = Botan::PKCS11;
 
 int main(int argc, char **argv)
 {
-    std::cout << "-- p11perftest: a small utility to benchmark PKCS#11 operations --" << std::endl;
+    std::cout << "-- " PACKAGE ": a small utility to benchmark PKCS#11 operations --" << std::endl;
     std::cout << "------------------------------------------------------------------" << std::endl;
-    std::cout << "Author: Eric Devolder <eric.devolder@mastercard.com>" << std::endl;
-    std::cout << "(c)2018 Mastercard" << std::endl;
+    std::cout << "  Version " PACKAGE_VERSION << std::endl;
+    std::cout << "  Author : Eric Devolder" << std::endl;
+    std::cout << "  (c)2018 Mastercard" << std::endl << std::endl;
 
     int argslot;
     int argiter;
@@ -116,25 +119,45 @@ int main(int argc, char **argv)
     rsa2.execute(testvec2, argiter);
     rsa2.execute(testveclarge, argiter);
 
-    P11DES3EncBenchmark des1( session, "des-1");
+    P11DES3ECBBenchmark des1( session, "des-1");
     des1.execute(testvec1, argiter);
     des1.execute(testvec2, argiter);
     des1.execute(testveclarge, argiter);
 
-    P11DES3EncBenchmark des2( session, "des-2");
+    P11DES3ECBBenchmark des2( session, "des-2");
     des2.execute(testvec1, argiter);
     des2.execute(testvec2, argiter);
     des2.execute(testveclarge, argiter);
 
-    P11AESEncBenchmark aes1( session, "aes-1");
+    P11DES3CBCBenchmark descbc1( session, "des-1");
+    descbc1.execute(testvec1, argiter);
+    descbc1.execute(testvec2, argiter);
+    descbc1.execute(testveclarge, argiter);
+
+    P11DES3CBCBenchmark descbc2( session, "des-2");
+    descbc2.execute(testvec1, argiter);
+    descbc2.execute(testvec2, argiter);
+    descbc2.execute(testveclarge, argiter);
+
+    P11AESECBBenchmark aes1( session, "aes-1");
     aes1.execute(testvec3, argiter);
     aes1.execute(testvec2, argiter);
     aes1.execute(testveclarge, argiter);
 
-    P11AESEncBenchmark aes2( session, "aes-2");
+    P11AESECBBenchmark aes2( session, "aes-2");
     aes2.execute(testvec3, argiter);
     aes2.execute(testvec2, argiter);
     aes2.execute(testveclarge, argiter);
+
+    P11AESCBCBenchmark aes1cbc( session, "aes-1");
+    aes1cbc.execute(testvec3, argiter);
+    aes1cbc.execute(testvec2, argiter);
+    aes1cbc.execute(testveclarge, argiter);
+
+    P11AESCBCBenchmark aes2cbc( session, "aes-2");
+    aes2cbc.execute(testvec3, argiter);
+    aes2cbc.execute(testvec2, argiter);
+    aes2cbc.execute(testveclarge, argiter);
 
     session.logoff();
 

@@ -1,9 +1,9 @@
-#if !defined P11AESENC_HPP
-#define P11AESENC_HPP
+#if !defined P11AESECB_HPP
+#define P11AESECB_HPP
 
 #include "p11benchmark.hpp"
 
-class P11AESEncBenchmark : public P11Benchmark
+class P11AESECBBenchmark : public P11Benchmark
 {
     Mechanism m_mech_aesecb { CKM_AES_ECB, nullptr, 0 };
     std::unique_ptr<std::vector<uint8_t>> m_encrypted;
@@ -14,8 +14,8 @@ class P11AESEncBenchmark : public P11Benchmark
 
 public:
 
-    P11AESEncBenchmark(Session &session, const std::string &name);
+    P11AESECBBenchmark(Session &session, const std::string &name);
 
 };
 
-#endif // DES3ENC_HPP
+#endif // AESECB_HPP

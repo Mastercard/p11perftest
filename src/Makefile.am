@@ -12,8 +12,10 @@ AM_LDFLAGS = $(BOTAN_LDFLAGS) $(BOOST_LDFLAGS)
 bin_PROGRAMS = p11perftest
 p11perftest_SOURCES = 	p11benchmark.cpp \
 			p11rsasig.cpp \
-			p11des3enc.cpp \
-			p11aesenc.cpp \
+			p11des3ecb.cpp \
+			p11des3cbc.cpp \
+			p11aesecb.cpp \
+			p11aescbc.cpp \
 			p11perftest.cpp
 
 
