@@ -69,11 +69,16 @@ int main(int argc, char **argv)
     p11::Info info = module.get_info();
 
     // print library version
-    std::cout << "Library Path: " << vm["library"].as<std::string>() << std::endl
+    std::cout << "Library path: " << vm["library"].as<std::string>() << std::endl
 	      << "Library version: "
 	      << std::to_string( info.libraryVersion.major ) << "."
-	      << std::to_string( info.libraryVersion.minor ) << std::endl;
-
+	      << std::to_string( info.libraryVersion.minor ) << std::endl
+	      << "Library manufacturer: " 
+	      << std::string( reinterpret_cast<const char *>(info.manufacturerID), sizeof info.manufacturerID )<< std::endl 
+	      << "Cryptoki version: " 
+	      << std::to_string( info.cryptokiVersion.major ) << "." 
+	      << std::to_string( info.cryptokiVersion.minor ) << std::endl ;
+	      
     // only slots with connected token
     std::vector<p11::SlotId> slots = p11::Slot::get_available_slots( module, true );
 
@@ -106,58 +111,69 @@ int main(int argc, char **argv)
     std::string test3 { "0123456789ABCDEF" };
     std::vector<uint8_t> testvec3(test3.data(),test3.data()+test3.length());
 
-    // big vector
-    std::vector<uint8_t> testveclarge(8000, 64);
+    // big vectors
+    std::vector<uint8_t> testvec4(800, 64);
+    std::vector<uint8_t> testvec5(8000, 65);
 
     P11RSASigBenchmark rsa1( session, "rsa-1");
     rsa1.execute(testvec1, argiter);
     rsa1.execute(testvec2, argiter);
-    rsa1.execute(testveclarge, argiter);
+    rsa1.execute(testvec4, argiter);
+    rsa1.execute(testvec5, argiter);
 
     P11RSASigBenchmark rsa2( session, "rsa-2");
     rsa2.execute(testvec1, argiter);
     rsa2.execute(testvec2, argiter);
-    rsa2.execute(testveclarge, argiter);
+    rsa2.execute(testvec4, argiter);
+    rsa2.execute(testvec5, argiter);
 
     P11DES3ECBBenchmark des1( session, "des-1");
     des1.execute(testvec1, argiter);
     des1.execute(testvec2, argiter);
-    des1.execute(testveclarge, argiter);
+    des1.execute(testvec4, argiter);
+    des1.execute(testvec5, argiter);
 
     P11DES3ECBBenchmark des2( session, "des-2");
     des2.execute(testvec1, argiter);
     des2.execute(testvec2, argiter);
-    des2.execute(testveclarge, argiter);
+    des2.execute(testvec4, argiter);
+    des2.execute(testvec5, argiter);
 
     P11DES3CBCBenchmark descbc1( session, "des-1");
     descbc1.execute(testvec1, argiter);
     descbc1.execute(testvec2, argiter);
-    descbc1.execute(testveclarge, argiter);
+    descbc1.execute(testvec4, argiter);
+    descbc1.execute(testvec5, argiter);
 
     P11DES3CBCBenchmark descbc2( session, "des-2");
     descbc2.execute(testvec1, argiter);
     descbc2.execute(testvec2, argiter);
-    descbc2.execute(testveclarge, argiter);
+    descbc2.execute(testvec4, argiter);
+    descbc2.execute(testvec5, argiter);
 
     P11AESECBBenchmark aes1( session, "aes-1");
     aes1.execute(testvec3, argiter);
     aes1.execute(testvec2, argiter);
-    aes1.execute(testveclarge, argiter);
+    aes1.execute(testvec4, argiter);
+    aes1.execute(testvec5, argiter);
 
     P11AESECBBenchmark aes2( session, "aes-2");
     aes2.execute(testvec3, argiter);
     aes2.execute(testvec2, argiter);
-    aes2.execute(testveclarge, argiter);
+    aes2.execute(testvec4, argiter);
+    aes2.execute(testvec5, argiter);
 
     P11AESCBCBenchmark aes1cbc( session, "aes-1");
     aes1cbc.execute(testvec3, argiter);
     aes1cbc.execute(testvec2, argiter);
-    aes1cbc.execute(testveclarge, argiter);
+    aes1cbc.execute(testvec4, argiter);
+    aes1cbc.execute(testvec5, argiter);
 
     P11AESCBCBenchmark aes2cbc( session, "aes-2");
     aes2cbc.execute(testvec3, argiter);
     aes2cbc.execute(testvec2, argiter);
-    aes2cbc.execute(testveclarge, argiter);
+    aes2cbc.execute(testvec4, argiter);
+    aes2cbc.execute(testvec5, argiter);
 
     session.logoff();
 
