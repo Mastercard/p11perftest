@@ -17,7 +17,7 @@ AX_CXX_COMPILE_STDCXX_11()
 AC_SUBST([CC])
 
 # Force autoconf to be at least this version number.
-AC_PREREQ([2.68])
+#AC_PREREQ([2.68])
 
 # Enable "automake" to simplify creating makefiles. foreign relaxes some GNU
 # checks. -Wall and -Werror are instructions to Automake, not gcc.
