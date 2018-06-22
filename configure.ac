@@ -1,5 +1,7 @@
-#AC_INIT([FULL-PACKAGE-NAME], [VERSION], [BUG-REPORT-ADDRESS], [TAR-NAME], [URL])
-AC_INIT([p11perftest], [0.1.0], [eric.devolder@mastercard.com], [p11perftest], [https://www.mastercard.com])
+#
+# https://stackoverflow.com/questions/8559456/read-a-version-number-from-a-file-in-configure-ac
+#
+AC_INIT([p11perftest], m4_esyscmd_s([cat VERSION]), [eric.devolder@mastercard.com], [p11perftest], [https://www.mastercard.com])
 
 # Put autotools auxiliary files in a subdir, so they don't clutter top dir.
 AC_CONFIG_AUX_DIR([build-aux])
@@ -22,6 +24,10 @@ AC_SUBST([CC])
 # Enable "automake" to simplify creating makefiles. foreign relaxes some GNU
 # checks. -Wall and -Werror are instructions to Automake, not gcc.
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
+
+# Allow easier building on other platforms
+# check out https://www.gnu.org/software/automake/manual/html_node/maintainer_002dmode.html
+AM_MAINTAINER_MODE
 
 # These are the files to be generated.
 AC_CONFIG_FILES([Makefile src/Makefile])
