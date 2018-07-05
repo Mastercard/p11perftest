@@ -11,3 +11,6 @@ An utility to benchmark speed of operations of a PKCS#11 implementation
  - 'aes-1' : a 128 bits AES key, with CKA_ENCRYPT=true
  - 'aes-2' : a 256 bits AES key, with CKA_ENCRYPT=true
 
+There is a script at `scripts/createkeys.sh` to create these keys, using the PKCS#11 toolkit.
+
+
