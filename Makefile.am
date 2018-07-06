@@ -9,5 +9,6 @@ SUBDIRS = src scripts
 
 EXTRA_DIST = \
 	README.md \
+	CHANGELOG.md \
 	VERSION
 
