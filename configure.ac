@@ -30,7 +30,7 @@ AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 AM_MAINTAINER_MODE
 
 # These are the files to be generated.
-AC_CONFIG_FILES([Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile scripts/Makefile])
 
 # Safety check - list a source file that wouldn't be in other directories.
 AC_CONFIG_SRCDIR([src/p11perftest.cpp])
