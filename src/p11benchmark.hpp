@@ -1,3 +1,5 @@
+// -*- mode: c++; c-file-style:"stroustrup"; -*-
+
 #if !defined(P11BENCHMARK_H)
 #define P11BENCHMARK_H
 
@@ -8,9 +10,11 @@
 #include <botan/p11_object.h>
 #include <botan/p11_rsa.h>
 #include <botan/pubkey.h>
+#include <boost/property_tree/ptree.hpp>
 #include "../config.h"
 
 using namespace Botan::PKCS11;
+using namespace boost::property_tree;
 
 class P11Benchmark
 {
@@ -37,9 +41,9 @@ public:
 
     P11Benchmark(const P11Benchmark& other) = delete;
     P11Benchmark& operator=(const P11Benchmark& other) = delete;
+  
+    std::unique_ptr<ptree> execute(std::vector<uint8_t> & payload, unsigned long iterations);
 
-
-    void execute(std::vector<uint8_t> & payload, unsigned long iterations);
 };
 
 

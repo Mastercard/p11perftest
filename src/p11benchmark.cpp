@@ -12,8 +12,10 @@ P11Benchmark::P11Benchmark(Session &session, const std::string &name, const std:
 }
 
 
-void P11Benchmark::execute( std::vector<uint8_t> &payload, unsigned long iterations)
+std::unique_ptr<ptree> P11Benchmark::execute( std::vector<uint8_t> &payload, unsigned long iterations)
 {
+
+    std::unique_ptr<ptree> rv(new ptree);
 
     try {
 	m_payload = payload;	// remember the payload
@@ -34,15 +36,28 @@ void P11Benchmark::execute( std::vector<uint8_t> &payload, unsigned long iterati
 		std::cout << iterations << " operations with '" << m_label << "' on a buffer of " << m_payload.size() << " bytes" << std::endl;
 		{
 		    boost::timer::cpu_timer t;
-		    for (unsigned long x=0; x<iterations; x++) {
-			crashtestdummy();
-		    }
-		    boost::timer::cpu_times const elapsed( t.elapsed() );
-		    // elapsed is in ns. We want to find a rate per second.
+		    boost::timer::cpu_times elapsed;
+		    boost::timer::cpu_times started;
 
-		    std::cout << "Iterations  : " << iterations << std::endl
-			      << "Elapsed (ms): " << elapsed.wall/1000000LL << std::endl
-			      << "TPS         : " << iterations / float(elapsed.wall/1000000LL) * 1000 << std::endl;
+		    elapsed.clear();
+		    started.clear();
+
+		    for (unsigned long x=0; x<iterations; x++) {
+			t.start(); // start it
+			started.wall = t.elapsed().wall; // remember wall clock
+			crashtestdummy();
+			elapsed.wall += t.elapsed().wall - started.wall;
+		    }
+
+		    std::cout << "Iterations : " << iterations << std::endl
+			      << "elapsed ms : " << elapsed.wall/1000000.0 << std::endl
+			      << "latency ms : " << elapsed.wall/1000000.0 / float(iterations) << std::endl
+			      << "TPS        : " << iterations / float(elapsed.wall/1000000.0) * 1000 << std::endl;
+
+		    rv->add("iterations", iterations);
+		    rv->add("elapsed", elapsed.wall/1000000LL);
+		    rv->add("latency", elapsed.wall/1000000.0 / float(iterations));
+		    rv->add("tps", iterations / float(elapsed.wall/1000000LL) * 1000);
 		}
 	    }
 	}
@@ -50,5 +65,6 @@ void P11Benchmark::execute( std::vector<uint8_t> &payload, unsigned long iterati
 	std::cerr << "ERROR:: caught an exception:" << bexc.what() << std::endl;
 	// we print the exception, and go on with next tests.
     }
+    
+    return rv;
 }
-
