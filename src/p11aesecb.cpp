@@ -1,22 +1,27 @@
 #include "p11aesecb.hpp"
 
 
-P11AESECBBenchmark::P11AESECBBenchmark(Session &session, const std::string &label) :
-    P11Benchmark( session, "AES Encryption (CKM_AES_ECB)", label, ObjectClass::SecretKey ) { }
+P11AESECBBenchmark::P11AESECBBenchmark(const std::string &label) :
+    P11Benchmark( "AES Encryption (CKM_AES_ECB)", label, ObjectClass::SecretKey ) { }
+
+
+P11AESECBBenchmark *P11AESECBBenchmark::clone() const {
+	return new P11AESECBBenchmark{*this};
+}
 
 
 
-void P11AESECBBenchmark::prepare(Object &obj)
+void P11AESECBBenchmark::prepare(Session &session, Object &obj)
 {
-    m_encrypted.reset( new std::vector<uint8_t> ( m_payload.size() ));
+    m_encrypted.resize( m_payload.size() );
     m_objhandle = obj.handle();
 }
 
-void P11AESECBBenchmark::crashtestdummy()
+void P11AESECBBenchmark::crashtestdummy(Session &session)
 {
-    Ulong returned_len=m_encrypted->size();
-    m_session.module()->C_EncryptInit(m_session.handle(), &m_mech_aesecb, m_objhandle);
-    m_session.module()->C_Encrypt( m_session.handle(), m_payload.data(), m_payload.size(), m_encrypted->data(), &returned_len);
+    Ulong returned_len=m_encrypted.size();
+    session.module()->C_EncryptInit(session.handle(), &m_mech_aesecb, m_objhandle);
+    session.module()->C_Encrypt( session.handle(), m_payload.data(), m_payload.size(), m_encrypted.data(), &returned_len);
 }
 
 

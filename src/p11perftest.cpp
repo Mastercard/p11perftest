@@ -6,6 +6,9 @@
 
 
 #include <iostream>
+#include <fstream>
+#include <forward_list>
+#include <thread>
 
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -20,6 +23,7 @@
 #include <botan/pubkey.h>
 #include "../config.h"
 
+#include "executor.hpp"
 #include "p11rsasig.hpp"
 #include "p11des3ecb.hpp"
 #include "p11des3cbc.hpp"
@@ -29,7 +33,6 @@
 namespace po = boost::program_options;
 namespace pt = boost::property_tree;
 namespace p11 = Botan::PKCS11;
-
 
 int main(int argc, char **argv)
 {
@@ -42,16 +45,22 @@ int main(int argc, char **argv)
     pt::ptree results;
     int argslot;
     int argiter;
+    int argnthreads;
     bool json = false;
+    std::fstream jsonout;
     po::options_description desc("available options");
+
+    const auto hwthreads = std::thread::hardware_concurrency(); // how many threads do we have on this platform ?
 
     desc.add_options()
 	("help,h", "print help message")
 	("library,l", po::value< std::string >(), "PKCS#11 library path")
 	("slot,s", po::value<int>(&argslot)->default_value(0), "slot index to use")
 	("password,p", po::value< std::string >(), "password for token in slot")
-	("iterations,i", po::value<int>(&argiter)->default_value(1000), "Number of iterations")
-	("json,j", "output results as JSON");
+	("threads,t", po::value<int>(&argnthreads)->default_value(1), "number of threads")
+	("iterations,i", po::value<int>(&argiter)->default_value(1000), "number of iterations")
+	("json,j", "output results as JSON")
+        ("jsonfile,o", po::value< std::string >(), "JSON output file name");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -63,6 +72,13 @@ int main(int argc, char **argv)
 
     if(vm.count("json")) {
 	json = true;
+	
+	if(vm.count("jsonfile")) {
+	    jsonout.open( vm["jsonfile"].as<std::string>(), std::fstream::out ); // open file for writing
+	}
+    } else if(vm.count("jsonfile")) {
+        std::cerr << "When jsonfile option is used, -j or -jsonfile is mandatory" << std::endl;
+	std::cerr << desc << std::endl;
     }
 
     if (vm.count("library")==0 || vm.count("password")==0 ) {
@@ -71,10 +87,12 @@ int main(int argc, char **argv)
 	return 1;
     }
 
-    p11::Module module( vm["library"].as<std::string>() );
+    if(argnthreads>hwthreads) {
+	std::cerr << "*** Warning: the specified number of threads (" << argnthreads << ") exceeds the harware capacity on this platform (" << hwthreads << ")." << std::endl;
+	std::cerr << "*** TPS and latency figures may be affected." << std::endl << std::endl;
+    }
 
-    // Sometimes useful if a newly connected token is not detected by the PKCS#11 module
-    module.reload();
+    p11::Module module( vm["library"].as<std::string>() );
 
     p11::Info info = module.get_info();
 
@@ -83,16 +101,16 @@ int main(int argc, char **argv)
 	      << "Library version: "
 	      << std::to_string( info.libraryVersion.major ) << "."
 	      << std::to_string( info.libraryVersion.minor ) << std::endl
-	      << "Library manufacturer: " 
-	      << std::string( reinterpret_cast<const char *>(info.manufacturerID), sizeof info.manufacturerID )<< std::endl 
-	      << "Cryptoki version: " 
-	      << std::to_string( info.cryptokiVersion.major ) << "." 
+	      << "Library manufacturer: "
+	      << std::string( reinterpret_cast<const char *>(info.manufacturerID), sizeof info.manufacturerID )<< std::endl
+	      << "Cryptoki version: "
+	      << std::to_string( info.cryptokiVersion.major ) << "."
 	      << std::to_string( info.cryptokiVersion.minor ) << std::endl ;
-	      
-    // only slots with connected token
-    std::vector<p11::SlotId> slots = p11::Slot::get_available_slots( module, false );
 
-    p11::Slot slot( module, slots.at( argslot ) );
+    // only slots with connected token
+    std::vector<p11::SlotId> slotids = p11::Slot::get_available_slots( module, false );
+
+    p11::Slot slot( module, slotids.at( argslot ) );
 
     // print firmware version of the slot
     p11::SlotInfo slot_info = slot.get_slot_info();
@@ -108,91 +126,82 @@ int main(int argc, char **argv)
 		  << std::to_string( token_info.firmwareVersion.major ) << "."
 		  << std::to_string( token_info.firmwareVersion.minor ) << std::endl;
 
-	auto session = p11::Session(slot, false);
+	// login all sessions (one per thread)
+	std::vector<std::unique_ptr<p11::Session> > sessions;
+	for(int i=0; i<argnthreads; ++i) {
+	    std::unique_ptr<p11::Session> session ( new Session(slot, false) );
+	    std::string argpwd { vm["password"].as<std::string>() };
+	    p11::secure_string pwd( argpwd.data(), argpwd.data()+argpwd.length() );
+	    try {
+		session->login(p11::UserType::User, pwd );
+	    } catch (p11::PKCS11_ReturnError &err) {
+		// we ignore if we get CKR_ALREADY_LOGGED_IN, as login status is shared accross all sessions.
+		if (err.get_return_value() != p11::ReturnValue::UserAlreadyLoggedIn) {
+		    // re-throw
+		    throw;
+		}
+	    }
 
-	std::string argpwd = vm["password"].as<std::string>();
-	p11::secure_string pwd( argpwd.data(), argpwd.data()+argpwd.length() );
-	session.login(p11::UserType::User, pwd );
-
-	std::string test1 { "12345678" };
-	std::vector<uint8_t> testvec1(test1.data(),test1.data()+test1.length());
-	std::string test2 { "12345678abcdefgh12345678abcdefgh12345678abcdefgh12345678abcdefgh12345678abcdefgh" };
-	std::vector<uint8_t> testvec2(test2.data(),test2.data()+test2.length());
-
-	// needed for AES
-	std::string test3 { "0123456789ABCDEF" };
-	std::vector<uint8_t> testvec3(test3.data(),test3.data()+test3.length());
-
-	// big vectors
-	std::vector<uint8_t> testvec4(800, 64);
-	std::vector<uint8_t> testvec5(8000, 65);
-
-	P11RSASigBenchmark rsa1( session, "rsa-1");
-	results.add_child("rsa1.testvec1", *rsa1.execute(testvec1, argiter));
-	results.add_child("rsa1.testvec2", *rsa1.execute(testvec2, argiter));
-	results.add_child("rsa1.testvec4", *rsa1.execute(testvec4, argiter));
-	results.add_child("rsa1.testvec5", *rsa1.execute(testvec5, argiter));
-
-	P11RSASigBenchmark rsa2( session, "rsa-2");
-	results.add_child("rsa2.testvec1", *rsa2.execute(testvec1, argiter));
-	results.add_child("rsa2.testvec2", *rsa2.execute(testvec2, argiter));
-	results.add_child("rsa2.testvec4", *rsa2.execute(testvec4, argiter));
-	results.add_child("rsa2.testvec5", *rsa2.execute(testvec5, argiter));
-
-	P11DES3ECBBenchmark des1( session, "des-1");
-	results.add_child("des1.testvec1", *des1.execute(testvec1, argiter));
-	results.add_child("des1.testvec2", *des1.execute(testvec2, argiter));
-	results.add_child("des1.testvec4", *des1.execute(testvec4, argiter));
-	results.add_child("des1.testvec5", *des1.execute(testvec5, argiter));
-
-	P11DES3ECBBenchmark des2( session, "des-2");
-	results.add_child("des2.testvec1", *des2.execute(testvec1, argiter));
-	results.add_child("des2.testvec2", *des2.execute(testvec2, argiter));
-	results.add_child("des2.testvec4", *des2.execute(testvec4, argiter));
-	results.add_child("des2.testvec5", *des2.execute(testvec5, argiter));
-
-	P11DES3CBCBenchmark descbc1( session, "des-1");
-	results.add_child("descbc1.testvec1", *descbc1.execute(testvec1, argiter));
-	results.add_child("descbc1.testvec2", *descbc1.execute(testvec2, argiter));
-	results.add_child("descbc1.testvec4", *descbc1.execute(testvec4, argiter));
-	results.add_child("descbc1.testvec5", *descbc1.execute(testvec5, argiter));
-
-	P11DES3CBCBenchmark descbc2( session, "des-2");
-	results.add_child("descbc2.testvec1", *descbc2.execute(testvec1, argiter));
-	results.add_child("descbc2.testvec2", *descbc2.execute(testvec2, argiter));
-	results.add_child("descbc2.testvec4", *descbc2.execute(testvec4, argiter));
-	results.add_child("descbc2.testvec5", *descbc2.execute(testvec5, argiter));
-
-	P11AESECBBenchmark aes1( session, "aes-1");
-	results.add_child("aes1.testvec3", *aes1.execute(testvec3, argiter));
-	results.add_child("aes1.testvec2", *aes1.execute(testvec2, argiter));
-	results.add_child("aes1.testvec4", *aes1.execute(testvec4, argiter));
-	results.add_child("aes1.testvec5", *aes1.execute(testvec5, argiter));
-
-	P11AESECBBenchmark aes2( session, "aes-2");
-	results.add_child("aes2.testvec3", *aes2.execute(testvec3, argiter));
-	results.add_child("aes2.testvec2", *aes2.execute(testvec2, argiter));
-	results.add_child("aes2.testvec4", *aes2.execute(testvec4, argiter));
-	results.add_child("aes2.testvec5", *aes2.execute(testvec5, argiter));
-
-	P11AESCBCBenchmark aes1cbc( session, "aes-1");
-	results.add_child("aes1cbc.testvec3", *aes1cbc.execute(testvec3, argiter));
-	results.add_child("aes1cbc.testvec2", *aes1cbc.execute(testvec2, argiter));
-	results.add_child("aes1cbc.testvec4", *aes1cbc.execute(testvec4, argiter));
-	results.add_child("aes1cbc.testvec5", *aes1cbc.execute(testvec5, argiter));
-
-	P11AESCBCBenchmark aes2cbc( session, "aes-2");
-	results.add_child("aes2cbc.testvec3", *aes2cbc.execute(testvec3, argiter));
-	results.add_child("aes2cbc.testvec2", *aes2cbc.execute(testvec2, argiter));
-	results.add_child("aes2cbc.testvec4", *aes2cbc.execute(testvec4, argiter));
-	results.add_child("aes2cbc.testvec5", *aes2cbc.execute(testvec5, argiter));
-
-	session.logoff();
-
-	if(json==true) {
-	  boost::property_tree::write_json(std::cout, results);
+	    sessions.push_back(std::move(session)); // move session to sessions
 	}
 
+	// create vectors
+	const std::string test1 { "12345678" };
+	const std::vector<uint8_t> testvec1(test1.data(),test1.data()+test1.length());
+	const std::string test2 { "12345678abcdefgh12345678abcdefgh12345678abcdefgh12345678abcdefgh12345678abcdefgh" };
+	const std::vector<uint8_t> testvec2(test2.data(),test2.data()+test2.length());
+
+	// needed for AES
+	const std::string test3 { "0123456789ABCDEF" };
+	const std::vector<uint8_t> testvec3(test3.data(),test3.data()+test3.length());
+
+	// big vectors
+	const std::vector<uint8_t> testvec4(800, 64);
+	const std::vector<uint8_t> testvec5(8000, 65);
+
+	// creating a big map of vectors
+	const std::map<const std::string, const std::vector<uint8_t> > vectors { { "testvec1", testvec1 },
+										 { "testvec2", testvec2 },
+										 { "testvec3", testvec3 },
+										 { "testvec4", testvec4 },
+										 { "testvec5", testvec5 }
+	};
+
+	Executor executor( vectors, sessions, argnthreads );
+
+	P11RSASigBenchmark rsa1("rsa-1");
+	results.add_child(rsa1.name()+" using "+rsa1.label(), executor.benchmark( rsa1, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
+
+	P11RSASigBenchmark rsa2("rsa-2");
+	results.add_child(rsa2.name()+" using "+rsa2.label(), executor.benchmark( rsa2, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
+
+	P11DES3ECBBenchmark des1ecb("des-1");
+	results.add_child(des1ecb.name()+" using "+des1ecb.label(), executor.benchmark( des1ecb, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
+
+	P11DES3ECBBenchmark des2ecb("des-2");
+	results.add_child(des2ecb.name()+" using "+des2ecb.label(), executor.benchmark( des2ecb, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
+
+	P11DES3CBCBenchmark des1cbc("des-1");
+	results.add_child(des1cbc.name()+" using "+des1cbc.label(), executor.benchmark( des1cbc, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
+
+	P11DES3CBCBenchmark des2cbc("des-2");
+	results.add_child(des2cbc.name()+" using "+des2cbc.label(), executor.benchmark( des2cbc, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
+
+	P11AESECBBenchmark aes1ecb("aes-1");
+	results.add_child(aes1ecb.name()+" using "+aes1ecb.label(), executor.benchmark( aes1ecb, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
+
+	P11AESECBBenchmark aes2ecb("aes-2");
+	results.add_child(aes2ecb.name()+" using "+aes2ecb.label(), executor.benchmark( aes2ecb, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
+
+	P11AESCBCBenchmark aes1cbc("aes-1");
+	results.add_child(aes1cbc.name()+" using "+aes1cbc.label(), executor.benchmark( aes1cbc, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
+
+	P11AESCBCBenchmark aes2cbc("aes-2");
+	results.add_child(aes2cbc.name()+" using "+aes2cbc.label(), executor.benchmark( aes2cbc, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
+
+	if(json==true) {
+	    boost::property_tree::write_json(jsonout.is_open() ? jsonout : std::cout, results);
+	}
     } else {
       std::cout << "The slot at index " << argslot << " has no token. Aborted." << std::endl;
     }

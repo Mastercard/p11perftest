@@ -3,8 +3,12 @@
 /config.log
 /config.status
 /stamp-h1
+/config.cache
 Makefile
 .deps/
 *.o
 # emacs
 *~
+*.json
+*.xlsx
+

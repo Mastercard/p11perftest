@@ -7,15 +7,16 @@ class P11AESCBCBenchmark : public P11Benchmark
 {
     Byte m_iv[16];
     Mechanism m_mech_des3cbc { CKM_AES_CBC, &m_iv, sizeof m_iv };
-    std::unique_ptr<std::vector<uint8_t>> m_encrypted;
+    std::vector<uint8_t> m_encrypted;
     ObjectHandle  m_objhandle;
 
-    virtual void prepare(Object &obj) override;
-    virtual void crashtestdummy( ) override;
+    virtual void prepare(Session &session, Object &obj) override;
+    virtual void crashtestdummy( Session &session) override;
+    virtual P11AESCBCBenchmark *clone() const override;
 
 public:
 
-    P11AESCBCBenchmark(Session &session, const std::string &name);
+    P11AESCBCBenchmark(const std::string &name);
 
 };
 

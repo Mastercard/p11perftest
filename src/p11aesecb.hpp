@@ -6,15 +6,16 @@
 class P11AESECBBenchmark : public P11Benchmark
 {
     Mechanism m_mech_aesecb { CKM_AES_ECB, nullptr, 0 };
-    std::unique_ptr<std::vector<uint8_t>> m_encrypted;
+    std::vector<uint8_t> m_encrypted;
     ObjectHandle  m_objhandle;
 
-    virtual void prepare(Object &obj) override;
-    virtual void crashtestdummy( ) override;
+    virtual void prepare(Session &session, Object &obj) override;
+    virtual void crashtestdummy(Session &session) override;
+    virtual P11AESECBBenchmark *clone() const override;
 
 public:
 
-    P11AESECBBenchmark(Session &session, const std::string &name);
+    P11AESECBBenchmark(const std::string &name);
 
 };
 

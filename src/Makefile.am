@@ -17,6 +17,7 @@ p11perftest_SOURCES = 	p11benchmark.cpp \
 			p11des3cbc.cpp \
 			p11aesecb.cpp \
 			p11aescbc.cpp \
+			executor.cpp \
 			p11perftest.cpp
 
 p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_TIMER_LIB) $(BOOST_PROGRAM_OPTIONS_LIB)

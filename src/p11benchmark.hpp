@@ -3,6 +3,7 @@
 #if !defined(P11BENCHMARK_H)
 #define P11BENCHMARK_H
 
+#include <forward_list>
 #include <botan/auto_rng.h>
 #include <botan/p11_module.h>
 #include <botan/p11_slot.h>
@@ -10,39 +11,46 @@
 #include <botan/p11_object.h>
 #include <botan/p11_rsa.h>
 #include <botan/pubkey.h>
-#include <boost/property_tree/ptree.hpp>
+#include <boost/timer/timer.hpp>
 #include "../config.h"
 
 using namespace Botan::PKCS11;
-using namespace boost::property_tree;
+using namespace boost::timer;
 
 class P11Benchmark
 {
-    const std::string m_name;
-    const std::string m_label;
+    std::string m_name;
+    std::string m_label;
     ObjectClass m_objectclass;
 
 protected:
-    Session &m_session;
     std::vector<uint8_t> m_payload;
 
     // prepare(): prepare calls to crashtestdummy() with object found
-    virtual void prepare(Object &obj)=0;
+    virtual void prepare(Session &session, Object &obj)=0;
 
     // crashtestdummy(): here lies actual PKCS#11 calls to measure
-    virtual void crashtestdummy( )=0;
+    virtual void crashtestdummy(Session &session)=0;
 
 public:
-    P11Benchmark(Session &session,
-		 const std::string &name,
+    P11Benchmark(const std::string &name,
 		 const std::string &label,
 		 ObjectClass objectclass);
 
+    P11Benchmark(const P11Benchmark& other);
+    P11Benchmark& operator=(const P11Benchmark& other);
 
-    P11Benchmark(const P11Benchmark& other) = delete;
-    P11Benchmark& operator=(const P11Benchmark& other) = delete;
-  
-    std::unique_ptr<ptree> execute(std::vector<uint8_t> & payload, unsigned long iterations);
+    virtual ~P11Benchmark() { };
+
+    // clone() is used by assignment operator to allow copy of the object
+    virtual P11Benchmark *clone() const = 0;
+
+    inline std::string name() const { return m_name; }
+    inline std::string label() const { return m_label; }
+
+    virtual std::string features() const;
+
+    nanosecond_type execute(Session* session, const std::vector<uint8_t> &payload, unsigned long iterations);
 
 };
 

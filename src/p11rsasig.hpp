@@ -9,12 +9,14 @@ class P11RSASigBenchmark : public P11Benchmark
     std::unique_ptr<PKCS11_RSA_PrivateKey> m_rsakey;
     std::unique_ptr<Botan::PK_Signer> m_signer;
 
-    virtual void prepare(Object &obj) override;
-    virtual void crashtestdummy( ) override;
+    virtual void prepare(Session &session, Object &obj) override;
+    virtual void crashtestdummy(Session &session) override;
+    virtual P11RSASigBenchmark *clone() const override;
 
 public:
 
-    P11RSASigBenchmark(Session &session, const std::string &name);
+    P11RSASigBenchmark(const std::string &name);
+    P11RSASigBenchmark(const P11RSASigBenchmark & other);
 
 };
 

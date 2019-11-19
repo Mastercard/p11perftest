@@ -26,7 +26,7 @@ Token: {token}""")
     print('-'*80)
 
 
-    with token.open(user_pin=args.password) as session:
+    with token.open(user_pin=args.password, rw=True) as session:
 
         print("Generating des-1 key")
         des1 = session.generate_key( KeyType.DES2,

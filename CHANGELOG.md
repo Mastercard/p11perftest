@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## 0.5.1 - 2019-11-20
+### Added
+- multithread support: tests can be run in parallel, increasing throughput
+- JSON output can be written to a target file
+
 ## 0.4.0 - 2019-11-15
 ### Added
 - add `CHANGELOG.md` to the automake distribution
