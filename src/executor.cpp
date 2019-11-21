@@ -3,11 +3,17 @@
 #include <iostream>
 #include <algorithm>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <future>
 #include <functional>
-#include <typeinfo>
 #include <boost/timer/timer.hpp>
 #include "executor.hpp"
+
+// thread sync objects
+std::mutex greenlight_mtx;
+std::condition_variable greenlight_cond;
+bool greenlight = false;
 
 
 ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::forward_list<std::string> shortlist  )
@@ -29,9 +35,11 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	          << "threads         : " << m_numthreads << std::endl
 	          << "iterations      : " << iter << std::endl;
 
+	greenlight = false;	// prepare threads to sync on "green light"
+
 	for(th=0; th<m_numthreads;th++) {
 	    // make a copy of the benchmark object, for each thread
-	    benchmark_array[th] = benchmark.clone(); // geta "clone" of the object
+	    benchmark_array[th] = benchmark.clone(); // get a "clone" of the object
 
 	    future_array[th] = std::async( std::launch::async,
 					   &P11Benchmark::execute,
@@ -39,6 +47,13 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 					   m_sessions[th].get(),
 					   m_vectors.at(testcase),
 					   iter);
+	}
+
+	// give start signal
+	{
+	    std::lock_guard<std::mutex> greenligt_lck(greenlight_mtx);
+	    greenlight = true;
+	    greenlight_cond.notify_all();
 	}
 
 	// recover futures

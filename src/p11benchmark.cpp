@@ -1,7 +1,15 @@
 // p11benchmark.cpp : a base class for implementing performance test cases
 
 #include <iostream>
+#include <mutex>
+#include <condition_variable>
 #include "p11benchmark.hpp"
+
+// thread sync objects
+extern std::mutex greenlight_mtx;
+extern std::condition_variable greenlight_cond;
+extern bool greenlight;
+
 
 P11Benchmark::P11Benchmark(const std::string &name, const std::string &label, ObjectClass objectclass)
     : m_name(name), m_label(label), m_objectclass(objectclass)
@@ -54,6 +62,13 @@ nanosecond_type P11Benchmark::execute(Session *session, const std::vector<uint8_
 		elapsed.clear();
 		started.clear();
 
+		// wait for green light - all threads are starting together
+		{
+		    std::unique_lock<std::mutex> greenlight_lck(greenlight_mtx);
+		    greenlight_cond.wait(greenlight_lck,[]{ return greenlight; });
+		}
+
+		// ok go now!
 		for (unsigned long x=0; x<iterations; x++) {
 		    t.start(); // start it
 		    started.wall = t.elapsed().wall; // remember wall clock
