@@ -111,7 +111,8 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_p11perftest_OBJECTS = p11benchmark.$(OBJEXT) p11rsasig.$(OBJEXT) \
 	p11des3ecb.$(OBJEXT) p11des3cbc.$(OBJEXT) p11aesecb.$(OBJEXT) \
-	p11aescbc.$(OBJEXT) executor.$(OBJEXT) p11perftest.$(OBJEXT)
+	p11aescbc.$(OBJEXT) keygenerator.$(OBJEXT) executor.$(OBJEXT) \
+	p11perftest.$(OBJEXT)
 p11perftest_OBJECTS = $(am_p11perftest_OBJECTS)
 am__DEPENDENCIES_1 =
 p11perftest_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
@@ -131,7 +132,8 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/build-aux/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/executor.Po ./$(DEPDIR)/p11aescbc.Po \
+am__depfiles_remade = ./$(DEPDIR)/executor.Po \
+	./$(DEPDIR)/keygenerator.Po ./$(DEPDIR)/p11aescbc.Po \
 	./$(DEPDIR)/p11aesecb.Po ./$(DEPDIR)/p11benchmark.Po \
 	./$(DEPDIR)/p11des3cbc.Po ./$(DEPDIR)/p11des3ecb.Po \
 	./$(DEPDIR)/p11perftest.Po ./$(DEPDIR)/p11rsasig.Po
@@ -294,6 +296,7 @@ p11perftest_SOURCES = p11benchmark.cpp \
 			p11des3cbc.cpp \
 			p11aesecb.cpp \
 			p11aescbc.cpp \
+			keygenerator.cpp \
 			executor.cpp \
 			p11perftest.cpp
 
@@ -385,6 +388,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/executor.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/keygenerator.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11aescbc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11aesecb.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11benchmark.Po@am__quote@ # am--include-marker
@@ -541,6 +545,7 @@ clean-am: clean-binPROGRAMS clean-generic mostlyclean-am
 
 distclean: distclean-am
 		-rm -f ./$(DEPDIR)/executor.Po
+	-rm -f ./$(DEPDIR)/keygenerator.Po
 	-rm -f ./$(DEPDIR)/p11aescbc.Po
 	-rm -f ./$(DEPDIR)/p11aesecb.Po
 	-rm -f ./$(DEPDIR)/p11benchmark.Po
@@ -594,6 +599,7 @@ installcheck-am:
 
 maintainer-clean: maintainer-clean-am
 		-rm -f ./$(DEPDIR)/executor.Po
+	-rm -f ./$(DEPDIR)/keygenerator.Po
 	-rm -f ./$(DEPDIR)/p11aescbc.Po
 	-rm -f ./$(DEPDIR)/p11aesecb.Po
 	-rm -f ./$(DEPDIR)/p11benchmark.Po

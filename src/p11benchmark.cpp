@@ -38,7 +38,7 @@ std::string P11Benchmark::features() const
 
 nanosecond_type P11Benchmark::execute(Session *session, const std::vector<uint8_t> &payload, unsigned long iterations)
 {
-    boost::timer::cpu_times elapsed;
+    boost::timer::cpu_times elapsed { 0	};
 
     try {
 	m_payload = payload;	// remember the payload

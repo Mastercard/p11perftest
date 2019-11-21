@@ -23,6 +23,7 @@
 #include <botan/pubkey.h>
 #include "../config.h"
 
+#include "keygenerator.hpp"
 #include "executor.hpp"
 #include "p11rsasig.hpp"
 #include "p11des3ecb.hpp"
@@ -49,6 +50,7 @@ int main(int argc, char **argv)
     int argnthreads;
     bool json = false;
     std::fstream jsonout;
+    bool generatekeys = true;
     po::options_description desc("available options");
 
     const auto hwthreads = std::thread::hardware_concurrency(); // how many threads do we have on this platform ?
@@ -61,7 +63,8 @@ int main(int argc, char **argv)
 	("threads,t", po::value<int>(&argnthreads)->default_value(1), "number of threads")
 	("iterations,i", po::value<int>(&argiter)->default_value(1000), "number of iterations")
 	("json,j", "output results as JSON")
-        ("jsonfile,o", po::value< std::string >(), "JSON output file name");
+        ("jsonfile,o", po::value< std::string >(), "JSON output file name")
+	("nogenerate,n", "Do not attempt to generate session keys; instead, use pre-existing token keys");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -73,13 +76,17 @@ int main(int argc, char **argv)
 
     if(vm.count("json")) {
 	json = true;
-	
+
 	if(vm.count("jsonfile")) {
 	    jsonout.open( vm["jsonfile"].as<std::string>(), std::fstream::out ); // open file for writing
 	}
     } else if(vm.count("jsonfile")) {
         std::cerr << "When jsonfile option is used, -j or -jsonfile is mandatory" << std::endl;
 	std::cerr << desc << std::endl;
+    }
+
+    if (vm.count("nogenerate")) {
+	generatekeys = false;
     }
 
     if (vm.count("library")==0 || vm.count("password")==0 ) {
@@ -169,6 +176,18 @@ int main(int argc, char **argv)
 	};
 
 	Executor executor( vectors, sessions, argnthreads );
+
+	if(generatekeys) {
+	    KeyGenerator keygenerator( sessions, argnthreads );
+
+	    std::cout << "Generating session keys for " << argnthreads << " thread(s)" << std::endl;
+	    keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-1", 2048);
+	    keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-2", 4096);
+	    keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-1", 128);
+	    keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-2", 256);
+	    keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-1", 128); // DES2
+	    keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-2", 192); // DES3
+	}
 
 	P11RSASigBenchmark rsa1("rsa-1");
 	results.add_child(rsa1.name()+" using "+rsa1.label(), executor.benchmark( rsa1, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));

@@ -51,7 +51,7 @@ Token: {token}""")
 
         print("Generating aes-2 key")
         aes2 = session.generate_key( KeyType.AES,
-                                     128, 
+                                     256, 
                                      label='aes-2', 
                                      store=store, 
                                      capabilities = MechanismFlag.ENCRYPT | MechanismFlag.DECRYPT )
