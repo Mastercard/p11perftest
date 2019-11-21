@@ -24,6 +24,7 @@ Note that to execute `p11perftest`, you may have to adjust `LD_LIBRARY_PATH` to 
 
 ## Keys to prepare
 
+In case session keys cannot be used (default), token keys must be created.
 In order to execute the test, you will need to create the following keys upfront:
 
  - `rsa-1` : a 2048 bits RSA key, with CKA_SIGN=true
@@ -52,3 +53,6 @@ available options:
   - `-p [ --password ] arg`, password for token in slot
   - `-i [ --iterations ] arg`, number of iterations (default is 1000)
   - `-j [ --json ]`, output results as JSON
+  - `-o [ --jsonfile ] arg`, JSON output file name
+  - `-n [ --nogenerate ]`, do not attempt to generate session keys; instead, use pre-existing token keys
+  
