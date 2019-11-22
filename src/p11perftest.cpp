@@ -10,6 +10,8 @@
 #include <forward_list>
 #include <thread>
 
+#include <boost/range/adaptor/map.hpp>
+#include <boost/range/algorithm/copy.hpp>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -156,28 +158,24 @@ int main(int argc, char **argv)
 	}
 
 	// create vectors
-	const std::string test1 { "12345678" };
-	const std::vector<uint8_t> testvec1(test1.data(),test1.data()+test1.length());
-	const std::string test2 { "12345678abcdefgh12345678abcdefgh12345678abcdefgh12345678abcdefgh12345678abcdefgh" };
-	const std::vector<uint8_t> testvec2(test2.data(),test2.data()+test2.length());
-
-	// needed for AES
-	const std::string test3 { "0123456789ABCDEF" };
-	const std::vector<uint8_t> testvec3(test3.data(),test3.data()+test3.length());
-
-	// big vectors
-	const std::vector<uint8_t> testvec4(800, 64);
-	const std::vector<uint8_t> testvec5(8000, 65);
+	const std::vector<uint8_t> testvec8(8,49);              // needed for DES, 2**3
+	const std::vector<uint8_t> testvec16(16,50);	        // needed for AES, 2**4
+	const std::vector<uint8_t> testvec64(64,51);            //  2**6
+	const std::vector<uint8_t> testvec256(256,52);          //  2**8
+	const std::vector<uint8_t> testvec1024(1024,53);	// 2**10
+	const std::vector<uint8_t> testvec4096(4096,54);	// 2**12
 
 	// creating a big map of vectors
-	const std::map<const std::string, const std::vector<uint8_t> > vectors { { "testvec1", testvec1 },
-										 { "testvec2", testvec2 },
-										 { "testvec3", testvec3 },
-										 { "testvec4", testvec4 },
-										 { "testvec5", testvec5 }
+	const std::map<const std::string, const std::vector<uint8_t> > testvecs {
+	    { "testvec0008", testvec8 },	// minimum for DES
+	    { "testvec0016", testvec16 }, // minimum for AES
+	    { "testvec0064", testvec64 },
+	    { "testvec0256", testvec256 },
+	    { "testvec1024", testvec1024 }, // 1Kb
+	    { "testvec4096", testvec4096 }
 	};
 
-	Executor executor( vectors, sessions, argnthreads );
+	Executor executor( testvecs, sessions, argnthreads );
 
 	if(generatekeys) {
 	    KeyGenerator keygenerator( sessions, argnthreads );
@@ -191,41 +189,29 @@ int main(int argc, char **argv)
 	    keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-192", 192); // DES3
 	}
 
-	P11RSASigBenchmark rsa1("rsa-2048");
-	results.add_child(rsa1.name()+" using "+rsa1.label(), executor.benchmark( rsa1, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
+	std::forward_list<P11Benchmark *> benchmarks {
+	    new P11RSASigBenchmark("rsa-2048"),
+	    new P11RSASigBenchmark("rsa-4096"),
+	    new P11DES3ECBBenchmark("des-128"),
+	    new P11DES3ECBBenchmark("des-192"),
+	    new P11DES3CBCBenchmark("des-128"),
+	    new P11DES3CBCBenchmark("des-192"),
+	    new P11AESECBBenchmark("aes-128"),
+	    new P11AESECBBenchmark("aes-256"),
+	    new P11AESCBCBenchmark("aes-128"),
+	    new P11AESCBCBenchmark("aes-256"),
+	    new P11AESGCMBenchmark("aes-128"),
+	    new P11AESGCMBenchmark("aes-256")
+	};
 
-	P11RSASigBenchmark rsa2("rsa-4096");
-	results.add_child(rsa2.name()+" using "+rsa2.label(), executor.benchmark( rsa2, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
+	std::forward_list<std::string> testvecsnames;
+	boost::copy(testvecs | boost::adaptors::map_keys, std::front_inserter(testvecsnames));
+	testvecsnames.sort();	// sort in alphabetical order
 
-	P11DES3ECBBenchmark des1ecb("des-128");
-	results.add_child(des1ecb.name()+" using "+des1ecb.label(), executor.benchmark( des1ecb, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
-
-	P11DES3ECBBenchmark des2ecb("des-192");
-	results.add_child(des2ecb.name()+" using "+des2ecb.label(), executor.benchmark( des2ecb, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
-
-	P11DES3CBCBenchmark des1cbc("des-128");
-	results.add_child(des1cbc.name()+" using "+des1cbc.label(), executor.benchmark( des1cbc, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
-
-	P11DES3CBCBenchmark des2cbc("des-192");
-	results.add_child(des2cbc.name()+" using "+des2cbc.label(), executor.benchmark( des2cbc, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
-
-	P11AESECBBenchmark aes1ecb("aes-128");
-	results.add_child(aes1ecb.name()+" using "+aes1ecb.label(), executor.benchmark( aes1ecb, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
-
-	P11AESECBBenchmark aes2ecb("aes-256");
-	results.add_child(aes2ecb.name()+" using "+aes2ecb.label(), executor.benchmark( aes2ecb, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
-
-	P11AESCBCBenchmark aes1cbc("aes-128");
-	results.add_child(aes1cbc.name()+" using "+aes1cbc.label(), executor.benchmark( aes1cbc, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
-
-	P11AESCBCBenchmark aes2cbc("aes-256");
-	results.add_child(aes2cbc.name()+" using "+aes2cbc.label(), executor.benchmark( aes2cbc, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
-
-	P11AESGCMBenchmark aes1gcm("aes-128");
-	results.add_child(aes1gcm.name()+" using "+aes1gcm.label(), executor.benchmark( aes1gcm, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
-
-	P11AESGCMBenchmark aes2gcm("aes-256");
-	results.add_child(aes2gcm.name()+" using "+aes2gcm.label(), executor.benchmark( aes2gcm, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
+	for(auto benchmark : benchmarks) {
+	    results.add_child( benchmark->name()+" using "+benchmark->label(), executor.benchmark( *benchmark, argiter, testvecsnames ));
+	    free(benchmark);
+	}
 
 	if(json==true) {
 	    boost::property_tree::write_json(jsonout.is_open() ? jsonout : std::cout, results);
