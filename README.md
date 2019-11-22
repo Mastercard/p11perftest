@@ -27,12 +27,12 @@ Note that to execute `p11perftest`, you may have to adjust `LD_LIBRARY_PATH` to 
 In case session keys cannot be used (default), token keys must be created.
 In order to execute the test, you will need to create the following keys upfront:
 
- - `rsa-1` : a 2048 bits RSA key, with CKA_SIGN=true
- - `rsa-2` : a 4096 bits RSA key, with CKA_SIGN=true
- - `des-1` : a 2DES key, with CKA_ENCRYPT=true
- - `des-2` : a 3DES key, with CKA_ENCRYPT=true
- - `aes-1` : a 128 bits AES key, with CKA_ENCRYPT=true
- - `aes-2` : a 256 bits AES key, with CKA_ENCRYPT=true
+ - `rsa-2048` : a 2048 bits RSA key, with CKA_SIGN=true
+ - `rsa-4096` : a 4096 bits RSA key, with CKA_SIGN=true
+ - `des-128`  : a 2DES key, with CKA_ENCRYPT=true
+ - `des-192`  : a 3DES key, with CKA_ENCRYPT=true
+ - `aes-128`  : a 128 bits AES key, with CKA_ENCRYPT=true
+ - `aes-256`  : a 256 bits AES key, with CKA_ENCRYPT=true
 
 There is a script at `scripts/createkeys.sh` to create these keys, using the PKCS#11 toolkit.
 There is also a python script, at `scripts/generatekeys.py`. It requires Python 3, and you will need to deploy the dependent libraries using `pip`:

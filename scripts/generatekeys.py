@@ -31,28 +31,28 @@ Token: {token}""")
         print("Generating des-1 key")
         des1 = session.generate_key( KeyType.DES2,
                                      128, 
-                                     label='des-1', 
+                                     label='des-128', 
                                      store=store, 
                                      capabilities = MechanismFlag.ENCRYPT | MechanismFlag.DECRYPT )
 
         print("Generating des-2 key")
         des2 = session.generate_key( KeyType.DES3,
                                      192, 
-                                     label='des-2', 
+                                     label='des-192', 
                                      store=store, 
                                      capabilities = MechanismFlag.ENCRYPT | MechanismFlag.DECRYPT )
 
         print("Generating aes-1 key")
         aes1 = session.generate_key( KeyType.AES,
                                      128, 
-                                     label='aes-1', 
+                                     label='aes-128', 
                                      store=store, 
                                      capabilities = MechanismFlag.ENCRYPT | MechanismFlag.DECRYPT )
 
         print("Generating aes-2 key")
         aes2 = session.generate_key( KeyType.AES,
                                      256, 
-                                     label='aes-2', 
+                                     label='aes-256', 
                                      store=store, 
                                      capabilities = MechanismFlag.ENCRYPT | MechanismFlag.DECRYPT )
         
@@ -60,14 +60,14 @@ Token: {token}""")
         print("Generating rsa-1 key")
         rsa1 = session.generate_keypair( KeyType.RSA,
                                          2048, 
-                                         label='rsa-1', 
+                                         label='rsa-2048', 
                                          store=store, 
                                          capabilities = MechanismFlag.SIGN | MechanismFlag.VERIFY )
 
         print("Generating rsa-2 key")
         rsa2 = session.generate_keypair( KeyType.RSA,
                                          4096, 
-                                         label='rsa-2', 
+                                         label='rsa-4096', 
                                          store=store, 
                                          capabilities = MechanismFlag.SIGN | MechanismFlag.VERIFY )
 

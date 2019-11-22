@@ -183,48 +183,48 @@ int main(int argc, char **argv)
 	    KeyGenerator keygenerator( sessions, argnthreads );
 
 	    std::cout << "Generating session keys for " << argnthreads << " thread(s)" << std::endl;
-	    keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-1", 2048);
-	    keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-2", 4096);
-	    keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-1", 128);
-	    keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-2", 256);
-	    keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-1", 128); // DES2
-	    keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-2", 192); // DES3
+	    keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-2048", 2048);
+	    keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-4096", 4096);
+	    keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-128", 128);
+	    keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-256", 256);
+	    keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-128", 128); // DES2
+	    keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-192", 192); // DES3
 	}
 
-	P11RSASigBenchmark rsa1("rsa-1");
+	P11RSASigBenchmark rsa1("rsa-2048");
 	results.add_child(rsa1.name()+" using "+rsa1.label(), executor.benchmark( rsa1, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
 
-	P11RSASigBenchmark rsa2("rsa-2");
+	P11RSASigBenchmark rsa2("rsa-4096");
 	results.add_child(rsa2.name()+" using "+rsa2.label(), executor.benchmark( rsa2, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
 
-	P11DES3ECBBenchmark des1ecb("des-1");
+	P11DES3ECBBenchmark des1ecb("des-128");
 	results.add_child(des1ecb.name()+" using "+des1ecb.label(), executor.benchmark( des1ecb, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
 
-	P11DES3ECBBenchmark des2ecb("des-2");
+	P11DES3ECBBenchmark des2ecb("des-192");
 	results.add_child(des2ecb.name()+" using "+des2ecb.label(), executor.benchmark( des2ecb, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
 
-	P11DES3CBCBenchmark des1cbc("des-1");
+	P11DES3CBCBenchmark des1cbc("des-128");
 	results.add_child(des1cbc.name()+" using "+des1cbc.label(), executor.benchmark( des1cbc, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
 
-	P11DES3CBCBenchmark des2cbc("des-2");
+	P11DES3CBCBenchmark des2cbc("des-192");
 	results.add_child(des2cbc.name()+" using "+des2cbc.label(), executor.benchmark( des2cbc, argiter, { "testvec1", "testvec2" , "testvec4" , "testvec5" } ));
 
-	P11AESECBBenchmark aes1ecb("aes-1");
+	P11AESECBBenchmark aes1ecb("aes-128");
 	results.add_child(aes1ecb.name()+" using "+aes1ecb.label(), executor.benchmark( aes1ecb, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
 
-	P11AESECBBenchmark aes2ecb("aes-2");
+	P11AESECBBenchmark aes2ecb("aes-256");
 	results.add_child(aes2ecb.name()+" using "+aes2ecb.label(), executor.benchmark( aes2ecb, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
 
-	P11AESCBCBenchmark aes1cbc("aes-1");
+	P11AESCBCBenchmark aes1cbc("aes-128");
 	results.add_child(aes1cbc.name()+" using "+aes1cbc.label(), executor.benchmark( aes1cbc, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
 
-	P11AESCBCBenchmark aes2cbc("aes-2");
+	P11AESCBCBenchmark aes2cbc("aes-256");
 	results.add_child(aes2cbc.name()+" using "+aes2cbc.label(), executor.benchmark( aes2cbc, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
 
-	P11AESGCMBenchmark aes1gcm("aes-1");
+	P11AESGCMBenchmark aes1gcm("aes-128");
 	results.add_child(aes1gcm.name()+" using "+aes1gcm.label(), executor.benchmark( aes1gcm, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
 
-	P11AESGCMBenchmark aes2gcm("aes-2");
+	P11AESGCMBenchmark aes2gcm("aes-256");
 	results.add_child(aes2gcm.name()+" using "+aes2gcm.label(), executor.benchmark( aes2gcm, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
 
 	if(json==true) {
