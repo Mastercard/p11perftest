@@ -20,7 +20,7 @@ void P11AESCBCBenchmark::prepare(Session &session, Object &obj)
 void P11AESCBCBenchmark::crashtestdummy(Session &session)
 {
     Ulong returned_len=m_encrypted.size();
-    session.module()->C_EncryptInit(session.handle(), &m_mech_des3cbc, m_objhandle);
+    session.module()->C_EncryptInit(session.handle(), &m_mech_aes_cbc, m_objhandle);
     session.module()->C_Encrypt( session.handle(), m_payload.data(), m_payload.size(), m_encrypted.data(), &returned_len);
 }
 

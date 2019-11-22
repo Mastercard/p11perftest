@@ -30,6 +30,8 @@
 #include "p11des3cbc.hpp"
 #include "p11aesecb.hpp"
 #include "p11aescbc.hpp"
+#include "p11aesgcm.hpp"
+
 
 namespace po = boost::program_options;
 namespace pt = boost::property_tree;
@@ -218,6 +220,12 @@ int main(int argc, char **argv)
 
 	P11AESCBCBenchmark aes2cbc("aes-2");
 	results.add_child(aes2cbc.name()+" using "+aes2cbc.label(), executor.benchmark( aes2cbc, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
+
+	P11AESGCMBenchmark aes1gcm("aes-1");
+	results.add_child(aes1gcm.name()+" using "+aes1gcm.label(), executor.benchmark( aes1gcm, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
+
+	P11AESGCMBenchmark aes2gcm("aes-2");
+	results.add_child(aes2gcm.name()+" using "+aes2gcm.label(), executor.benchmark( aes2gcm, argiter, { "testvec3", "testvec2" , "testvec4" , "testvec5" } ));
 
 	if(json==true) {
 	    boost::property_tree::write_json(jsonout.is_open() ? jsonout : std::cout, results);

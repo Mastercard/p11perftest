@@ -111,8 +111,8 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_p11perftest_OBJECTS = p11benchmark.$(OBJEXT) p11rsasig.$(OBJEXT) \
 	p11des3ecb.$(OBJEXT) p11des3cbc.$(OBJEXT) p11aesecb.$(OBJEXT) \
-	p11aescbc.$(OBJEXT) keygenerator.$(OBJEXT) executor.$(OBJEXT) \
-	p11perftest.$(OBJEXT)
+	p11aescbc.$(OBJEXT) p11aesgcm.$(OBJEXT) keygenerator.$(OBJEXT) \
+	executor.$(OBJEXT) p11perftest.$(OBJEXT)
 p11perftest_OBJECTS = $(am_p11perftest_OBJECTS)
 am__DEPENDENCIES_1 =
 p11perftest_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
@@ -134,9 +134,10 @@ depcomp = $(SHELL) $(top_srcdir)/build-aux/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/executor.Po \
 	./$(DEPDIR)/keygenerator.Po ./$(DEPDIR)/p11aescbc.Po \
-	./$(DEPDIR)/p11aesecb.Po ./$(DEPDIR)/p11benchmark.Po \
-	./$(DEPDIR)/p11des3cbc.Po ./$(DEPDIR)/p11des3ecb.Po \
-	./$(DEPDIR)/p11perftest.Po ./$(DEPDIR)/p11rsasig.Po
+	./$(DEPDIR)/p11aesecb.Po ./$(DEPDIR)/p11aesgcm.Po \
+	./$(DEPDIR)/p11benchmark.Po ./$(DEPDIR)/p11des3cbc.Po \
+	./$(DEPDIR)/p11des3ecb.Po ./$(DEPDIR)/p11perftest.Po \
+	./$(DEPDIR)/p11rsasig.Po
 am__mv = mv -f
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
@@ -296,6 +297,7 @@ p11perftest_SOURCES = p11benchmark.cpp \
 			p11des3cbc.cpp \
 			p11aesecb.cpp \
 			p11aescbc.cpp \
+			p11aesgcm.cpp \
 			keygenerator.cpp \
 			executor.cpp \
 			p11perftest.cpp
@@ -391,6 +393,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/keygenerator.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11aescbc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11aesecb.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11aesgcm.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11benchmark.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11des3cbc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/p11des3ecb.Po@am__quote@ # am--include-marker
@@ -548,6 +551,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/keygenerator.Po
 	-rm -f ./$(DEPDIR)/p11aescbc.Po
 	-rm -f ./$(DEPDIR)/p11aesecb.Po
+	-rm -f ./$(DEPDIR)/p11aesgcm.Po
 	-rm -f ./$(DEPDIR)/p11benchmark.Po
 	-rm -f ./$(DEPDIR)/p11des3cbc.Po
 	-rm -f ./$(DEPDIR)/p11des3ecb.Po
@@ -602,6 +606,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/keygenerator.Po
 	-rm -f ./$(DEPDIR)/p11aescbc.Po
 	-rm -f ./$(DEPDIR)/p11aesecb.Po
+	-rm -f ./$(DEPDIR)/p11aesgcm.Po
 	-rm -f ./$(DEPDIR)/p11benchmark.Po
 	-rm -f ./$(DEPDIR)/p11des3cbc.Po
 	-rm -f ./$(DEPDIR)/p11des3ecb.Po
