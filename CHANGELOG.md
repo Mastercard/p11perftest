@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## 1.0.0 - 2019-11-22
+### Added
+- Turned version to 1.0.0
+- added support for AES GCM
+### Fixed
+- AES key labels now contain the key size
+
 ## 0.6.0 - 2019-11-21
 ### Added
 - session key generation support
