@@ -46,7 +46,7 @@ int main(int argc, char **argv)
     std::cout << "------------------------------------------------------------------" << std::endl;
     std::cout << "  Version " PACKAGE_VERSION << std::endl;
     std::cout << "  Author : Eric Devolder" << std::endl;
-    std::cout << "  (c)2018 Mastercard" << std::endl << std::endl;
+    std::cout << "  (c) Mastercard" << std::endl << std::endl;
 
     pt::ptree results;
     int argslot;
