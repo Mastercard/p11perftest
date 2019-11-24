@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## 1.1.1 - 2019-11-24
+### Fixed
+- upon copy, initialization of GCM and CBC benchmark objects was incorrect
+
 ## 1.1.0 - 2019-11-22
 ### Changed
 - test vectors changed to more useful values
