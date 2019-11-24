@@ -4,6 +4,7 @@
 #define P11BENCHMARK_H
 
 #include <forward_list>
+#include <utility>
 #include <botan/auto_rng.h>
 #include <botan/p11_module.h>
 #include <botan/p11_slot.h>
@@ -50,7 +51,7 @@ public:
 
     virtual std::string features() const;
 
-    nanosecond_type execute(Session* session, const std::vector<uint8_t> &payload, unsigned long iterations);
+    std::pair<nanosecond_type,int> execute(Session* session, const std::vector<uint8_t> &payload, unsigned long iterations);
 
 };
 

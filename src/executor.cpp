@@ -7,6 +7,7 @@
 #include <condition_variable>
 #include <future>
 #include <functional>
+#include <utility>
 #include <boost/timer/timer.hpp>
 #include "executor.hpp"
 
@@ -23,9 +24,10 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 
     for(auto testcase: shortlist) {
 	int th;
-	std::vector<nanosecond_type> elapsed_time_array(m_numthreads);
-	std::vector<std::future<nanosecond_type> > future_array(m_numthreads);
+	std::vector<std::pair<nanosecond_type,int> > elapsed_time_array(m_numthreads);
+	std::vector<std::future<std::pair<nanosecond_type,int> > > future_array(m_numthreads);
 	std::vector<P11Benchmark *> benchmark_array(m_numthreads);
+	int last_errcode = CKR_OK;
 
 	nanosecond_type sum_elapsed { 0 }, avg_elapsed { 0 }, max_elapsed { 0 };
 
@@ -63,8 +65,13 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 
 	// add times
 	for(auto elapsed: elapsed_time_array) {
-	    sum_elapsed += elapsed;
-	    max_elapsed = std::max(max_elapsed, elapsed);
+	    if(elapsed.second != CKR_OK) { 
+		last_errcode = elapsed.second;
+		sum_elapsed = max_elapsed = 0;
+		break;		// something wrong happened, no need to carry on
+	    }
+	    sum_elapsed += elapsed.first;
+	    max_elapsed = std::max(max_elapsed, elapsed.first);
 	}
 
 	avg_elapsed = sum_elapsed / m_numthreads;
@@ -88,6 +95,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	rv.add(thistestcase + "avg_elapsed", avg_elapsed/1000000.0);
 	rv.add(thistestcase + "avg_threadtps", iter / (avg_elapsed/1000000.0) * 1000);
 	rv.add(thistestcase + "min_globaltps", iter * m_numthreads/ (max_elapsed/1000000.0) * 1000 );
+	rv.add(thistestcase + "errorcode", last_errcode);
     }
 
     return rv;

@@ -36,9 +36,10 @@ std::string P11Benchmark::features() const
 }
 
 
-nanosecond_type P11Benchmark::execute(Session *session, const std::vector<uint8_t> &payload, unsigned long iterations)
+std::pair<nanosecond_type,int> P11Benchmark::execute(Session *session, const std::vector<uint8_t> &payload, unsigned long iterations)
 {
     boost::timer::cpu_times elapsed { 0	};
+    int return_code = CKR_OK;
 
     try {
 	m_payload = payload;	// remember the payload
@@ -77,10 +78,11 @@ nanosecond_type P11Benchmark::execute(Session *session, const std::vector<uint8_
 		}
 	    }
 	}
-    } catch (Botan::Exception &bexc) {
+    } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
 	std::cerr << "ERROR:: caught an exception:" << bexc.what() << std::endl;
+	return_code = bexc.error_code();
 	// we print the exception, and move on
     }
 
-    return elapsed.wall;
+    return std::pair<nanosecond_type,int> {elapsed.wall, return_code };
 }

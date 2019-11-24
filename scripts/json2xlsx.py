@@ -18,7 +18,8 @@ cast = {
     'max_elapsed' : float,
     'avg_latency' : float,
     'avg_threadtps' : float,
-    'min_globaltps' : float
+    'min_globaltps' : float,
+    'errorcode' : int
 }
 
 def convert(fromjson, toxlsx):
