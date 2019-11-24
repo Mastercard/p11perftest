@@ -16,7 +16,7 @@ class P11AESECBBenchmark : public P11Benchmark
 public:
 
     P11AESECBBenchmark(const std::string &name);
-
+    // we can use the default copy constructor, as fields can be trivially copied
 };
 
 #endif // AESECB_HPP

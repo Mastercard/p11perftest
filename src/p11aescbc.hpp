@@ -17,6 +17,7 @@ class P11AESCBCBenchmark : public P11Benchmark
 public:
 
     P11AESCBCBenchmark(const std::string &name);
+    P11AESCBCBenchmark(const P11AESCBCBenchmark &other);
 
 };
 

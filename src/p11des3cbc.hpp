@@ -17,6 +17,7 @@ class P11DES3CBCBenchmark : public P11Benchmark
 public:
 
     P11DES3CBCBenchmark(const std::string &name);
+    P11DES3CBCBenchmark(const P11DES3CBCBenchmark &other);
 
 };
 

@@ -19,8 +19,7 @@ P11RSASigBenchmark::P11RSASigBenchmark(const P11RSASigBenchmark & other) :
 }
 
 
-
-P11RSASigBenchmark *P11RSASigBenchmark::clone() const {
+inline P11RSASigBenchmark *P11RSASigBenchmark::clone() const {
     return new P11RSASigBenchmark{*this};
 }
 

@@ -5,10 +5,13 @@ P11AESGCMBenchmark::P11AESGCMBenchmark(const std::string &label) :
     P11Benchmark( "AES Authenticated Encryption (CKM_AES_GCM)", label, ObjectClass::SecretKey ) { }
 
 
-P11AESGCMBenchmark *P11AESGCMBenchmark::clone() const {
+P11AESGCMBenchmark::P11AESGCMBenchmark(const P11AESGCMBenchmark &other) :
+    P11Benchmark(other) { }
+
+
+inline P11AESGCMBenchmark *P11AESGCMBenchmark::clone() const {
     return new P11AESGCMBenchmark{*this};
 }
-
 
 
 void P11AESGCMBenchmark::prepare(Session &session, Object &obj)

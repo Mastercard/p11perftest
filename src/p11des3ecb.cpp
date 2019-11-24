@@ -5,10 +5,9 @@ P11DES3ECBBenchmark::P11DES3ECBBenchmark(const std::string &label) :
 
 
 
-P11DES3ECBBenchmark *P11DES3ECBBenchmark::clone() const {
+inline P11DES3ECBBenchmark *P11DES3ECBBenchmark::clone() const {
     return new P11DES3ECBBenchmark{*this};
 }
-
 
 
 void P11DES3ECBBenchmark::prepare(Session &session, Object &obj)

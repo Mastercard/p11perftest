@@ -16,7 +16,7 @@ class P11DES3ECBBenchmark : public P11Benchmark
 public:
 
     P11DES3ECBBenchmark(const std::string &name);
-
+    // we can use the default copy constructor, as fields can be trivially copied
 };
 
 #endif // DES3ECB_HPP

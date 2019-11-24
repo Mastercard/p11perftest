@@ -5,10 +5,13 @@ P11DES3CBCBenchmark::P11DES3CBCBenchmark(const std::string &label) :
     P11Benchmark( "DES3 Encryption (CKM_DES3_CBC)", label, ObjectClass::SecretKey ) { }
 
 
-P11DES3CBCBenchmark *P11DES3CBCBenchmark::clone() const {
+P11DES3CBCBenchmark::P11DES3CBCBenchmark(const P11DES3CBCBenchmark &other) :
+    P11Benchmark(other) { }
+
+
+inline P11DES3CBCBenchmark *P11DES3CBCBenchmark::clone() const {
     return new P11DES3CBCBenchmark{*this};
 }
-
 
 
 void P11DES3CBCBenchmark::prepare(Session &session, Object &obj)

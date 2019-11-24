@@ -5,10 +5,13 @@ P11AESCBCBenchmark::P11AESCBCBenchmark(const std::string &label) :
     P11Benchmark( "AES Encryption (CKM_AES_CBC)", label, ObjectClass::SecretKey ) { }
 
 
-P11AESCBCBenchmark *P11AESCBCBenchmark::clone() const {
+P11AESCBCBenchmark::P11AESCBCBenchmark(const P11AESCBCBenchmark &other) :
+    P11Benchmark(other) { }
+
+
+inline P11AESCBCBenchmark *P11AESCBCBenchmark::clone() const {
     return new P11AESCBCBenchmark{*this};
 }
-
 
 
 void P11AESCBCBenchmark::prepare(Session &session, Object &obj)

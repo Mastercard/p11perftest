@@ -29,6 +29,7 @@ class P11AESGCMBenchmark : public P11Benchmark
 public:
 
     P11AESGCMBenchmark(const std::string &name);
+    P11AESGCMBenchmark(const P11AESGCMBenchmark &other);
 
 };
 
