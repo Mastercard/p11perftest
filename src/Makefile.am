@@ -18,6 +18,7 @@ p11perftest_SOURCES = 	p11benchmark.cpp \
 			p11aesecb.cpp \
 			p11aescbc.cpp \
 			p11aesgcm.cpp \
+			errorcodes.cpp \
 			keygenerator.cpp \
 			executor.cpp \
 			p11perftest.cpp

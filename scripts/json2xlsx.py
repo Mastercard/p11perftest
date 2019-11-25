@@ -19,7 +19,7 @@ cast = {
     'avg_latency' : float,
     'avg_threadtps' : float,
     'min_globaltps' : float,
-    'errorcode' : int
+    'errorcode' : noop
 }
 
 def convert(fromjson, toxlsx):

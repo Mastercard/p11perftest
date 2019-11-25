@@ -4,6 +4,7 @@
 #include <mutex>
 #include <condition_variable>
 #include "p11benchmark.hpp"
+#include "errorcodes.hpp"
 
 // thread sync objects
 extern std::mutex greenlight_mtx;
@@ -79,7 +80,8 @@ std::pair<nanosecond_type,int> P11Benchmark::execute(Session *session, const std
 	    }
 	}
     } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
-	std::cerr << "ERROR:: caught an exception:" << bexc.what() << std::endl;
+	std::cerr << "ERROR:: caught an exception:" << bexc.what() 
+		  << " (" << errorcode(bexc.error_code()) << ")" << std::endl;
 	return_code = bexc.error_code();
 	// we print the exception, and move on
     }

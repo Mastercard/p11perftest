@@ -9,6 +9,7 @@
 #include <functional>
 #include <utility>
 #include <boost/timer/timer.hpp>
+#include "errorcodes.hpp"
 #include "executor.hpp"
 
 // thread sync objects
@@ -95,7 +96,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	rv.add(thistestcase + "avg_elapsed", avg_elapsed/1000000.0);
 	rv.add(thistestcase + "avg_threadtps", iter / (avg_elapsed/1000000.0) * 1000);
 	rv.add(thistestcase + "min_globaltps", iter * m_numthreads/ (max_elapsed/1000000.0) * 1000 );
-	rv.add(thistestcase + "errorcode", last_errcode);
+	rv.add(thistestcase + "errorcode", errorcode(last_errcode));
     }
 
     return rv;
