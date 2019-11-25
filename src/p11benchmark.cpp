@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <mutex>
+#include <thread>
 #include <condition_variable>
 #include "p11benchmark.hpp"
 #include "errorcodes.hpp"
@@ -10,6 +11,8 @@
 extern std::mutex greenlight_mtx;
 extern std::condition_variable greenlight_cond;
 extern bool greenlight;
+
+static std::mutex display_mtx;
 
 
 P11Benchmark::P11Benchmark(const std::string &name, const std::string &label, ObjectClass objectclass)
@@ -75,15 +78,26 @@ std::pair<nanosecond_type,int> P11Benchmark::execute(Session *session, const std
 		    t.start(); // start it
 		    started.wall = t.elapsed().wall; // remember wall clock
 		    crashtestdummy(*session);
+		    t.stop(); // stop it
 		    elapsed.wall += t.elapsed().wall - started.wall;
 		}
 	    }
 	}
     } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
-	std::cerr << "ERROR:: caught an exception:" << bexc.what() 
-		  << " (" << errorcode(bexc.error_code()) << ")" << std::endl;
+	{
+	    std::lock_guard<std::mutex> lg{display_mtx};
+	    std::cerr << "ERROR:: caught an exception:" << bexc.what() 
+		      << " (" << errorcode(bexc.error_code()) << ")" << std::endl;
+	}
 	return_code = bexc.error_code();
 	// we print the exception, and move on
+    } catch (...) {
+	{
+	    std::lock_guard<std::mutex> lg{display_mtx};
+	    std::cerr << "ERROR: caught an unmanaged exception" << std::endl;
+	}
+	// bailing out
+	throw;
     }
 
     return std::pair<nanosecond_type,int> {elapsed.wall, return_code };
