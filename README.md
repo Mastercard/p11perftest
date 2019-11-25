@@ -66,15 +66,12 @@ available options:
   - `-o [ --jsonfile ] arg`, JSON output file name
   - `-n [ --nogenerate ]`, do not attempt to generate session keys; instead, use pre-existing token keys
 
+## parsing JSON output
 
-available options:
-  -h [ --help ]                   print help message
-  -l [ --library ] arg            PKCS#11 library path
-  -s [ --slot ] arg (=0)          slot index to use
-  -p [ --password ] arg           password for token in slot
-  -t [ --threads ] arg (=1)       number of threads
-  -i [ --iterations ] arg (=1000) number of iterations
-  -j [ --json ]                   output results as JSON
-  -o [ --jsonfile ] arg           JSON output file name
-  -n [ --nogenerate ]             Do not attempt to generate session keys;
-                                  instead, use pre-existing token keys  
+JSON output files (when `-j` and/or `-o` options are specified) can be turned into Excel spreadsheets, using `scripts/json2xlsx.py` script. To run that package, you must first deploy the dependencies, using the `requirements.txt` file. Once completed, the script can be executed. It takes two arguments: the source JSON file, and a file name for the target spreadsheet.
+
+```
+$ pip install -r requirements.txt
+$ scripts/json2xlsx myresults.json myresults.xlsx
+```
+

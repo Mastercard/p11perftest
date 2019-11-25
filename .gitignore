@@ -12,6 +12,10 @@ Makefile
 Makefile.in
 .deps/
 *.o
+
+# pyenv
+.python-version
+
 # emacs
 *~
 *.json
