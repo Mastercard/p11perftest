@@ -1,10 +1,15 @@
 /autom4te.cache/
+/build-aux/
+/config.h.in
 /config.h
 /config.log
 /config.status
 /stamp-h1
 /config.cache
+/aclocal.m4
+configure
 Makefile
+Makefile.in
 .deps/
 *.o
 # emacs

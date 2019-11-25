@@ -1,6 +1,6 @@
 # p11perftest
 
-An utility to benchmark speed of operations of a PKCS#11 implementation
+An utility to benchmark speed of operations of a PKCS#11 implementation.
 
 ## Pre-requisites
 You will need the following:
@@ -10,12 +10,21 @@ You will need the following:
 
 On RedHat/Oracle, you can generally find Boost on RPMs, from the EPEL repository. Check out [this link](https://blogs.oracle.com/wim/using-epel-repos-with-oracle-linux) to add EPEL to your yum repositories. Note that on EPEL, boost is suffixed with a version number - at the time of writing this document, it was `boost169`.
 
-Botan has to be compiled from scratch. Check out instructions to compile and install it.
+Botan has to be compiled from scratch. Check out [online instructions](https://botan.randombit.net/handbook/building.html) to compile and install it.
+
+To boostrap the autotools environment, you will need the following packages deployed on your system:
+- [autoconf](https://www.gnu.org/software/autoconf/)
+- [automake](https://www.gnu.org/software/automake/)
+- [autoconf-archive](https://www.gnu.org/software/autoconf-archive/)
+
 
 ## Installation
-Once you have it all, you can configure and compile. You will need to adapt the flags in the instruction below to adapt to your environment.
+Once you have it all, you can bootstrap, configure and compile. You will need to adapt the flags in the instruction below to adapt to your environment.
+
+In the example below, boost library is deployed within `/usr/lib64/boost169`, and botan has its pkg-config configuration deployed in `/usr/local/lib/pkgconfig`
 
 ```
+$ ./bootstrap.sh
 $ ./configure -C  --with-boost-libdir=/usr/lib64/boost169  CXXFLAGS=-I/usr/include/boost169 PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 $ make
 ```
@@ -51,8 +60,21 @@ available options:
   - `-l [ --library ] arg`, PKCS#11 library path
   - `-s [ --slot ] arg`, slot index to use (default is 0)
   - `-p [ --password ] arg`, password for token in slot
+  - `-t [ --threads ] arg`, number of threads to execute in parallel (default is 1)
   - `-i [ --iterations ] arg`, number of iterations (default is 1000)
   - `-j [ --json ]`, output results as JSON
   - `-o [ --jsonfile ] arg`, JSON output file name
   - `-n [ --nogenerate ]`, do not attempt to generate session keys; instead, use pre-existing token keys
-  
+
+
+available options:
+  -h [ --help ]                   print help message
+  -l [ --library ] arg            PKCS#11 library path
+  -s [ --slot ] arg (=0)          slot index to use
+  -p [ --password ] arg           password for token in slot
+  -t [ --threads ] arg (=1)       number of threads
+  -i [ --iterations ] arg (=1000) number of iterations
+  -j [ --json ]                   output results as JSON
+  -o [ --jsonfile ] arg           JSON output file name
+  -n [ --nogenerate ]             Do not attempt to generate session keys;
+                                  instead, use pre-existing token keys  
