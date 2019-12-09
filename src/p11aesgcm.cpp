@@ -16,7 +16,8 @@ inline P11AESGCMBenchmark *P11AESGCMBenchmark::clone() const {
 
 void P11AESGCMBenchmark::prepare(Session &session, Object &obj)
 {
-    m_encrypted.resize( m_payload.size() + 16 ); // we asked for 128 bits for auth data
+    m_encrypted.resize( m_payload.size() + 32 ); // should be 16, but on Safenet in FIPS mode, IV is also returned, 
+                                                 // which makes an additional 16 bytes
     m_objhandle = obj.handle();
 }
 
