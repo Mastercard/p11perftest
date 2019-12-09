@@ -4,30 +4,39 @@
 #if !defined(KEYGENERATOR_H)
 #define KEYGENERATOR_H
 
+#include <stdexcept>
 #include <botan/p11_session.h>
 #include "../config.h"
 
 using namespace Botan::PKCS11;
 
-class KeyGenerationException { };
+struct KeyGenerationException : std::invalid_argument { 
+    using std::invalid_argument::invalid_argument;
+};
 
 
 class KeyGenerator
 {
-    std::vector<std::unique_ptr<Session> > &m_sessions;
-    const int m_numthreads;
-
-    bool generate_rsa_keypair(std::string alias, unsigned int bits, Session *session);
-    bool generate_aes_key(std::string alias, unsigned int bits, Session *session);
-    bool generate_des_key(std::string alias, unsigned int bits, Session *session);
-
 public:
-
     enum KeyType
 	{ RSA,
 	  DES,
-	  AES
+	  AES,
+	  ECC
 	};
+
+private:
+    std::vector<std::unique_ptr<Session> > &m_sessions;
+    const int m_numthreads;
+
+    bool generate_rsa_keypair(std::string alias, unsigned int bits, std::string unused, Session *session);
+    bool generate_aes_key(std::string alias, unsigned int bits, std::string unused, Session *session);
+    bool generate_des_key(std::string alias, unsigned int bits, std::string unused, Session *session);
+    bool generate_ecc_keypair(std::string alias, unsigned int unused, std::string curve, Session *session);
+
+    void generate_key_generic( KeyGenerator::KeyType keytype, std::string alias, unsigned int bits, std::string curve);
+
+public:
 
     KeyGenerator( std::vector<std::unique_ptr<Session> > &sessions,
 		  const int numthreads ):
@@ -40,6 +49,7 @@ public:
     KeyGenerator& operator=( KeyGenerator &&) = delete;
 
     void generate_key( KeyGenerator::KeyType keytype, std::string alias, unsigned int bits);
+    void generate_key( KeyGenerator::KeyType keytype, std::string alias, std::string curve);
 };
 
 

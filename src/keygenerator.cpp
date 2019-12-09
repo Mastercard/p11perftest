@@ -5,12 +5,13 @@
 #include <future>
 #include <array>
 #include <botan/p11_rsa.h>
+#include <botan/p11_ecdsa.h>
 #include "keygenerator.hpp"
 
 using namespace Botan::PKCS11;
 
 
-bool KeyGenerator::generate_rsa_keypair(std::string alias, unsigned int bits, Session *session)
+bool KeyGenerator::generate_rsa_keypair(std::string alias, unsigned int bits, std::string param, Session *session)
 {
     bool rv;
     try {
@@ -35,10 +36,11 @@ bool KeyGenerator::generate_rsa_keypair(std::string alias, unsigned int bits, Se
 	// we print the exception, and move on
 	rv = false;
     }
+
     return rv;
 }
 
-bool KeyGenerator::generate_des_key(std::string alias, unsigned int bits, Session *session)
+bool KeyGenerator::generate_des_key(std::string alias, unsigned int bits, std::string param, Session *session)
 {
     bool rv;
     Byte btrue = CK_TRUE;
@@ -84,11 +86,12 @@ bool KeyGenerator::generate_des_key(std::string alias, unsigned int bits, Sessio
 	// we print the exception, and move on
 	rv = false;
     }
+
     return rv;
 }
 
 
-bool KeyGenerator::generate_aes_key(std::string alias, unsigned int bits, Session *session)
+bool KeyGenerator::generate_aes_key(std::string alias, unsigned int bits, std::string param, Session *session)
 {
     bool rv;
     Byte btrue = CK_TRUE;
@@ -127,8 +130,38 @@ bool KeyGenerator::generate_aes_key(std::string alias, unsigned int bits, Sessio
 }
 
 
+bool KeyGenerator::generate_ecc_keypair(std::string alias, unsigned int unused, std::string curve, Session *session) 
+{
+    bool rv;
+    try {
+	Botan::PKCS11::EC_PrivateKeyGenerationProperties priv_generate_props;
+	priv_generate_props.set_token( false );
+	priv_generate_props.set_private( true );
+	priv_generate_props.set_sign( true );
+	priv_generate_props.set_label( alias );
 
-void KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias, unsigned int bits)
+	Botan::PKCS11::EC_PublicKeyGenerationProperties pub_generate_props(
+	    Botan::EC_Group( curve ).DER_encode(Botan::EC_Group_Encoding::EC_DOMPAR_ENC_OID ) );
+
+	pub_generate_props.set_label( alias );
+	pub_generate_props.set_token( false );
+	pub_generate_props.set_verify( true );
+	pub_generate_props.set_private( false );
+
+	Botan::PKCS11::PKCS11_ECDSA_KeyPair key_pair = Botan::PKCS11::generate_ecdsa_keypair(*session, pub_generate_props, priv_generate_props);
+
+	rv = true;
+    } catch (Botan::Exception &bexc) {
+	std::cerr << "ERROR:: caught an exception:" << bexc.what() << std::endl;
+	// we print the exception, and move on
+	rv = false;
+    }
+
+    return rv;
+}
+
+
+void KeyGenerator::generate_key_generic(KeyGenerator::KeyType keytype, std::string alias, unsigned int bits, std::string curve)
 {
     int th;
     bool rv = true;
@@ -140,11 +173,11 @@ void KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias
     std::map< const KeyGenerator::KeyType, fnptr> fnmap {
 	{ KeyType::RSA, &KeyGenerator::generate_rsa_keypair },
 	{ KeyType::AES, &KeyGenerator::generate_aes_key } ,
-	{ KeyType::DES, &KeyGenerator::generate_des_key }
+        { KeyType::DES, &KeyGenerator::generate_des_key } , 
+        { KeyType::ECC, &KeyGenerator::generate_ecc_keypair }
     };
 
     auto chooser = [&fnmap](KeyGenerator::KeyType kt) { return fnmap.at(kt);  };
-
 
     for(th=0; th<m_numthreads;th++) {
 
@@ -153,6 +186,7 @@ void KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias
 				       this,
 				       alias,
 				       bits,
+				       curve,
 	 			       m_sessions[th].get());
     }
 
@@ -161,9 +195,42 @@ void KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias
 
     for(th=0;th<m_numthreads;th++) {
 	if(future_array[th].get() == false) {
-	    throw KeyGenerationException();
+	    throw KeyGenerationException{"could not generate key"};
 	}
     }
 }
+
+
+// public overloaded member functions
+
+void KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias, unsigned int bits) {
+    std::set<KeyType> allowed_keytypes { KeyType::RSA, KeyType::DES, KeyType::AES };
+
+    auto match = allowed_keytypes.find( keytype );
+    
+    if(match == allowed_keytypes.end()) {
+	throw KeyGenerationException { "Invalid keytype/argument combination" };
+    }
+
+    return generate_key_generic(keytype, alias, bits, "");
+}
+
+
+void KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias, std::string curve) {
+    std::set<std::string> allowed_curves { "secp256r1", "secp384r1", "secp521r1" };
+
+    if(keytype != KeyType::ECC) {
+	throw KeyGenerationException { "Invalid keytype/argument combination" };
+    }
+
+    auto match = allowed_curves.find(curve);
+
+    if(match==allowed_curves.end()) {
+	throw KeyGenerationException { "Unknown/unmanaged key cureve given: " + curve };
+    }
+    
+    return generate_key_generic(keytype, alias, 0, curve);
+}
+
 
 

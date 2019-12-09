@@ -10,6 +10,7 @@
 #include <forward_list>
 #include <thread>
 
+#include <boost/exception/diagnostic_information.hpp> 
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/copy.hpp>
 #include <boost/program_options.hpp>
@@ -28,6 +29,7 @@
 #include "keygenerator.hpp"
 #include "executor.hpp"
 #include "p11rsasig.hpp"
+#include "p11ecdsasig.hpp"
 #include "p11des3ecb.hpp"
 #include "p11des3cbc.hpp"
 #include "p11aesecb.hpp"
@@ -132,92 +134,107 @@ int main(int argc, char **argv)
 
     // detect if we have a token inserted
     if(slot_info.flags & CKF_TOKEN_PRESENT) {
-	// print firmware version of the token
-	p11::TokenInfo token_info = slot.get_token_info();
-	std::cout << "Token firmware version: "
-		  << std::to_string( token_info.firmwareVersion.major ) << "."
-		  << std::to_string( token_info.firmwareVersion.minor ) << std::endl;
+	try {
+	    // print firmware version of the token
+	    p11::TokenInfo token_info = slot.get_token_info();
+	    std::cout << "Token firmware version: "
+		      << std::to_string( token_info.firmwareVersion.major ) << "."
+		      << std::to_string( token_info.firmwareVersion.minor ) << std::endl;
 
-	// login all sessions (one per thread)
-	std::vector<std::unique_ptr<p11::Session> > sessions;
-	for(int i=0; i<argnthreads; ++i) {
-	    std::unique_ptr<p11::Session> session ( new Session(slot, false) );
-	    std::string argpwd { vm["password"].as<std::string>() };
-	    p11::secure_string pwd( argpwd.data(), argpwd.data()+argpwd.length() );
-	    try {
-		session->login(p11::UserType::User, pwd );
-	    } catch (p11::PKCS11_ReturnError &err) {
-		// we ignore if we get CKR_ALREADY_LOGGED_IN, as login status is shared accross all sessions.
-		if (err.get_return_value() != p11::ReturnValue::UserAlreadyLoggedIn) {
-		    // re-throw
-		    throw;
+	    // login all sessions (one per thread)
+	    std::vector<std::unique_ptr<p11::Session> > sessions;
+	    for(int i=0; i<argnthreads; ++i) {
+		std::unique_ptr<p11::Session> session ( new Session(slot, false) );
+		std::string argpwd { vm["password"].as<std::string>() };
+		p11::secure_string pwd( argpwd.data(), argpwd.data()+argpwd.length() );
+		try {
+		    session->login(p11::UserType::User, pwd );
+		} catch (p11::PKCS11_ReturnError &err) {
+		    // we ignore if we get CKR_ALREADY_LOGGED_IN, as login status is shared accross all sessions.
+		    if (err.get_return_value() != p11::ReturnValue::UserAlreadyLoggedIn) {
+			// re-throw
+			throw;
+		    }
+		}
+
+		sessions.push_back(std::move(session)); // move session to sessions
+	    }
+
+	    // create vectors
+	    const std::vector<uint8_t> testvec8(8,49);              // needed for DES, 2**3
+	    const std::vector<uint8_t> testvec16(16,50);	        // needed for AES, 2**4
+	    const std::vector<uint8_t> testvec64(64,51);            //  2**6
+	    const std::vector<uint8_t> testvec256(256,52);          //  2**8
+	    const std::vector<uint8_t> testvec1024(1024,53);	// 2**10
+	    const std::vector<uint8_t> testvec4096(4096,54);	// 2**12
+
+	    // creating a big map of vectors
+	    const std::map<const std::string, const std::vector<uint8_t> > testvecs {
+		{ "testvec0008", testvec8 },	// minimum for DES
+		{ "testvec0016", testvec16 }, // minimum for AES
+		{ "testvec0064", testvec64 },
+		{ "testvec0256", testvec256 },
+		{ "testvec1024", testvec1024 }, // 1Kb
+		{ "testvec4096", testvec4096 }
+	    };
+
+	    Executor executor( testvecs, sessions, argnthreads );
+
+	    if(generatekeys) {
+		KeyGenerator keygenerator( sessions, argnthreads );
+
+		std::cout << "Generating session keys for " << argnthreads << " thread(s)" << std::endl;
+		keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-2048", 2048);
+		keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-4096", 4096);
+		keygenerator.generate_key(KeyGenerator::KeyType::ECC, "ecdsa-secp256r1", "secp256r1");
+		keygenerator.generate_key(KeyGenerator::KeyType::ECC, "ecdsa-secp384r1", "secp384r1");
+		keygenerator.generate_key(KeyGenerator::KeyType::ECC, "ecdsa-secp521r1", "secp521r1");
+		keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-128", 128);
+		keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-256", 256);
+		keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-128", 128); // DES2
+		keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-192", 192); // DES3
+	    }
+
+	    std::forward_list<P11Benchmark *> benchmarks {
+		new P11RSASigBenchmark("rsa-2048"),
+		    new P11RSASigBenchmark("rsa-4096"),
+		    new P11ECDSASigBenchmark("ecdsa-secp256r1"),
+		    new P11ECDSASigBenchmark("ecdsa-secp384r1"),
+		    new P11ECDSASigBenchmark("ecdsa-secp521r1"),
+		    new P11DES3ECBBenchmark("des-128"),
+		    new P11DES3ECBBenchmark("des-192"),
+		    new P11DES3CBCBenchmark("des-128"),
+		    new P11DES3CBCBenchmark("des-192"),
+		    new P11AESECBBenchmark("aes-128"),
+		    new P11AESECBBenchmark("aes-256"),
+		    new P11AESCBCBenchmark("aes-128"),
+		    new P11AESCBCBenchmark("aes-256"),
+		    new P11AESGCMBenchmark("aes-128"),
+		    new P11AESGCMBenchmark("aes-256")
+		    };
+
+	    std::forward_list<std::string> testvecsnames;
+	    boost::copy(testvecs | boost::adaptors::map_keys, std::front_inserter(testvecsnames));
+	    testvecsnames.sort();	// sort in alphabetical order
+
+	    for(auto benchmark : benchmarks) {
+		results.add_child( benchmark->name()+" using "+benchmark->label(), executor.benchmark( *benchmark, argiter, testvecsnames ));
+		free(benchmark);
+	    }
+
+	    if(json==true) {
+		boost::property_tree::write_json(jsonout.is_open() ? jsonout : std::cout, results);
+		if(jsonout.is_open()) {
+		    std::cout << "output written to JSON file" << std::endl;
 		}
 	    }
-
-	    sessions.push_back(std::move(session)); // move session to sessions
 	}
-
-	// create vectors
-	const std::vector<uint8_t> testvec8(8,49);              // needed for DES, 2**3
-	const std::vector<uint8_t> testvec16(16,50);	        // needed for AES, 2**4
-	const std::vector<uint8_t> testvec64(64,51);            //  2**6
-	const std::vector<uint8_t> testvec256(256,52);          //  2**8
-	const std::vector<uint8_t> testvec1024(1024,53);	// 2**10
-	const std::vector<uint8_t> testvec4096(4096,54);	// 2**12
-
-	// creating a big map of vectors
-	const std::map<const std::string, const std::vector<uint8_t> > testvecs {
-	    { "testvec0008", testvec8 },	// minimum for DES
-	    { "testvec0016", testvec16 }, // minimum for AES
-	    { "testvec0064", testvec64 },
-	    { "testvec0256", testvec256 },
-	    { "testvec1024", testvec1024 }, // 1Kb
-	    { "testvec4096", testvec4096 }
-	};
-
-	Executor executor( testvecs, sessions, argnthreads );
-
-	if(generatekeys) {
-	    KeyGenerator keygenerator( sessions, argnthreads );
-
-	    std::cout << "Generating session keys for " << argnthreads << " thread(s)" << std::endl;
-	    keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-2048", 2048);
-	    keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-4096", 4096);
-	    keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-128", 128);
-	    keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-256", 256);
-	    keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-128", 128); // DES2
-	    keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-192", 192); // DES3
-	}
-
-	std::forward_list<P11Benchmark *> benchmarks {
-	    new P11RSASigBenchmark("rsa-2048"),
-	    new P11RSASigBenchmark("rsa-4096"),
-	    new P11DES3ECBBenchmark("des-128"),
-	    new P11DES3ECBBenchmark("des-192"),
-	    new P11DES3CBCBenchmark("des-128"),
-	    new P11DES3CBCBenchmark("des-192"),
-	    new P11AESECBBenchmark("aes-128"),
-	    new P11AESECBBenchmark("aes-256"),
-	    new P11AESCBCBenchmark("aes-128"),
-	    new P11AESCBCBenchmark("aes-256"),
-	    new P11AESGCMBenchmark("aes-128"),
-	    new P11AESGCMBenchmark("aes-256")
-	};
-
-	std::forward_list<std::string> testvecsnames;
-	boost::copy(testvecs | boost::adaptors::map_keys, std::front_inserter(testvecsnames));
-	testvecsnames.sort();	// sort in alphabetical order
-
-	for(auto benchmark : benchmarks) {
-	    results.add_child( benchmark->name()+" using "+benchmark->label(), executor.benchmark( *benchmark, argiter, testvecsnames ));
-	    free(benchmark);
-	}
-
-	if(json==true) {
-	    boost::property_tree::write_json(jsonout.is_open() ? jsonout : std::cout, results);
-	    if(jsonout.is_open()) {
-		std::cout << "output written to JSON file" << std::endl;
-	    }
+	catch ( KeyGenerationException &e) {
+	    std::cerr << "Ouch, got an error while generating keys: " << e.what() << std::endl;
+	    std::cerr << "bailing out" << std::endl;
+	} 
+	catch (...) {
+	    std::cerr << boost::current_exception_diagnostic_information() << std::endl;
 	}
     } else {
       std::cout << "The slot at index " << argslot << " has no token. Aborted." << std::endl;

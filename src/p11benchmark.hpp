@@ -11,6 +11,7 @@
 #include <botan/p11_session.h>
 #include <botan/p11_object.h>
 #include <botan/p11_rsa.h>
+#include <botan/p11_ecdsa.h>
 #include <botan/pubkey.h>
 #include <boost/timer/timer.hpp>
 #include "../config.h"

@@ -13,6 +13,7 @@ bin_PROGRAMS = p11perftest
 
 p11perftest_SOURCES = 	p11benchmark.cpp \
 			p11rsasig.cpp \
+			p11ecdsasig.cpp \
 			p11des3ecb.cpp \
 			p11des3cbc.cpp \
 			p11aesecb.cpp \
