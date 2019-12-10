@@ -11,6 +11,7 @@ import os
 import sys
 import argparse
 from pkcs11 import KeyType, Attribute, MechanismFlag, Mechanism
+from pkcs11.util.ec import encode_named_curve_parameters
 
 
 def generate_p11perftest_keys(libname, slot, password, store):
@@ -72,6 +73,34 @@ Token: {token}""")
                                          capabilities = MechanismFlag.SIGN | MechanismFlag.VERIFY )
 
 
+        secp256r1 = session.create_domain_parameters(KeyType.EC, {
+            Attribute.EC_PARAMS: encode_named_curve_parameters('secp256r1')
+        }, local=True)
+
+        secp384r1 = session.create_domain_parameters(KeyType.EC, {
+            Attribute.EC_PARAMS: encode_named_curve_parameters('secp384r1')
+        }, local=True)
+
+        secp521r1 = session.create_domain_parameters(KeyType.EC, {
+            Attribute.EC_PARAMS: encode_named_curve_parameters('secp521r1')
+        }, local=True)
+
+        print("Generating ecdsa-secp256r1 key")
+        ecdsa_secp256r1 = secp256r1.generate_keypair ( label='ecdsa_secp256r1',
+                                                       store=store,
+                                                       capabilities = MechanismFlag.SIGN | MechanismFlag.VERIFY )
+        
+        print("Generating ecdsa-secp384r1 key")
+        ecdsa_secp256r1 = secp384r1.generate_keypair ( label='ecdsa_secp384r1',
+                                                       store=store,
+                                                       capabilities = MechanismFlag.SIGN | MechanismFlag.VERIFY )
+        
+        print("Generating ecdsa-secp521r1 key")
+        ecdsa_secp256r1 = secp521r1.generate_keypair ( label='ecdsa_secp521r1',
+                                                       store=store,
+                                                       capabilities = MechanismFlag.SIGN | MechanismFlag.VERIFY )
+        
+                                                     
 
 if __name__ == '__main__':
 
