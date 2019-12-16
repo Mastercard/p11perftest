@@ -11,17 +11,17 @@ AM_LDFLAGS = $(BOTAN_LDFLAGS) $(BOOST_LDFLAGS) -lpthread
 # they get distributed.
 bin_PROGRAMS = p11perftest
 
-p11perftest_SOURCES = 	p11benchmark.cpp \
-			p11rsasig.cpp \
-			p11ecdsasig.cpp \
-			p11des3ecb.cpp \
-			p11des3cbc.cpp \
-			p11aesecb.cpp \
-			p11aescbc.cpp \
-			p11aesgcm.cpp \
-			errorcodes.cpp \
-			keygenerator.cpp \
-			executor.cpp \
+p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
+			p11rsasig.cpp p11rsasig.hpp \
+			p11ecdsasig.cpp p11ecdsasig.hpp \
+			p11des3ecb.cpp p11des3ecb.hpp \
+			p11des3cbc.cpp p11des3cbc.hpp \
+			p11aesecb.cpp p11aesecb.hpp \
+			p11aescbc.cpp p11aescbc.hpp \
+			p11aesgcm.cpp p11aesgcm.hpp \
+			errorcodes.cpp errorcodes.hpp \
+			keygenerator.cpp keygenerator.hpp \
+			executor.cpp executor.hpp \
 			p11perftest.cpp
 
 p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_TIMER_LIB) $(BOOST_PROGRAM_OPTIONS_LIB)
