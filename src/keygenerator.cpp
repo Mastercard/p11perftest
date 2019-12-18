@@ -7,6 +7,7 @@
 #include <botan/p11_rsa.h>
 #include <botan/p11_ecdsa.h>
 #include "keygenerator.hpp"
+#include "errorcodes.hpp"
 
 using namespace Botan::PKCS11;
 
@@ -31,8 +32,12 @@ bool KeyGenerator::generate_rsa_keypair(std::string alias, unsigned int bits, st
 	Botan::PKCS11::PKCS11_RSA_KeyPair rsa_keypair = Botan::PKCS11::generate_rsa_keypair( *session, pub_generate_props, priv_generate_props );
 
 	rv = true;
+    } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
+	std::cerr << "ERROR:: " << bexc.what()
+		  << " (" << errorcode(bexc.error_code()) << ")" << std::endl;
+	rv = false;
     } catch (Botan::Exception &bexc) {
-	std::cerr << "ERROR:: caught an exception:" << bexc.what() << std::endl;
+	std::cerr << "ERROR::" << bexc.what() << std::endl;
 	// we print the exception, and move on
 	rv = false;
     }
@@ -81,8 +86,12 @@ bool KeyGenerator::generate_des_key(std::string alias, unsigned int bits, std::s
 	session->module()->C_GenerateKey(session->handle(), &mechanism, keytemplate.data(), keytemplate.size(), &handle );
 	rv = true;
 
+    } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
+	std::cerr << "ERROR:: " << bexc.what()
+		  << " (" << errorcode(bexc.error_code()) << ")" << std::endl;
+	rv = false;
     } catch (Botan::Exception &bexc) {
-	std::cerr << "ERROR:: caught an exception:" << bexc.what() << std::endl;
+	std::cerr << "ERROR:: " << bexc.what() << std::endl;
 	// we print the exception, and move on
 	rv = false;
     }
@@ -120,8 +129,12 @@ bool KeyGenerator::generate_aes_key(std::string alias, unsigned int bits, std::s
 	session->module()->C_GenerateKey(session->handle(), &mech_aes_key_gen, keytemplate.data(), keytemplate.size(), &handle );
 	rv = true;
 
+    } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
+	std::cerr << "ERROR:: " << bexc.what()
+		  << " (" << errorcode(bexc.error_code()) << ")" << std::endl;
+	rv = false;
     } catch (Botan::Exception &bexc) {
-	std::cerr << "ERROR:: caught an exception:" << bexc.what() << std::endl;
+	std::cerr << "ERROR:: " << bexc.what() << std::endl;
 	// we print the exception, and move on
 	rv = false;
     }
@@ -151,8 +164,12 @@ bool KeyGenerator::generate_ecc_keypair(std::string alias, unsigned int unused, 
 	Botan::PKCS11::PKCS11_ECDSA_KeyPair key_pair = Botan::PKCS11::generate_ecdsa_keypair(*session, pub_generate_props, priv_generate_props);
 
 	rv = true;
+    } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
+	std::cerr << "ERROR:: " << bexc.what()
+		  << " (" << errorcode(bexc.error_code()) << ")" << std::endl;
+	rv = false;
     } catch (Botan::Exception &bexc) {
-	std::cerr << "ERROR:: caught an exception:" << bexc.what() << std::endl;
+	std::cerr << "ERROR:: " << bexc.what() << std::endl;
 	// we print the exception, and move on
 	rv = false;
     }
@@ -173,7 +190,7 @@ void KeyGenerator::generate_key_generic(KeyGenerator::KeyType keytype, std::stri
     std::map< const KeyGenerator::KeyType, fnptr> fnmap {
 	{ KeyType::RSA, &KeyGenerator::generate_rsa_keypair },
 	{ KeyType::AES, &KeyGenerator::generate_aes_key } ,
-        { KeyType::DES, &KeyGenerator::generate_des_key } , 
+        { KeyType::DES, &KeyGenerator::generate_des_key } ,
         { KeyType::ECC, &KeyGenerator::generate_ecc_keypair }
     };
 
@@ -207,7 +224,7 @@ void KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias
     std::set<KeyType> allowed_keytypes { KeyType::RSA, KeyType::DES, KeyType::AES };
 
     auto match = allowed_keytypes.find( keytype );
-    
+
     if(match == allowed_keytypes.end()) {
 	throw KeyGenerationException { "Invalid keytype/argument combination" };
     }
@@ -228,7 +245,7 @@ void KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias
     if(match==allowed_curves.end()) {
 	throw KeyGenerationException { "Unknown/unmanaged key cureve given: " + curve };
     }
-    
+
     return generate_key_generic(keytype, alias, 0, curve);
 }
 

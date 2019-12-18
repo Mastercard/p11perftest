@@ -33,10 +33,10 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	boost::timer::cpu_timer wallclock_t;
 	nanosecond_type sum_elapsed { 0 }, avg_elapsed { 0 }, max_elapsed { 0 }, wallclock_elapsed { 0 };
 
-	std::cout << "algorithm       : " << benchmark.name() << std::endl
-		  << "vector size:    : " << m_vectors.at(testcase).size() << std::endl
-		  << "key label       : " << benchmark.label() << std::endl
-	          << "threads         : " << m_numthreads << std::endl
+	std::cout << "algorithm       : " << benchmark.name() << '\n'
+		  << "vector size:    : " << m_vectors.at(testcase).size() << '\n'
+		  << "key label       : " << benchmark.label() << '\n'
+	          << "threads         : " << m_numthreads << '\n'
 	          << "iterations      : " << iter << std::endl;
 
 	greenlight = false;	// prepare threads to sync on "green light"
@@ -58,7 +58,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	wallclock_t.start();
 	// give start signal
 	{
-	    std::lock_guard<std::mutex> greenligt_lck(greenlight_mtx);
+	    std::lock_guard<std::mutex> greenlight_lck(greenlight_mtx);
 	    greenlight = true;
 	    greenlight_cond.notify_all();
 	}
@@ -70,10 +70,10 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 
 	wallclock_t.stop();
 	wallclock_elapsed = wallclock_t.elapsed().wall;
-	
+
 	// add times
 	for(auto elapsed: elapsed_time_array) {
-	    if(elapsed.second != CKR_OK) { 
+	    if(elapsed.second != CKR_OK) {
 		last_errcode = elapsed.second;
 		sum_elapsed = max_elapsed = wallclock_elapsed = 0;
 		break;		// something wrong happened, no need to carry on
@@ -84,12 +84,12 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 
 	avg_elapsed = sum_elapsed / m_numthreads;
 
-	std::cout << "avg elapsed (ms): " << avg_elapsed/1000000.0 << std::endl
-	          << "max elapsed (ms): " << max_elapsed/1000000.0 << std::endl
-		  << "avg latency (ms): " << avg_elapsed/1000000.0/iter << std::endl
-	          << "avg TPS/thread  : " << iter / (avg_elapsed/1000000.0) * 1000 << std::endl
-	          << "global TPS      : " << iter * m_numthreads/ (max_elapsed/1000000.0) * 1000 << std::endl
-		  << "wallclock (ms)  : " << (wallclock_elapsed/1000000.0) << std::endl << std::endl;
+	std::cout << "avg elapsed (ms): " << avg_elapsed/1000000.0 << '\n'
+	          << "max elapsed (ms): " << max_elapsed/1000000.0 << '\n'
+		  << "avg latency (ms): " << avg_elapsed/1000000.0/iter << '\n'
+	          << "avg TPS/thread  : " << iter / (avg_elapsed/1000000.0) * 1000 << '\n'
+	          << "global TPS      : " << iter * m_numthreads/ (max_elapsed/1000000.0) * 1000 << '\n'
+		  << "wallclock (ms)  : " << (wallclock_elapsed/1000000.0) << '\n' << std::endl;
 
 	std::string thistestcase { benchmark.label() + '.' + testcase + '.' };
 

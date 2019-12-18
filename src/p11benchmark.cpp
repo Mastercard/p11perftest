@@ -86,7 +86,7 @@ std::pair<nanosecond_type,int> P11Benchmark::execute(Session *session, const std
     } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
 	{
 	    std::lock_guard<std::mutex> lg{display_mtx};
-	    std::cerr << "ERROR:: caught an exception:" << bexc.what() 
+	    std::cerr << "ERROR:: " << bexc.what()
 		      << " (" << errorcode(bexc.error_code()) << ")" << std::endl;
 	}
 	return_code = bexc.error_code();
