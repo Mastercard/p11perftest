@@ -18,6 +18,7 @@
 
 using namespace Botan::PKCS11;
 using namespace boost::timer;
+using benchmark_result_t = std::pair<std::vector<nanosecond_type>,int>;
 
 class P11Benchmark
 {
@@ -52,7 +53,7 @@ public:
 
     virtual std::string features() const;
 
-    std::pair<nanosecond_type,int> execute(Session* session, const std::vector<uint8_t> &payload, unsigned long iterations);
+    benchmark_result_t execute(Session* session, const std::vector<uint8_t> &payload, unsigned long iterations);
 
 };
 

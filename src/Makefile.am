@@ -22,6 +22,7 @@ p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			errorcodes.cpp errorcodes.hpp \
 			keygenerator.cpp keygenerator.hpp \
 			executor.cpp executor.hpp \
+			timeprecision.cpp timeprecision.hpp \
 			p11perftest.cpp
 
 p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_TIMER_LIB) $(BOOST_PROGRAM_OPTIONS_LIB)

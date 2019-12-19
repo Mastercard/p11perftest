@@ -18,13 +18,19 @@ class Executor
     const std::map<const std::string, const std::vector<uint8_t> > &m_vectors;
     std::vector<std::unique_ptr<Session> > &m_sessions;
     const int m_numthreads;
+    double m_precision;
 
 public:
     Executor( const std::map<const std::string,
 	      const std::vector<uint8_t> > &vectors,
 	      std::vector<std::unique_ptr<Session> > &sessions,
-	      const int numthreads ):
-	m_vectors(vectors), m_sessions(sessions), m_numthreads(numthreads) { }
+	      const int numthreads,
+	      std::pair<double, double> precision):
+	m_vectors(vectors),
+	m_sessions(sessions),
+	m_numthreads(numthreads),
+	m_precision(precision.first + 3* precision.second)
+    { }
 
     Executor( const Executor &) = delete;
     Executor& operator=( const Executor &) = delete;

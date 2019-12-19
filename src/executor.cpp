@@ -1,6 +1,7 @@
 // executor.cpp: a class to organize execution in a threaded fashion
 
 #include <iostream>
+#include <iomanip>
 #include <algorithm>
 #include <thread>
 #include <mutex>
@@ -8,14 +9,26 @@
 #include <future>
 #include <functional>
 #include <utility>
+#include <tuple>
 #include <boost/timer/timer.hpp>
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics/stats.hpp>
+#include <boost/accumulators/statistics/mean.hpp>
+#include <boost/accumulators/statistics/min.hpp>
+#include <boost/accumulators/statistics/max.hpp>
+#include <boost/accumulators/statistics/count.hpp>
+#include <boost/accumulators/statistics/variance.hpp>
 #include "errorcodes.hpp"
+#include "p11benchmark.hpp"
 #include "executor.hpp"
 
 // thread sync objects
 std::mutex greenlight_mtx;
 std::condition_variable greenlight_cond;
 bool greenlight = false;
+
+namespace bacc = boost::accumulators;
+constexpr double nano_to_milli = 1000000.0 ;
 
 
 ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::forward_list<std::string> shortlist )
@@ -25,19 +38,19 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 
     for(auto testcase: shortlist) {
 	int th;
-	std::vector<std::pair<nanosecond_type,int> > elapsed_time_array(m_numthreads);
-	std::vector<std::future<std::pair<nanosecond_type,int> > > future_array(m_numthreads);
+	std::vector<benchmark_result_t> elapsed_time_array(m_numthreads);
+	std::vector<std::future<benchmark_result_t> > future_array(m_numthreads);
 	std::vector<P11Benchmark *> benchmark_array(m_numthreads);
 	int last_errcode = CKR_OK;
 
 	boost::timer::cpu_timer wallclock_t;
 	nanosecond_type sum_elapsed { 0 }, avg_elapsed { 0 }, max_elapsed { 0 }, wallclock_elapsed { 0 };
 
-	std::cout << "algorithm       : " << benchmark.name() << '\n'
-		  << "vector size:    : " << m_vectors.at(testcase).size() << '\n'
-		  << "key label       : " << benchmark.label() << '\n'
-	          << "threads         : " << m_numthreads << '\n'
-	          << "iterations      : " << iter << std::endl;
+	std::cout << "algorithm              : " << benchmark.name() << '\n'
+		  << "vector size:           : " << m_vectors.at(testcase).size() << '\n'
+		  << "key label              : " << benchmark.label() << '\n'
+	          << "threads                : " << m_numthreads << '\n'
+	          << "iter/thread            : " << iter << std::endl;
 
 	greenlight = false;	// prepare threads to sync on "green light"
 
@@ -71,39 +84,138 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	wallclock_t.stop();
 	wallclock_elapsed = wallclock_t.elapsed().wall;
 
-	// add times
+	bacc::accumulator_set< double, bacc::stats<
+	    bacc::tag::mean,
+            bacc::tag::min,
+	    bacc::tag::max,
+	    bacc::tag::count,
+	    bacc::tag::variance > > acc;
+
+	std::map<std::string, std::function<double()> > stats {
+	    { "min",   [&acc] () { return bacc::min(acc);  }},
+	    { "mean",  [&acc] () { return bacc::mean(acc); }},
+	    { "max",   [&acc] () { return bacc::max(acc);  }},
+	    { "range", [&acc] () { return (bacc::max(acc) - bacc::min(acc)); }},
+	    { "svar",   [&acc] () {
+			   auto n = bacc::count(acc);
+			   double f = static_cast<double>(n) / (n - 1);
+			   return f * bacc::variance(acc); }},
+	    { "ssdtdev", [&stats] () { return std::sqrt(stats["svar"]()); }},
+	    { "error", [&stats] () { return std::sqrt(stats["svar"]()/static_cast<double>( stats["count"]() )); }},
+	    { "count", [&acc] () { return bacc::count(acc); }},
+	};
+
+	// compute statistics
 	for(auto elapsed: elapsed_time_array) {
 	    if(elapsed.second != CKR_OK) {
 		last_errcode = elapsed.second;
 		sum_elapsed = max_elapsed = wallclock_elapsed = 0;
 		break;		// something wrong happened, no need to carry on
 	    }
-	    sum_elapsed += elapsed.first;
-	    max_elapsed = std::max(max_elapsed, elapsed.first);
+
+	    for(auto it=elapsed.first.begin(); it!=elapsed.first.end(); ++it) {
+		acc(*it/nano_to_milli);
+	    }
 	}
 
-	avg_elapsed = sum_elapsed / m_numthreads;
+	auto vector_size = m_vectors.at(testcase).size();
+	auto stats_count = stats["count"]();
 
-	std::cout << "avg elapsed (ms): " << avg_elapsed/1000000.0 << '\n'
-	          << "max elapsed (ms): " << max_elapsed/1000000.0 << '\n'
-		  << "avg latency (ms): " << avg_elapsed/1000000.0/iter << '\n'
-	          << "avg TPS/thread  : " << iter / (avg_elapsed/1000000.0) * 1000 << '\n'
-	          << "global TPS      : " << iter * m_numthreads/ (max_elapsed/1000000.0) * 1000 << '\n'
-		  << "wallclock (ms)  : " << (wallclock_elapsed/1000000.0) << '\n' << std::endl;
+	auto latency_err = stats["error"]();
+	auto latency_avg = stats["mean"]();
+	auto latency_avg_relerr = latency_err / latency_avg;
+
+	auto latency_min = stats["min"]();
+	auto latency_min_relerr = latency_err / latency_min;
+
+	auto latency_max = stats["max"]();
+	auto latency_max_relerr = latency_err / latency_max;
+
+	auto tps_thread_avg = stats["count"]() / static_cast<double>(m_numthreads) / stats["mean"]();
+	auto tps_thread_avg_err = latency_err / (latency_avg*latency_avg) / static_cast<double>(m_numthreads);
+	auto tps_thread_avg_relerr = tps_thread_avg_err / tps_thread_avg;
+
+	auto tps_global_avg = stats["count"]() / stats["mean"]();
+	auto tps_global_avg_err = latency_err / (latency_avg*latency_avg);
+	auto tps_global_avg_relerr = tps_global_avg_err / tps_global_avg;
+
+	auto throughput_thread_avg = stats["count"]() / stats["mean"]() * vector_size /  static_cast<double>(m_numthreads);
+	auto throughput_thread_avg_err = latency_err * vector_size / (latency_avg*latency_avg) / static_cast<double>(m_numthreads);
+	auto throughput_thread_avg_relerr = throughput_thread_avg_err / throughput_thread_avg;
+
+	auto throughput_global_avg = stats["count"]() / stats["mean"]() * vector_size ;
+	auto throughput_global_avg_err = latency_err * vector_size / (latency_avg*latency_avg);
+	auto throughput_global_avg_relerr = throughput_global_avg_err / throughput_global_avg;
+
+	std::streamsize ss = std::cout.precision(); // save default precision
+
+	std::cout << "count, all threads     : " << stats_count << '\n'
+	          << "avg latency        (ms): " << latency_avg << " +/- " << latency_err
+		  << ", relative error " << std::setprecision(3) << latency_avg_relerr*100 << std::setprecision(ss) << "%\n"
+	          << "max latency        (ms): " << latency_max << " +/- " << latency_err
+		  << ", relative error " << std::setprecision(3) << latency_max_relerr*100 << std::setprecision(ss) << "%\n"
+	          << "min latency        (ms): " << latency_min << " +/- " << latency_err
+		  << ", relative error " << std::setprecision(3) << latency_min_relerr*100 << std::setprecision(ss) << "%\n"
+
+	          << "avg TPS/thread  (Tnx/s): " << tps_thread_avg << " +/- " << tps_thread_avg_err
+		  << ", relative error " << std::setprecision(3) << tps_thread_avg_relerr*100 << std::setprecision(ss) << "%\n"
+	          << "avg TPS, global (Tnx/s): " << tps_global_avg << " +/- " << tps_global_avg_err
+		  << ", relative error " << std::setprecision(3) << tps_global_avg_relerr*100 << std::setprecision(ss) << "%\n"
+
+		  << "avg thrghpt/th.   (B/s): " << throughput_thread_avg << " +/- " << throughput_thread_avg_err
+		  << ", relative error " << std::setprecision(3) << throughput_thread_avg_relerr*100 << std::setprecision(ss) << "%\n"
+		  << "avg thrghpt, glob (B/s): " << throughput_global_avg << " +/- " << throughput_global_avg_err
+		  << ", relative error " << std::setprecision(3) << throughput_global_avg_relerr*100 << std::setprecision(ss) << "%\n"
+
+		  << "wallclock          (ms): " << wallclock_elapsed/nano_to_milli << '\n' << std::endl;
 
 	std::string thistestcase { benchmark.label() + '.' + testcase + '.' };
 
 	rv.add(thistestcase + "algorithm", benchmark.name() );
-	rv.add(thistestcase + "vector_size", m_vectors.at(testcase).size() );
+	rv.add(thistestcase + "vector_size", vector_size );
 	rv.add(thistestcase + "label", benchmark.label() );
 	rv.add(thistestcase + "threads", m_numthreads );
 	rv.add(thistestcase + "iterations", iter );
-	rv.add(thistestcase + "avg_elapsed", avg_elapsed/1000000.0);
-	rv.add(thistestcase + "max_elapsed", max_elapsed/1000000.0);
-	rv.add(thistestcase + "avg_latency", avg_elapsed/1000000.0/iter);
-	rv.add(thistestcase + "avg_elapsed", avg_elapsed/1000000.0);
-	rv.add(thistestcase + "avg_threadtps", iter / (avg_elapsed/1000000.0) * 1000);
-	rv.add(thistestcase + "min_globaltps", iter * m_numthreads/ (max_elapsed/1000000.0) * 1000 );
+	rv.add(thistestcase + "totalcount", stats_count );
+
+	// average latency
+	rv.add(thistestcase + "latency.average.value", latency_avg);
+	rv.add(thistestcase + "latency.average.unit", "ms");
+	rv.add(thistestcase + "latency.average.error", latency_err);
+	rv.add(thistestcase + "latency.average.relerr", latency_avg_relerr);
+
+	// maximum latency
+	rv.add(thistestcase + "latency.maximum.value", latency_avg);
+	rv.add(thistestcase + "latency.maximum.unit", "ms");
+	rv.add(thistestcase + "latency.maximum.error", latency_err);
+	rv.add(thistestcase + "latency.maximum.relerr", latency_max_relerr);
+
+	// minimum latency
+	rv.add(thistestcase + "latency.minimum.value", latency_avg);
+	rv.add(thistestcase + "latency.minimum.unit", "ms");
+	rv.add(thistestcase + "latency.minimum.error", latency_err);
+	rv.add(thistestcase + "latency.minimum.relerr", latency_min_relerr);
+
+	// TPS/thread
+	rv.add(thistestcase + "tps.thread.value", tps_thread_avg);
+	rv.add(thistestcase + "tps.thread.error", tps_thread_avg_err);
+	rv.add(thistestcase + "tps.thread.relerr", tps_thread_avg_relerr);
+
+	// TPS global
+	rv.add(thistestcase + "tps.global.value", tps_global_avg);
+	rv.add(thistestcase + "tps.global.error", tps_global_avg_err);
+	rv.add(thistestcase + "tps.global.relerr", tps_global_avg_relerr);
+
+	// throughput/thread
+	rv.add(thistestcase + "throughput.thread.value", throughput_thread_avg);
+	rv.add(thistestcase + "throughput.thread.error", throughput_thread_avg_err);
+	rv.add(thistestcase + "throughput.thread.relerr", throughput_thread_avg_relerr);
+
+	// throughput global
+	rv.add(thistestcase + "throughput.global.value", throughput_global_avg);
+	rv.add(thistestcase + "throughput.global.error", throughput_global_avg_err);
+	rv.add(thistestcase + "throughput.global.relerr", throughput_global_avg_relerr);
+
 	rv.add(thistestcase + "errorcode", errorcode(last_errcode));
 	rv.add(thistestcase + "wallclock", (wallclock_elapsed/1000000.0));
     }

@@ -26,6 +26,7 @@
 #include <botan/pubkey.h>
 #include "../config.h"
 
+#include "timeprecision.hpp"
 #include "keygenerator.hpp"
 #include "executor.hpp"
 #include "p11rsasig.hpp"
@@ -68,7 +69,7 @@ int main(int argc, char **argv)
 	("slot,s", po::value<int>(&argslot)->default_value(0), "slot index to use")
 	("password,p", po::value< std::string >(), "password for token in slot")
 	("threads,t", po::value<int>(&argnthreads)->default_value(1), "number of threads")
-	("iterations,i", po::value<int>(&argiter)->default_value(1000), "number of iterations")
+	("iterations,i", po::value<int>(&argiter)->default_value(200), "number of iterations")
 	("json,j", "output results as JSON")
         ("jsonfile,o", po::value< std::string >(), "JSON output file name")
 	("nogenerate,n", "Do not attempt to generate session keys; instead, use pre-existing token keys");
@@ -179,12 +180,15 @@ int main(int argc, char **argv)
 		{ "testvec4096", testvec4096 }
 	    };
 
-	    Executor executor( testvecs, sessions, argnthreads );
+	    auto epsilon = measure_clock_precision();
+	    std::cout << std::endl << "timer granularity (ns): " << epsilon.first << " +/- " << epsilon.second << "\n\n";
+
+	    Executor executor( testvecs, sessions, argnthreads, epsilon );
 
 	    if(generatekeys) {
 		KeyGenerator keygenerator( sessions, argnthreads );
 
-		std::cout << "Generating session keys for " << argnthreads << " thread(s)" << '\n';
+		std::cout << "Generating session keys for " << argnthreads << " thread(s)\n";
 		keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-2048", 2048);
 		keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-4096", 4096);
 		keygenerator.generate_key(KeyGenerator::KeyType::ECC, "ecdsa-secp256r1", "secp256r1");

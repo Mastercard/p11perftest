@@ -4,6 +4,11 @@
 #include <mutex>
 #include <thread>
 #include <condition_variable>
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics/stats.hpp>
+#include <boost/accumulators/statistics/mean.hpp>
+#include <boost/accumulators/statistics/count.hpp>
+#include <boost/accumulators/statistics/variance.hpp>
 #include "p11benchmark.hpp"
 #include "errorcodes.hpp"
 
@@ -40,10 +45,10 @@ std::string P11Benchmark::features() const
 }
 
 
-std::pair<nanosecond_type,int> P11Benchmark::execute(Session *session, const std::vector<uint8_t> &payload, unsigned long iterations)
+benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uint8_t> &payload, unsigned long iterations)
 {
-    boost::timer::cpu_times elapsed { 0	};
     int return_code = CKR_OK;
+    std::vector<nanosecond_type> records(iterations);
 
     try {
 	m_payload = payload;	// remember the payload
@@ -64,7 +69,6 @@ std::pair<nanosecond_type,int> P11Benchmark::execute(Session *session, const std
 		boost::timer::cpu_timer t;
 		boost::timer::cpu_times started;
 
-		elapsed.clear();
 		started.clear();
 
 		// wait for green light - all threads are starting together
@@ -74,12 +78,12 @@ std::pair<nanosecond_type,int> P11Benchmark::execute(Session *session, const std
 		}
 
 		// ok go now!
-		for (unsigned long x=0; x<iterations; x++) {
+		for (unsigned long i=0; i<iterations; i++) {
 		    t.start(); // start it
 		    started.wall = t.elapsed().wall; // remember wall clock
 		    crashtestdummy(*session);
 		    t.stop(); // stop it
-		    elapsed.wall += t.elapsed().wall - started.wall;
+		    records.at(i) = t.elapsed().wall - started.wall;
 		}
 	    }
 	}
@@ -100,5 +104,5 @@ std::pair<nanosecond_type,int> P11Benchmark::execute(Session *session, const std
 	throw;
     }
 
-    return std::pair<nanosecond_type,int> {elapsed.wall, return_code };
+    return std::make_pair( std::move(records), return_code );
 }
