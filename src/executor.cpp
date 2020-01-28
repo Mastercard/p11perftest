@@ -44,11 +44,12 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	int last_errcode = CKR_OK;
 
 	boost::timer::cpu_timer wallclock_t;
-	nanosecond_type sum_elapsed { 0 }, avg_elapsed { 0 }, max_elapsed { 0 }, wallclock_elapsed { 0 };
+	nanosecond_type wallclock_elapsed { 0 }; // used to measure how much time in total was spent in executing the test
 
 	std::cout << "algorithm              : " << benchmark.name() << '\n'
-		  << "vector size:           : " << m_vectors.at(testcase).size() << '\n'
+		  << "vector size            : " << m_vectors.at(testcase).size() << '\n'
 		  << "key label              : " << benchmark.label() << '\n'
+		  << "timer resolution   (ns): " << m_precision << '\n'
 	          << "threads                : " << m_numthreads << '\n'
 	          << "iter/thread            : " << iter << std::endl;
 
@@ -109,7 +110,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	for(auto elapsed: elapsed_time_array) {
 	    if(elapsed.second != CKR_OK) {
 		last_errcode = elapsed.second;
-		sum_elapsed = max_elapsed = wallclock_elapsed = 0;
+		wallclock_elapsed = 0;
 		break;		// something wrong happened, no need to carry on
 	    }
 
@@ -125,11 +126,21 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	auto latency_avg = stats["mean"]();
 	auto latency_avg_relerr = latency_err / latency_avg;
 
-	auto latency_min = stats["min"]();
-	auto latency_min_relerr = latency_err / latency_min;
+	// minimum and maximum are measured directly. their error depends directly upon
+	// the measurement of two times, i.e. t2-t1. Therefore, the error on that measurment
+	// equals twice the precision.
+	auto timer_resolution = m_precision / nano_to_milli; // timer resolution in milliseconds
 
-	auto latency_max = stats["max"]();
-	auto latency_max_relerr = latency_err / latency_max;
+	auto latency_min = stats["min"]();
+	auto latency_min_err = 2 * timer_resolution;
+	auto latency_min_relerr =  latency_min_err / latency_min;
+
+	auto latency_max = stats["max"]();;
+	auto latency_max_err =  2 * timer_resolution;
+	auto latency_max_relerr = latency_max_err / latency_max;
+
+	// TPS is the number of "transactions" per second.
+	// the meaning of "transaction" depends upon the tested API/algorithm
 
 	auto tps_thread_avg = stats["count"]() / static_cast<double>(m_numthreads) / stats["mean"]();
 	auto tps_thread_avg_err = latency_err / (latency_avg*latency_avg) / static_cast<double>(m_numthreads);
@@ -152,9 +163,9 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	std::cout << "count, all threads     : " << stats_count << '\n'
 	          << "avg latency        (ms): " << latency_avg << " +/- " << latency_err
 		  << ", relative error " << std::setprecision(3) << latency_avg_relerr*100 << std::setprecision(ss) << "%\n"
-	          << "max latency        (ms): " << latency_max << " +/- " << latency_err
+	          << "max latency        (ms): " << latency_max << " +/- " << latency_max_err
 		  << ", relative error " << std::setprecision(3) << latency_max_relerr*100 << std::setprecision(ss) << "%\n"
-	          << "min latency        (ms): " << latency_min << " +/- " << latency_err
+	          << "min latency        (ms): " << latency_min << " +/- " << latency_min_err
 		  << ", relative error " << std::setprecision(3) << latency_min_relerr*100 << std::setprecision(ss) << "%\n"
 
 	          << "avg TPS/thread  (Tnx/s): " << tps_thread_avg << " +/- " << tps_thread_avg_err
@@ -172,11 +183,15 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	std::string thistestcase { benchmark.label() + '.' + testcase + '.' };
 
 	rv.add(thistestcase + "algorithm", benchmark.name() );
-	rv.add(thistestcase + "vector_size", vector_size );
+	rv.add(thistestcase + "vector.size", vector_size );
+	rv.add(thistestcase + "vector.unit", "Bytes" );
 	rv.add(thistestcase + "label", benchmark.label() );
 	rv.add(thistestcase + "threads", m_numthreads );
 	rv.add(thistestcase + "iterations", iter );
 	rv.add(thistestcase + "totalcount", stats_count );
+
+	rv.add(thistestcase + "timer.resolution", m_precision);
+	rv.add(thistestcase + "timer.unit", "ns");
 
 	// average latency
 	rv.add(thistestcase + "latency.average.value", latency_avg);
@@ -198,21 +213,25 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 
 	// TPS/thread
 	rv.add(thistestcase + "tps.thread.value", tps_thread_avg);
+	rv.add(thistestcase + "tps.thread.unit", "1/s");
 	rv.add(thistestcase + "tps.thread.error", tps_thread_avg_err);
 	rv.add(thistestcase + "tps.thread.relerr", tps_thread_avg_relerr);
 
 	// TPS global
 	rv.add(thistestcase + "tps.global.value", tps_global_avg);
+	rv.add(thistestcase + "tps.global.unit", "1/s");
 	rv.add(thistestcase + "tps.global.error", tps_global_avg_err);
 	rv.add(thistestcase + "tps.global.relerr", tps_global_avg_relerr);
 
 	// throughput/thread
 	rv.add(thistestcase + "throughput.thread.value", throughput_thread_avg);
+	rv.add(thistestcase + "throughput.thread.unit", "Bytes/s");
 	rv.add(thistestcase + "throughput.thread.error", throughput_thread_avg_err);
 	rv.add(thistestcase + "throughput.thread.relerr", throughput_thread_avg_relerr);
 
 	// throughput global
 	rv.add(thistestcase + "throughput.global.value", throughput_global_avg);
+	rv.add(thistestcase + "throughput.global.unit", "Bytes/s");
 	rv.add(thistestcase + "throughput.global.error", throughput_global_avg_err);
 	rv.add(thistestcase + "throughput.global.relerr", throughput_global_avg_relerr);
 
