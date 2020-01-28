@@ -29,6 +29,10 @@ AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 # check out https://www.gnu.org/software/automake/manual/html_node/maintainer_002dmode.html
 AM_MAINTAINER_MODE
 
+# Libtool
+LT_INIT
+LT_LANG([C++])
+
 # These are the files to be generated.
 AC_CONFIG_FILES([Makefile src/Makefile scripts/Makefile])
 
@@ -39,9 +43,11 @@ AC_CONFIG_SRCDIR([src/p11perftest.cpp])
 AC_CONFIG_HEADERS([config.h])
 
 # Check for libraries, headers, data etc here.
+
 AX_BOOST_BASE([1.62],, [AC_MSG_ERROR([p11perftest needs Boost, but it was not found in your system])])
 AX_BOOST_PROGRAM_OPTIONS()
 AX_BOOST_TIMER()
+AX_BOOST_CHRONO()
 
 PKG_CHECK_MODULES([BOTAN], [botan-2])
 
