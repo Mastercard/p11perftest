@@ -10,6 +10,7 @@
 #include <functional>
 #include <utility>
 #include <tuple>
+#include <sstream>
 #include <boost/timer/timer.hpp>
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/stats.hpp>
@@ -18,6 +19,7 @@
 #include <boost/accumulators/statistics/max.hpp>
 #include <boost/accumulators/statistics/count.hpp>
 #include <boost/accumulators/statistics/variance.hpp>
+#include "ConsoleTable.h"
 #include "errorcodes.hpp"
 #include "p11benchmark.hpp"
 #include "executor.hpp"
@@ -46,12 +48,35 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	boost::timer::cpu_timer wallclock_t;
 	nanosecond_type wallclock_elapsed { 0 }; // used to measure how much time in total was spent in executing the test
 
-	std::cout << "algorithm              : " << benchmark.name() << '\n'
-		  << "vector size            : " << m_vectors.at(testcase).size() << '\n'
-		  << "key label              : " << benchmark.label() << '\n'
-		  << "timer resolution   (ns): " << m_precision << '\n'
-	          << "threads                : " << m_numthreads << '\n'
-	          << "iter/thread            : " << iter << std::endl;
+	// helper functions for ConsoleTable conversion of items to string
+	auto dtostr = [](double arg, int precision=-1) -> std::string {
+			  std::ostringstream stream;
+			  if(precision>=0) stream << std::setprecision(precision);
+			  stream << arg;
+			  return stream.str();
+		      };
+
+	auto itostr = [](long arg) -> std::string {
+			  std::ostringstream stream;
+			  stream << arg;
+			  return stream.str();
+		      };
+
+
+	ConsoleTable facts { "property", "value" };
+	facts.setStyle(1);
+
+	facts += { "algorithm", benchmark.name() };
+	facts += { "vector size", itostr(m_vectors.at(testcase).size()) };
+	facts += { "key label", benchmark.label() };
+	facts += { "number of threads", itostr(m_numthreads) };
+	facts += { "iterations/thread", itostr(iter) };
+	facts += { "total of iterations", itostr(iter*m_numthreads) };
+
+	std::cout << benchmark.name() + " with key " + benchmark.label() << '\n'
+		  << "================================================================================\n"
+		  << "Test case facts:\n"
+		  << facts << std::endl;
 
 	greenlight = false;	// prepare threads to sync on "green light"
 
@@ -82,6 +107,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	    elapsed_time_array[th] = future_array[th].get();
 	}
 
+	// stop wallclock and measure elapsed time
 	wallclock_t.stop();
 	wallclock_elapsed = wallclock_t.elapsed().wall;
 
@@ -92,6 +118,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	    bacc::tag::count,
 	    bacc::tag::variance > > acc;
 
+	// helper map table for statistics
 	std::map<std::string, std::function<double()> > stats {
 	    { "min",   [&acc] () { return bacc::min(acc);  }},
 	    { "mean",  [&acc] () { return bacc::mean(acc); }},
@@ -160,26 +187,22 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 
 	std::streamsize ss = std::cout.precision(); // save default precision
 
-	std::cout << "count, all threads     : " << stats_count << '\n'
-	          << "avg latency        (ms): " << latency_avg << " +/- " << latency_err
-		  << ", relative error " << std::setprecision(3) << latency_avg_relerr*100 << std::setprecision(ss) << "%\n"
-	          << "max latency        (ms): " << latency_max << " +/- " << latency_max_err
-		  << ", relative error " << std::setprecision(3) << latency_max_relerr*100 << std::setprecision(ss) << "%\n"
-	          << "min latency        (ms): " << latency_min << " +/- " << latency_min_err
-		  << ", relative error " << std::setprecision(3) << latency_min_relerr*100 << std::setprecision(ss) << "%\n"
+	ConsoleTable results{"Measure", "value", "error (+/-)", "unit", "rel. error" };
+	results.setStyle(1);
 
-	          << "avg TPS/thread  (Tnx/s): " << tps_thread_avg << " +/- " << tps_thread_avg_err
-		  << ", relative error " << std::setprecision(3) << tps_thread_avg_relerr*100 << std::setprecision(ss) << "%\n"
-	          << "avg TPS, global (Tnx/s): " << tps_global_avg << " +/- " << tps_global_avg_err
-		  << ", relative error " << std::setprecision(3) << tps_global_avg_relerr*100 << std::setprecision(ss) << "%\n"
+	results += { "timer resolution", dtostr(m_precision/nano_to_milli), "", "ms", ""};
+	results += { "latency, average", dtostr(latency_avg), dtostr(latency_err), "ms", dtostr(latency_avg_relerr *100, 3) + '%' };
+	results += { "latency, maximum", dtostr(latency_max), dtostr(latency_max_err), "ms", dtostr(latency_max_relerr *100, 3) + '%'};
+	results += { "latency, minimum", dtostr(latency_min), dtostr(latency_min_err), "ms", dtostr(latency_min_relerr *100, 3) + '%'};
+	results += { "TPS/thread, average", dtostr(tps_thread_avg), dtostr(tps_thread_avg_err), "Tnx/s", dtostr(tps_thread_avg_relerr *100, 3) + '%' };
+	results += { "global TPS, average", dtostr(tps_global_avg), dtostr(tps_global_avg_err), "Tnx/s", dtostr(tps_global_avg_relerr *100, 3) + '%' };
+	results += { "throughput/thread, average", dtostr(throughput_thread_avg), dtostr(throughput_thread_avg_err), "Bytes/s", dtostr(throughput_thread_avg_relerr *100, 3) + '%' };
+	results += { "global throughput, average", dtostr(throughput_global_avg), dtostr(throughput_global_avg_err), "Bytes/s", dtostr(throughput_global_avg_relerr *100, 3) + '%' };
+	results += { "wall clock", dtostr(wallclock_elapsed/nano_to_milli), dtostr(2*m_precision/nano_to_milli), "ms", dtostr(2*m_precision/wallclock_elapsed*100, 3) + '%' };
 
-		  << "avg thrghpt/th.   (B/s): " << throughput_thread_avg << " +/- " << throughput_thread_avg_err
-		  << ", relative error " << std::setprecision(3) << throughput_thread_avg_relerr*100 << std::setprecision(ss) << "%\n"
-		  << "avg thrghpt, glob (B/s): " << throughput_global_avg << " +/- " << throughput_global_avg_err
-		  << ", relative error " << std::setprecision(3) << throughput_global_avg_relerr*100 << std::setprecision(ss) << "%\n"
+	std::cout << "Test case results:\n" << results << std::endl;
 
-		  << "wallclock          (ms): " << wallclock_elapsed/nano_to_milli << '\n' << std::endl;
-
+	// now create json output
 	std::string thistestcase { benchmark.label() + '.' + testcase + '.' };
 
 	rv.add(thistestcase + "algorithm", benchmark.name() );
