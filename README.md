@@ -4,7 +4,7 @@ An utility to benchmark speed of operations of a PKCS#11 implementation.
 
 ## Pre-requisites
 You will need the following:
- - a decent C++ compiler, that can compile C++11 
+ - a decent C++ compiler that supports C++11
  - the [Boost library](https://www.boost.org/) (a recent copy, above 1.60)
  - the [Botan library](https://botan.randombit.net/) (v>2.0)
 
@@ -16,6 +16,7 @@ To boostrap the autotools environment, you will need the following packages depl
 - [autoconf](https://www.gnu.org/software/autoconf/)
 - [automake](https://www.gnu.org/software/automake/)
 - [autoconf-archive](https://www.gnu.org/software/autoconf-archive/)
+- [libtool](https://www.gnu.org/software/libtool/)
 
 
 ## Installation
@@ -31,9 +32,9 @@ $ make
 
 Note that to execute `p11perftest`, you may have to adjust `LD_LIBRARY_PATH` to include the path to where Botan is deployed (typically `/usr/local/lib` )
 
-## Keys to prepare
+## Keys to generate
 
-In case session keys cannot be used (default), token keys must be created.
+In case session keys cannot be used (which is the default behaviour), keys must be created directly on the cryptographic token.
 In order to execute the test, you will need to create the following keys upfront:
 
  - `rsa-2048` : a 2048 bits RSA key, with CKA_SIGN=true
@@ -46,7 +47,7 @@ In order to execute the test, you will need to create the following keys upfront
  - `aes-128`  : a 128 bits AES key, with CKA_ENCRYPT=true
  - `aes-256`  : a 256 bits AES key, with CKA_ENCRYPT=true
 
-There is a script at `scripts/createkeys.sh` to create these keys, using the PKCS#11 toolkit.
+There is a script at `scripts/createkeys.sh` to create these keys, using the [PKCS#11 toolkit](https://github.com/Mastercard/pkcs11-tools).
 There is also a python script, at `scripts/generatekeys.py`. It requires Python 3, and you will need to deploy the dependent libraries using `pip`:
 
 ```bash
@@ -64,7 +65,7 @@ available options:
   - `-s [ --slot ] arg`, slot index to use (default is 0)
   - `-p [ --password ] arg`, password for token in slot
   - `-t [ --threads ] arg`, number of threads to execute in parallel (default is 1)
-  - `-i [ --iterations ] arg`, number of iterations (default is 1000)
+  - `-i [ --iterations ] arg`, number of iterations (default is 200)
   - `-j [ --json ]`, output results as JSON
   - `-o [ --jsonfile ] arg`, JSON output file name
   - `-n [ --nogenerate ]`, do not attempt to generate session keys; instead, use pre-existing token keys
