@@ -19,6 +19,8 @@ cast = {
     'wallclock' : float,
     'timer_resolution' : float,
     'timer_unit' : noop,
+    'timer_error' : float,
+    'timer_relerr' : float,
     'latency_average_value' : float,
     'latency_average_unit' : noop,
     'latency_average_error' : float,
