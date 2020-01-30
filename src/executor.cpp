@@ -178,23 +178,25 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	// TPS is the number of "transactions" per second.
 	// the meaning of "transaction" depends upon the tested API/algorithm
 
-	auto tps_thread_avg = 1000 / static_cast<double>(m_numthreads) / stats["mean"]();
-	auto tps_thread_avg_err = 1000 * latency_avg_err / (latency_avg*latency_avg) / static_cast<double>(m_numthreads);
+	// the statistics are computed over all threads. Therefore, the TPS it yields is per thread.
+	auto tps_thread_avg = 1000 / stats["mean"]();
+	auto tps_thread_avg_err = 1000 * latency_avg_err / (latency_avg*latency_avg) ;
 	auto tps_thread_avg_relerr = tps_thread_avg_err / tps_thread_avg;
 
-	auto tps_global_avg = 1000 / stats["mean"]();
-	auto tps_global_avg_err = 1000 * latency_avg_err / (latency_avg*latency_avg);
+	// global TPS is simply obtained by multiplying TPS/thread by the number of threads
+	auto tps_global_avg = tps_thread_avg * m_numthreads;
+	auto tps_global_avg_err = tps_thread_avg_err * m_numthreads;
 	auto tps_global_avg_relerr = tps_global_avg_err / tps_global_avg;
 
-	auto throughput_thread_avg = 1000 * vector_size / stats["mean"]() /  static_cast<double>(m_numthreads);
-	auto throughput_thread_avg_err = 1000 * vector_size * latency_avg_err / (latency_avg*latency_avg) / static_cast<double>(m_numthreads);
+	// throughput is obtained by multiplying TPS by vector size.
+	// Note that it is probably meaningful only to bulk encryption algorithms.
+	auto throughput_thread_avg = 1000 * vector_size / stats["mean"]();
+	auto throughput_thread_avg_err = 1000 * vector_size * latency_avg_err / (latency_avg*latency_avg);
 	auto throughput_thread_avg_relerr = throughput_thread_avg_err / throughput_thread_avg;
 
-	auto throughput_global_avg = 1000 * vector_size / stats["mean"]();
-	auto throughput_global_avg_err = 1000 * vector_size * latency_avg_err / (latency_avg*latency_avg);
+	auto throughput_global_avg = throughput_thread_avg * m_numthreads;
+	auto throughput_global_avg_err = throughput_thread_avg * m_numthreads;
 	auto throughput_global_avg_relerr = throughput_global_avg_err / throughput_global_avg;
-
-	std::streamsize ss = std::cout.precision(); // save default precision
 
 	ConsoleTable results{"Measure", "value", "error (+/-)", "unit", "rel. error" };
 	results.setStyle(1);
