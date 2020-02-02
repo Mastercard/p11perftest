@@ -10,8 +10,9 @@
 #include <future>
 #include <functional>
 #include <utility>
-#include <tuple>
 #include <sstream>
+#include <tuple>
+#include <vector>
 #include <boost/timer/timer.hpp>
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/stats.hpp>
@@ -23,6 +24,7 @@
 #include "ConsoleTable.h"
 #include "errorcodes.hpp"
 #include "p11benchmark.hpp"
+#include "measure.hpp"
 #include "executor.hpp"
 
 // thread sync objects
@@ -50,29 +52,37 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	nanosecond_type wallclock_elapsed { 0 }; // used to measure how much time in total was spent in executing the test
 
 	// helper functions for ConsoleTable conversion of items to string
-	auto dtostr = [](double arg, int precision=-1) -> std::string {
-			  std::ostringstream stream;
-			  if(precision>=0) stream << std::setprecision(precision);
-			  stream << arg;
-			  return stream.str();
-		      };
+	auto d2s = [] (double arg, int precision=-1) -> std::string {
+		       std::ostringstream stream;
+		       if(precision>=0) stream << std::setprecision(precision);
+		       stream << arg;
+		       return stream.str();
+		   };
 
-	auto itostr = [](long arg) -> std::string {
-			  std::ostringstream stream;
-			  stream << arg;
-			  return stream.str();
-		      };
+	auto i2s = [] (long arg) -> std::string {
+		       std::ostringstream stream;
+		       stream << arg;
+		       return stream.str();
+		   };
 
+	std::vector<std::tuple<std::string, std::string, std::string>> fact_rows {
+	    { "algorithm", "algorithm", benchmark.name() },
+	    { "vector size", "vector.size", i2s(m_vectors.at(testcase).size()) },
+	    { "vector unit", "vector.unit", "Byte" },
+	    { "key label", "label", benchmark.label() },
+	    { "number of threads", "threads", i2s(m_numthreads) },
+	    { "iterations/thread", "iterations", i2s(iter) },
+	    { "total of iterations", "total iterations", i2s(iter*m_numthreads) }
+	};
+
+	std::vector<std::tuple<std::string, std::string, Measure<>>> result_rows;
 
 	ConsoleTable facts { "property", "value" };
 	facts.setStyle(1);
 
-	facts += { "algorithm", benchmark.name() };
-	facts += { "vector size", itostr(m_vectors.at(testcase).size()) };
-	facts += { "key label", benchmark.label() };
-	facts += { "number of threads", itostr(m_numthreads) };
-	facts += { "iterations/thread", itostr(iter) };
-	facts += { "total of iterations", itostr(iter*m_numthreads) };
+	for(auto &row: fact_rows) {
+	    facts += { std::get<0>(row), std::get<2>(row) };
+	}
 
 	std::cout << benchmark.name() + " with key " + benchmark.label() << '\n'
 		  << "================================================================================\n"
@@ -129,7 +139,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 			   auto n = bacc::count(acc);
 			   double f = static_cast<double>(n) / (n - 1);
 			   return f * bacc::variance(acc); }},
-	    { "ssdtdev", [&stats] () { return std::sqrt(stats["svar"]()); }},
+	    { "sstddev", [&stats] () { return std::sqrt(stats["svar"]()); }},
 	    { "error", [&stats] () { return std::sqrt(stats["svar"]()/static_cast<double>( stats["count"]() )); }},
 	    { "count", [&acc] () { return bacc::count(acc); }},
 	};
@@ -150,129 +160,102 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	auto vector_size = m_vectors.at(testcase).size();
 	auto stats_count = stats["count"]();
 
-	auto timer_resolution = m_timer_res;
-	auto timer_resolution_err = m_timer_res_err;
-	auto timer_resolution_relerr = timer_resolution_err / timer_resolution;
+	// timer_res is the resolution of the timer
+	Measure<> timer_res(m_timer_res, m_timer_res_err, "ns");
+	result_rows.emplace_back(std::forward_as_tuple("timer resolution", "timer resolution", std::move(timer_res)));
 
 	// epsilon represents the max resolution we have for a latency measurement.
-	auto epsilon = 2 * (timer_resolution + timer_resolution_err ) / nano_to_milli;
+	auto epsilon = 2 * (m_timer_res + m_timer_res_err ) / nano_to_milli;
 
 	// if the statistical error is less than epsilon, then it is no more significant,
 	// as the measure is blurred by the resolution of the timer.
 	// In which case, the error on latency is topped to epsilon
-	auto latency_avg = stats["mean"]();
+	auto latency_avg_val = stats["mean"]();
 	auto latency_avg_err = stats["error"]() < epsilon ? epsilon : stats["error"]();
-	auto latency_avg_relerr = latency_avg_err / latency_avg;
+	Measure<> latency_avg(latency_avg_val, latency_avg_err, "ms");
+	result_rows.emplace_back(std::forward_as_tuple("latency, average", "latency.average", std::move(latency_avg)));
+	std::cout << "latency_avg: " << latency_avg_val << "," << latency_avg_err << '\n';
 
 	// minimum and maximum are measured directly. their error depends directly upon
 	// the measurement of two times, i.e. t2-t1. Therefore, the error on that measurment
 	// equals twice the precision.
-	auto latency_min = stats["min"]();
+	auto latency_min_val = stats["min"]();
 	auto latency_min_err = epsilon;
-	auto latency_min_relerr =  latency_min_err / latency_min;
+	Measure<> latency_min(latency_min_val, latency_min_err, "ms");
+	result_rows.emplace_back(std::forward_as_tuple("latency, minimum", "latency.minimum", std::move(latency_min)));
+	std::cout << "latency_min: " << latency_min_val << "," << latency_min_err << '\n';
 
-	auto latency_max = stats["max"]();;
+	auto latency_max_val = stats["max"]();;
 	auto latency_max_err =  epsilon;
-	auto latency_max_relerr = latency_max_err / latency_max;
+	Measure<> latency_max(latency_max_val, latency_max_err, "ms");
+	result_rows.emplace_back(std::forward_as_tuple("latency, maximum", "latency.maximum", std::move(latency_max)));
+	std::cout << "latency_max: " << latency_max_val << "," << latency_max_err << '\n';
 
 	// TPS is the number of "transactions" per second.
 	// the meaning of "transaction" depends upon the tested API/algorithm
 
 	// the statistics are computed over all threads. Therefore, the TPS it yields is per thread.
-	auto tps_thread_avg = 1000 / stats["mean"]();
-	auto tps_thread_avg_err = 1000 * latency_avg_err / (latency_avg*latency_avg) ;
-	auto tps_thread_avg_relerr = tps_thread_avg_err / tps_thread_avg;
+	auto tps_thread_avg_val = 1000 / stats["mean"]();
+	auto tps_thread_avg_err = 1000 * latency_avg_err / (latency_avg_val*latency_avg_val) ;
+	Measure<> tps_thread_avg(tps_thread_avg_val, tps_thread_avg_err, "Tnx/s");
+	result_rows.emplace_back(std::forward_as_tuple("TPS/thread, average", "tps.thread", std::move(tps_thread_avg)));
+	std::cout << "tps_thread_avg: " << tps_thread_avg_val << "," << tps_thread_avg_err << '\n';
 
 	// global TPS is simply obtained by multiplying TPS/thread by the number of threads
-	auto tps_global_avg = tps_thread_avg * m_numthreads;
+	auto tps_global_avg_val = tps_thread_avg_val * m_numthreads;
 	auto tps_global_avg_err = tps_thread_avg_err * m_numthreads;
-	auto tps_global_avg_relerr = tps_global_avg_err / tps_global_avg;
+	Measure<> tps_global_avg(tps_global_avg_val, tps_global_avg_err, "Tnx/s");
+	result_rows.emplace_back(std::forward_as_tuple("global TPS, average", "tps.global", std::move(tps_global_avg)));
+	std::cout << "tps_global_avg: " << tps_global_avg_val << "," << tps_global_avg_err << '\n';
 
 	// throughput is obtained by multiplying TPS by vector size.
 	// Note that it is probably meaningful only to bulk encryption algorithms.
-	auto throughput_thread_avg = 1000 * vector_size / stats["mean"]();
-	auto throughput_thread_avg_err = 1000 * vector_size * latency_avg_err / (latency_avg*latency_avg);
-	auto throughput_thread_avg_relerr = throughput_thread_avg_err / throughput_thread_avg;
+	auto throughput_thread_avg_val = 1000 * vector_size / stats["mean"]();
+	auto throughput_thread_avg_err = 1000 * vector_size * latency_avg_err / (latency_avg_val*latency_avg_val);
+	Measure<> throughput_thread_avg(throughput_thread_avg_val, throughput_thread_avg_err, "Byte/s");
+	result_rows.emplace_back(std::forward_as_tuple("throughput/thread, average", "throughput.thread", std::move(throughput_thread_avg)));
 
-	auto throughput_global_avg = throughput_thread_avg * m_numthreads;
-	auto throughput_global_avg_err = throughput_thread_avg * m_numthreads;
-	auto throughput_global_avg_relerr = throughput_global_avg_err / throughput_global_avg;
+	auto throughput_global_avg_val = throughput_thread_avg_val * m_numthreads;
+	auto throughput_global_avg_err = throughput_thread_avg_err * m_numthreads;
+	Measure<> throughput_global_avg(throughput_global_avg_val, throughput_global_avg_err, "Byte/s");
+	result_rows.emplace_back(std::forward_as_tuple("global throughput, average", "throughput.global", std::move(throughput_global_avg)));
 
-	ConsoleTable results{"Measure", "value", "error (+/-)", "unit", "rel. error" };
+	// wallclock_elapsed_ms is the total time elapsed (in ms).
+	Measure<> wallclock_elapsed_ms( wallclock_elapsed/nano_to_milli, epsilon, "ms" );
+	result_rows.emplace_back(std::forward_as_tuple("wall clock", "wallclock", std::move(wallclock_elapsed_ms)));
+
+	ConsoleTable results{"measure", "value", "error (+/-)", "unit", "rel. error" };
 	results.setStyle(1);
 
-	results += { "timer resolution", dtostr(timer_resolution), dtostr(timer_resolution_err), "ns", dtostr(timer_resolution_relerr * 100, 3)+'%'};
-	results += { "latency, average", dtostr(latency_avg), dtostr(latency_avg_err), "ms", dtostr(latency_avg_relerr *100, 3) + '%' };
-	results += { "latency, maximum", dtostr(latency_max), dtostr(latency_max_err), "ms", dtostr(latency_max_relerr *100, 3) + '%'};
-	results += { "latency, minimum", dtostr(latency_min), dtostr(latency_min_err), "ms", dtostr(latency_min_relerr *100, 3) + '%'};
-	results += { "TPS/thread, average", dtostr(tps_thread_avg), dtostr(tps_thread_avg_err), "Tnx/s", dtostr(tps_thread_avg_relerr *100, 3) + '%' };
-	results += { "global TPS, average", dtostr(tps_global_avg), dtostr(tps_global_avg_err), "Tnx/s", dtostr(tps_global_avg_relerr *100, 3) + '%' };
-	results += { "throughput/thread, average", dtostr(throughput_thread_avg,8), dtostr(throughput_thread_avg_err,8), "Bytes/s", dtostr(throughput_thread_avg_relerr *100, 3) + '%' };
-	results += { "global throughput, average", dtostr(throughput_global_avg,8), dtostr(throughput_global_avg_err,8), "Bytes/s", dtostr(throughput_global_avg_relerr *100, 3) + '%' };
-	results += { "wall clock", dtostr(wallclock_elapsed/nano_to_milli), dtostr(epsilon), "ms", dtostr(epsilon/wallclock_elapsed/nano_to_milli*100, 3) + '%' };
+	for(auto &row: result_rows) {
+	    results += {
+		std::get<0>(row),
+		    d2s(std::get<2>(row).value(),12),
+		    d2s(std::get<2>(row).error(),12),
+		std::get<2>(row).unit(),
+	        d2s(std::get<2>(row).relerr()*100,3)+'%'  };
+	}
 
 	std::cout << "Test case results:\n" << results << std::endl;
 
 	// now create json output
 	std::string thistestcase { benchmark.label() + '.' + testcase + '.' };
 
-	rv.add(thistestcase + "algorithm", benchmark.name() );
-	rv.add(thistestcase + "vector.size", vector_size );
-	rv.add(thistestcase + "vector.unit", "Bytes" );
-	rv.add(thistestcase + "label", benchmark.label() );
-	rv.add(thistestcase + "threads", m_numthreads );
-	rv.add(thistestcase + "iterations", iter );
-	rv.add(thistestcase + "totalcount", stats_count );
+	// adding facts information
+	for(auto &row: fact_rows) {
+	    rv.add(thistestcase + std::get<1>(row), std::get<2>(row) );
+	}
 
-	rv.add(thistestcase + "timer.resolution", timer_resolution);
-	rv.add(thistestcase + "timer.unit", "ns");
-	rv.add(thistestcase + "timer.error", timer_resolution_err);
-	rv.add(thistestcase + "timer.relerr", timer_resolution_relerr);
+	// adding results information
+	for(auto &row: result_rows) {
+	    rv.add(thistestcase + std::get<1>(row) + ".value",  d2s(std::get<2>(row).value()));
+	    rv.add(thistestcase + std::get<1>(row) + ".unit",   std::get<2>(row).unit());
+	    rv.add(thistestcase + std::get<1>(row) + ".error",  d2s(std::get<2>(row).error()));
+	    rv.add(thistestcase + std::get<1>(row) + ".relerr", d2s(std::get<2>(row).relerr()));
+	}
 
-	// average latency
-	rv.add(thistestcase + "latency.average.value", latency_avg);
-	rv.add(thistestcase + "latency.average.unit", "ms");
-	rv.add(thistestcase + "latency.average.error", latency_avg_err);
-	rv.add(thistestcase + "latency.average.relerr", latency_avg_relerr);
-
-	// maximum latency
-	rv.add(thistestcase + "latency.maximum.value", latency_max);
-	rv.add(thistestcase + "latency.maximum.unit", "ms");
-	rv.add(thistestcase + "latency.maximum.error", latency_max_err);
-	rv.add(thistestcase + "latency.maximum.relerr", latency_max_relerr);
-
-	// minimum latency
-	rv.add(thistestcase + "latency.minimum.value", latency_min);
-	rv.add(thistestcase + "latency.minimum.unit", "ms");
-	rv.add(thistestcase + "latency.minimum.error", latency_min_err);
-	rv.add(thistestcase + "latency.minimum.relerr", latency_min_relerr);
-
-	// TPS/thread
-	rv.add(thistestcase + "tps.thread.value", tps_thread_avg);
-	rv.add(thistestcase + "tps.thread.unit", "1/s");
-	rv.add(thistestcase + "tps.thread.error", tps_thread_avg_err);
-	rv.add(thistestcase + "tps.thread.relerr", tps_thread_avg_relerr);
-
-	// TPS global
-	rv.add(thistestcase + "tps.global.value", tps_global_avg);
-	rv.add(thistestcase + "tps.global.unit", "1/s");
-	rv.add(thistestcase + "tps.global.error", tps_global_avg_err);
-	rv.add(thistestcase + "tps.global.relerr", tps_global_avg_relerr);
-
-	// throughput/thread
-	rv.add(thistestcase + "throughput.thread.value", throughput_thread_avg);
-	rv.add(thistestcase + "throughput.thread.unit", "Bytes/s");
-	rv.add(thistestcase + "throughput.thread.error", throughput_thread_avg_err);
-	rv.add(thistestcase + "throughput.thread.relerr", throughput_thread_avg_relerr);
-
-	// throughput global
-	rv.add(thistestcase + "throughput.global.value", throughput_global_avg);
-	rv.add(thistestcase + "throughput.global.unit", "Bytes/s");
-	rv.add(thistestcase + "throughput.global.error", throughput_global_avg_err);
-	rv.add(thistestcase + "throughput.global.relerr", throughput_global_avg_relerr);
-
+	// last error code, useful to identify when something crashes
 	rv.add(thistestcase + "errorcode", errorcode(last_errcode));
-	rv.add(thistestcase + "wallclock", (wallclock_elapsed/1000000.0));
     }
 
     return rv;

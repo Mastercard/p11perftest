@@ -230,7 +230,7 @@ int main(int argc, char **argv)
 	    if(json==true) {
 		boost::property_tree::write_json(jsonout.is_open() ? jsonout : std::cout, results);
 		if(jsonout.is_open()) {
-		    std::cout << "output written to JSON file\n";
+		    std::cout << "output written to " << vm["jsonfile"].as<std::string>() << '\n';
 		}
 	    }
 	}

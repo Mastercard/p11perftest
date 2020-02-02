@@ -21,6 +21,7 @@ p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			p11aesgcm.cpp p11aesgcm.hpp \
 			errorcodes.cpp errorcodes.hpp \
 			keygenerator.cpp keygenerator.hpp \
+			measure.hpp \
 			executor.cpp executor.hpp \
 			timeprecision.cpp timeprecision.hpp \
 			ConsoleTable.cpp ConsoleTable.hpp \
