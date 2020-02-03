@@ -140,7 +140,8 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 			   double f = static_cast<double>(n) / (n - 1);
 			   return f * bacc::variance(acc); }},
 	    { "sstddev", [&stats] () { return std::sqrt(stats["svar"]()); }},
-	    { "error", [&stats] () { return std::sqrt(stats["svar"]()/static_cast<double>( stats["count"]() )); }},
+	    // note: for error, we take k=2 so 95% of measures are within interval
+	    { "error", [&stats] () { return std::sqrt(stats["svar"]()/static_cast<double>( stats["count"]() ))*2; }},
 	    { "count", [&acc] () { return bacc::count(acc); }},
 	};
 
@@ -165,6 +166,11 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	result_rows.emplace_back(std::forward_as_tuple("timer resolution", "timer resolution", std::move(timer_res)));
 
 	// epsilon represents the max resolution we have for a latency measurement.
+	// It sums the resolution and its standard error to it,
+	// ( = 2x stddev on sample mean, to reach 95% of interval)
+	// it is multiplied by two, as an interval is measured by making two time measurements. Therefore the
+	// uncertainties adds up.
+	// It is converted to milliseconds.
 	auto epsilon = 2 * (m_timer_res + m_timer_res_err ) / nano_to_milli;
 
 	// if the statistical error is less than epsilon, then it is no more significant,

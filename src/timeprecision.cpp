@@ -50,7 +50,7 @@ pair<double, double> measure_clock_precision(int iter)
     auto est_variance = (variance(te) * n ) / (n-1);
 
     // compute standard error
-    double std_err = sqrt( est_variance/n );
+    double std_err = sqrt( est_variance/n ) * 2; // we take k=2, so 95% of measures are within interval
 
     return make_pair(mean(te), std_err);
 }
