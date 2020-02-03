@@ -3,6 +3,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
+
+## 3.0.0 - 2020-02-02
+### Added
+- Now measures are trimmed to only keep really significant numbers, i.e.
+  takes into account the error
+
+### Changed
+- file layout slightly changed
+- Python script "json2xlsx.py" is now more generic, using recursive calls
+
 ## 2.1.4 - 2020-01-30
 ### Fixed
 - fixed tps and throughput value calculation
