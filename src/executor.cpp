@@ -180,8 +180,6 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	auto latency_avg_err = stats["error"]() < epsilon ? epsilon : stats["error"]();
 	Measure<> latency_avg(latency_avg_val, latency_avg_err, "ms");
 	result_rows.emplace_back(std::forward_as_tuple("latency, average", "latency.average", std::move(latency_avg)));
-	std::cout << "latency_avg: " << latency_avg_val << "," << latency_avg_err << '\n';
-
 	// minimum and maximum are measured directly. their error depends directly upon
 	// the measurement of two times, i.e. t2-t1. Therefore, the error on that measurment
 	// equals twice the precision.
@@ -189,14 +187,10 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	auto latency_min_err = epsilon;
 	Measure<> latency_min(latency_min_val, latency_min_err, "ms");
 	result_rows.emplace_back(std::forward_as_tuple("latency, minimum", "latency.minimum", std::move(latency_min)));
-	std::cout << "latency_min: " << latency_min_val << "," << latency_min_err << '\n';
-
 	auto latency_max_val = stats["max"]();;
 	auto latency_max_err =  epsilon;
 	Measure<> latency_max(latency_max_val, latency_max_err, "ms");
 	result_rows.emplace_back(std::forward_as_tuple("latency, maximum", "latency.maximum", std::move(latency_max)));
-	std::cout << "latency_max: " << latency_max_val << "," << latency_max_err << '\n';
-
 	// TPS is the number of "transactions" per second.
 	// the meaning of "transaction" depends upon the tested API/algorithm
 
@@ -205,15 +199,11 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	auto tps_thread_avg_err = 1000 * latency_avg_err / (latency_avg_val*latency_avg_val) ;
 	Measure<> tps_thread_avg(tps_thread_avg_val, tps_thread_avg_err, "Tnx/s");
 	result_rows.emplace_back(std::forward_as_tuple("TPS/thread, average", "tps.thread", std::move(tps_thread_avg)));
-	std::cout << "tps_thread_avg: " << tps_thread_avg_val << "," << tps_thread_avg_err << '\n';
-
 	// global TPS is simply obtained by multiplying TPS/thread by the number of threads
 	auto tps_global_avg_val = tps_thread_avg_val * m_numthreads;
 	auto tps_global_avg_err = tps_thread_avg_err * m_numthreads;
 	Measure<> tps_global_avg(tps_global_avg_val, tps_global_avg_err, "Tnx/s");
 	result_rows.emplace_back(std::forward_as_tuple("global TPS, average", "tps.global", std::move(tps_global_avg)));
-	std::cout << "tps_global_avg: " << tps_global_avg_val << "," << tps_global_avg_err << '\n';
-
 	// throughput is obtained by multiplying TPS by vector size.
 	// Note that it is probably meaningful only to bulk encryption algorithms.
 	auto throughput_thread_avg_val = 1000 * vector_size / stats["mean"]();
