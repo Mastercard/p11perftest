@@ -64,16 +64,22 @@ class Converter:
 
         # the title has not been defined yet, let's fetch all the info from the file itself
         if self.titlerow is False:
-            self.worksheet.write(self.row,0,'vector name')
-            self.worksheet.write(self.row,1,'label')
-            self.worksheet.write(self.row,2,'test case')
-            self.worksheet.write(self.row,3,'file name')
+            self.worksheet.write(self.row,3,'vector name')
+            self.worksheet.write(self.row,2,'label')
+            self.worksheet.write(self.row,1,'test case')
+            self.worksheet.write(self.row,0,'file name')
+            self.col=4
 
             recursive_title(vector, "")
 
             self.titlerow = True
 
         else:
+            self.worksheet.write(self.row,3,vectorname)
+            self.worksheet.write(self.row,2,key)
+            self.worksheet.write(self.row,1,testcase)
+            self.worksheet.write(self.row,0,filename)
+            self.col=4
             # we have defined the title already, proceed with row data
             recursive_value(vector, "")
 
