@@ -1,6 +1,0 @@
-#if !defined(P11BENCHMARK_H)
-#define P11BENCHMARK_H
-
-
-
-#endif P11BENCHMARK_H
