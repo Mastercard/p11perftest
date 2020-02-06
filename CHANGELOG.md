@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 3.1.0 - 2020-02-06
+### Enhanced
+- spreadheet format for json2xlsx script
+- json2xlsx can be compiled using PyInstaller
+
+### Fixed
+- removed left over debug messages
+
 ## 3.0.1 - 2020-02-03
 ### Enhanced
 - error-type is now calculated with=2, so uncertainty represents 95% of the samples.
