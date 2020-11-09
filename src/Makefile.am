@@ -19,12 +19,16 @@ p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			p11aesecb.cpp p11aesecb.hpp \
 			p11aescbc.cpp p11aescbc.hpp \
 			p11aesgcm.cpp p11aesgcm.hpp \
+			p11hmacsha1.cpp p11hmacsha1.hpp \
+			p11hmacsha256.cpp p11hmacsha256.hpp \
+			p11hmacsha512.cpp p11hmacsha512.hpp \
 			errorcodes.cpp errorcodes.hpp \
 			keygenerator.cpp keygenerator.hpp \
 			measure.hpp \
 			executor.cpp executor.hpp \
 			timeprecision.cpp timeprecision.hpp \
 			ConsoleTable.cpp ConsoleTable.hpp \
+			coverage.cpp coverage.hpp \
 			p11perftest.cpp
 
 p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_TIMER_LIB) $(BOOST_PROGRAM_OPTIONS_LIB) $(BOOST_CHRONO_LIB)

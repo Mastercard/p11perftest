@@ -10,7 +10,7 @@
 
 using namespace Botan::PKCS11;
 
-struct KeyGenerationException : std::invalid_argument { 
+struct KeyGenerationException : std::invalid_argument {
     using std::invalid_argument::invalid_argument;
 };
 
@@ -22,7 +22,8 @@ public:
 	{ RSA,
 	  DES,
 	  AES,
-	  ECC
+	  ECC,
+	  GENERIC
 	};
 
 private:
@@ -33,6 +34,7 @@ private:
     bool generate_aes_key(std::string alias, unsigned int bits, std::string unused, Session *session);
     bool generate_des_key(std::string alias, unsigned int bits, std::string unused, Session *session);
     bool generate_ecc_keypair(std::string alias, unsigned int unused, std::string curve, Session *session);
+    bool generate_generic_key(std::string alias, unsigned int bits, std::string param, Session *session);
 
     void generate_key_generic( KeyGenerator::KeyType keytype, std::string alias, unsigned int bits, std::string curve);
 

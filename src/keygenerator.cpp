@@ -143,6 +143,44 @@ bool KeyGenerator::generate_aes_key(std::string alias, unsigned int bits, std::s
 }
 
 
+bool KeyGenerator::generate_generic_key(std::string alias, unsigned int bits, std::string param, Session *session)
+{
+    bool rv;
+    Byte btrue = CK_TRUE;
+    Byte bfalse = CK_FALSE;
+    Ulong len = bits >> 3;
+    ObjectHandle handle;
+    Mechanism mech_generic_secret_key_gen { CKM_GENERIC_SECRET_KEY_GEN, nullptr, 0 };
+
+    std::array<Attribute,6> keytemplate {
+	{
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Label), const_cast< char* >(alias.c_str()), alias.size() },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Token), &bfalse, sizeof(Byte) },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Private), &btrue, sizeof(Byte) },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Sign), &btrue, sizeof(Byte) },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Verify), &btrue, sizeof(Byte) },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::ValueLen), &len, sizeof(Ulong) }
+	}
+    };
+
+    try {
+	session->module()->C_GenerateKey(session->handle(), &mech_generic_secret_key_gen, keytemplate.data(), keytemplate.size(), &handle );
+	rv = true;
+
+    } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
+	std::cerr << "ERROR:: " << bexc.what()
+		  << " (" << errorcode(bexc.error_code()) << ")" << std::endl;
+	rv = false;
+    } catch (Botan::Exception &bexc) {
+	std::cerr << "ERROR:: " << bexc.what() << std::endl;
+	// we print the exception, and move on
+	rv = false;
+    }
+
+    return rv;
+}
+
+
 bool KeyGenerator::generate_ecc_keypair(std::string alias, unsigned int unused, std::string curve, Session *session) 
 {
     bool rv;
@@ -191,7 +229,8 @@ void KeyGenerator::generate_key_generic(KeyGenerator::KeyType keytype, std::stri
 	{ KeyType::RSA, &KeyGenerator::generate_rsa_keypair },
 	{ KeyType::AES, &KeyGenerator::generate_aes_key } ,
         { KeyType::DES, &KeyGenerator::generate_des_key } ,
-        { KeyType::ECC, &KeyGenerator::generate_ecc_keypair }
+        { KeyType::ECC, &KeyGenerator::generate_ecc_keypair },
+	{ KeyType::GENERIC, &KeyGenerator::generate_generic_key }
     };
 
     auto chooser = [&fnmap](KeyGenerator::KeyType kt) { return fnmap.at(kt);  };
@@ -221,7 +260,7 @@ void KeyGenerator::generate_key_generic(KeyGenerator::KeyType keytype, std::stri
 // public overloaded member functions
 
 void KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias, unsigned int bits) {
-    std::set<KeyType> allowed_keytypes { KeyType::RSA, KeyType::DES, KeyType::AES };
+    std::set<KeyType> allowed_keytypes { KeyType::RSA, KeyType::DES, KeyType::AES, KeyType::GENERIC };
 
     auto match = allowed_keytypes.find( keytype );
 

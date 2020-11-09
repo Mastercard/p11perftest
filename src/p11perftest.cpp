@@ -1,3 +1,5 @@
+// -*- mode: c++; c-file-style:"stroustrup"; -*-
+
 // p11perftest: a simple benchmarker for PKCS#11 interfaces
 //
 // Author: Eric Devolder <eric.devolder@mastercard.com>
@@ -18,19 +20,22 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include <botan/auto_rng.h>
-#include <botan/p11_module.h>
-#include <botan/p11_slot.h>
-#include <botan/p11_session.h>
+
+#include <botan/p11_types.h>
 #include <botan/p11_object.h>
 #include <botan/p11_rsa.h>
 #include <botan/pubkey.h>
 #include "../config.h"
 
+#include "coverage.hpp"
 #include "timeprecision.hpp"
 #include "keygenerator.hpp"
 #include "executor.hpp"
 #include "p11rsasig.hpp"
 #include "p11ecdsasig.hpp"
+#include "p11hmacsha1.hpp"
+#include "p11hmacsha256.hpp"
+#include "p11hmacsha512.hpp"
 #include "p11des3ecb.hpp"
 #include "p11des3cbc.hpp"
 #include "p11aesecb.hpp"
@@ -61,6 +66,8 @@ int main(int argc, char **argv)
     bool generatekeys = true;
     po::options_description desc("available options");
 
+    const std::string default_coverage("rsa,ecdsa,hmac,des,des3,aes");
+
     const auto hwthreads = std::thread::hardware_concurrency(); // how many threads do we have on this platform ?
 
     desc.add_options()
@@ -68,11 +75,13 @@ int main(int argc, char **argv)
 	("library,l", po::value< std::string >(), "PKCS#11 library path")
 	("slot,s", po::value<int>(&argslot)->default_value(0), "slot index to use")
 	("password,p", po::value< std::string >(), "password for token in slot")
-	("threads,t", po::value<int>(&argnthreads)->default_value(1), "number of threads")
+	("threads,t", po::value<int>(&argnthreads)->default_value(1), "number of concurrent threads")
 	("iterations,i", po::value<int>(&argiter)->default_value(200), "number of iterations")
 	("json,j", "output results as JSON")
         ("jsonfile,o", po::value< std::string >(), "JSON output file name")
+	("coverage,c", po::value< std::string >()->default_value("rsa,ecdsa,hmac,des,des3,aes"), "coverage of test cases (comma-separated list of domains)" )
 	("nogenerate,n", "Do not attempt to generate session keys; instead, use pre-existing token keys");
+
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -80,7 +89,11 @@ int main(int argc, char **argv)
 
     if(vm.count("help")) {
 	std::cout << desc << std::endl;
+	return 0;		// exit prematurely
     }
+
+    // retrieve the test coverage
+    Coverage coverage{ vm["coverage"].as<std::string>() };
 
     if(vm.count("json")) {
 	json = true;
@@ -163,17 +176,17 @@ int main(int argc, char **argv)
 	    }
 
 	    // create vectors
-	    const std::vector<uint8_t> testvec8(8,49);              // needed for DES, 2**3
-	    const std::vector<uint8_t> testvec16(16,50);	        // needed for AES, 2**4
-	    const std::vector<uint8_t> testvec64(64,51);            //  2**6
-	    const std::vector<uint8_t> testvec256(256,52);          //  2**8
-	    const std::vector<uint8_t> testvec1024(1024,53);	// 2**10
-	    const std::vector<uint8_t> testvec4096(4096,54);	// 2**12
+	    const std::vector<uint8_t> testvec8(8,49);         // needed for DES, 2**3
+	    const std::vector<uint8_t> testvec16(16,50);       // needed for AES, 2**4
+	    const std::vector<uint8_t> testvec64(64,51);       //  2**6
+	    const std::vector<uint8_t> testvec256(256,52);     //  2**8
+	    const std::vector<uint8_t> testvec1024(1024,53);   // 2**10
+	    const std::vector<uint8_t> testvec4096(4096,54);   // 2**12
 
 	    // creating a big map of vectors
 	    const std::map<const std::string, const std::vector<uint8_t> > testvecs {
 		{ "testvec0008", testvec8 },	// minimum for DES
-		{ "testvec0016", testvec16 }, // minimum for AES
+		{ "testvec0016", testvec16 },   // minimum for AES
 		{ "testvec0064", testvec64 },
 		{ "testvec0256", testvec256 },
 		{ "testvec1024", testvec1024 }, // 1Kb
@@ -189,34 +202,71 @@ int main(int argc, char **argv)
 		KeyGenerator keygenerator( sessions, argnthreads );
 
 		std::cout << "Generating session keys for " << argnthreads << " thread(s)\n";
-		keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-2048", 2048);
-		keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-4096", 4096);
-		keygenerator.generate_key(KeyGenerator::KeyType::ECC, "ecdsa-secp256r1", "secp256r1");
-		keygenerator.generate_key(KeyGenerator::KeyType::ECC, "ecdsa-secp384r1", "secp384r1");
-		keygenerator.generate_key(KeyGenerator::KeyType::ECC, "ecdsa-secp521r1", "secp521r1");
-		keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-128", 128);
-		keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-256", 256);
-		keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-128", 128); // DES2
-		keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-192", 192); // DES3
+		if(coverage.contains("rsa")) {
+		    keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-2048", 2048);
+		    keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-4096", 4096);
+		}
+
+		if(coverage.contains("ecdsa")) {
+		    keygenerator.generate_key(KeyGenerator::KeyType::ECC, "ecdsa-secp256r1", "secp256r1");
+		    keygenerator.generate_key(KeyGenerator::KeyType::ECC, "ecdsa-secp384r1", "secp384r1");
+		    keygenerator.generate_key(KeyGenerator::KeyType::ECC, "ecdsa-secp521r1", "secp521r1");
+		}
+
+		if(coverage.contains("hmac")) {
+		    keygenerator.generate_key(KeyGenerator::KeyType::GENERIC, "hmac-160", 160);
+		    keygenerator.generate_key(KeyGenerator::KeyType::GENERIC, "hmac-256", 256);
+		    keygenerator.generate_key(KeyGenerator::KeyType::GENERIC, "hmac-512", 512);
+		}
+
+		if(coverage.contains("des")) {
+		    keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-128", 128); // DES2
+		    keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-192", 192); // DES3
+		}
+
+		if(coverage.contains("aes")) {
+		    keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-128", 128);
+		    keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-256", 256);
+		}
 	    }
 
-	    std::forward_list<P11Benchmark *> benchmarks {
-		new P11RSASigBenchmark("rsa-2048"),
-		    new P11RSASigBenchmark("rsa-4096"),
-		    new P11ECDSASigBenchmark("ecdsa-secp256r1"),
-		    new P11ECDSASigBenchmark("ecdsa-secp384r1"),
-		    new P11ECDSASigBenchmark("ecdsa-secp521r1"),
-		    new P11DES3ECBBenchmark("des-128"),
-		    new P11DES3ECBBenchmark("des-192"),
-		    new P11DES3CBCBenchmark("des-128"),
-		    new P11DES3CBCBenchmark("des-192"),
-		    new P11AESECBBenchmark("aes-128"),
-		    new P11AESECBBenchmark("aes-256"),
-		    new P11AESCBCBenchmark("aes-128"),
-		    new P11AESCBCBenchmark("aes-256"),
-		    new P11AESGCMBenchmark("aes-128"),
-		    new P11AESGCMBenchmark("aes-256")
-		    };
+	    std::forward_list<P11Benchmark *> benchmarks;
+
+	    if(coverage.contains("rsa")) {
+		benchmarks.emplace_front( new P11RSASigBenchmark("rsa-2048") );
+		benchmarks.emplace_front( new P11RSASigBenchmark("rsa-4096") );
+	    }
+
+	    if(coverage.contains("ecdsa")) {
+		benchmarks.emplace_front( new P11ECDSASigBenchmark("ecdsa-secp256r1") );
+		benchmarks.emplace_front( new P11ECDSASigBenchmark("ecdsa-secp384r1") );
+		benchmarks.emplace_front( new P11ECDSASigBenchmark("ecdsa-secp521r1") );
+	    }
+
+	    if(coverage.contains("hmac")) {
+		benchmarks.emplace_front( new P11HMACSHA1Benchmark("hmac-160") );
+		benchmarks.emplace_front( new P11HMACSHA256Benchmark("hmac-256") );
+		benchmarks.emplace_front( new P11HMACSHA512Benchmark("hmac-512") );
+	    }
+
+	    if(coverage.contains("des")) {
+		benchmarks.emplace_front( new P11DES3ECBBenchmark("des-128") );
+		benchmarks.emplace_front( new P11DES3ECBBenchmark("des-192") );
+		benchmarks.emplace_front( new P11DES3CBCBenchmark("des-128") );
+		benchmarks.emplace_front( new P11DES3CBCBenchmark("des-192") );
+	    }
+
+	    if(coverage.contains("aes")) {
+		benchmarks.emplace_front( new P11AESECBBenchmark("aes-128") );
+		benchmarks.emplace_front( new P11AESECBBenchmark("aes-256") );
+		benchmarks.emplace_front( new P11AESCBCBenchmark("aes-128") );
+		benchmarks.emplace_front( new P11AESCBCBenchmark("aes-256") );
+		benchmarks.emplace_front( new P11AESGCMBenchmark("aes-128") );
+		benchmarks.emplace_front( new P11AESGCMBenchmark("aes-256") );
+	    }
+
+	    benchmarks.reverse();
+
 
 	    std::forward_list<std::string> testvecsnames;
 	    boost::copy(testvecs | boost::adaptors::map_keys, std::front_inserter(testvecsnames));

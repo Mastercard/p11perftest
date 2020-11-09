@@ -6,9 +6,7 @@
 #include <forward_list>
 #include <utility>
 #include <botan/auto_rng.h>
-#include <botan/p11_module.h>
-#include <botan/p11_slot.h>
-#include <botan/p11_session.h>
+#include <botan/p11_types.h>
 #include <botan/p11_object.h>
 #include <botan/p11_rsa.h>
 #include <botan/p11_ecdsa.h>

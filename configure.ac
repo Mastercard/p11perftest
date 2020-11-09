@@ -1,7 +1,7 @@
 #
 # https://stackoverflow.com/questions/8559456/read-a-version-number-from-a-file-in-configure-ac
 #
-AC_INIT([p11perftest], m4_esyscmd_s([cat VERSION]), [eric.devolder@mastercard.com], [p11perftest], [https://www.mastercard.com])
+AC_INIT([p11perftest], m4_esyscmd_s([cat P11PERFTEST_VERSION]), [eric.devolder@mastercard.com], [p11perftest], [https://www.mastercard.com])
 
 # Put autotools auxiliary files in a subdir, so they don't clutter top dir.
 AC_CONFIG_AUX_DIR([build-aux])
@@ -49,7 +49,7 @@ AX_BOOST_PROGRAM_OPTIONS()
 AX_BOOST_TIMER()
 AX_BOOST_CHRONO()
 
-PKG_CHECK_MODULES([BOTAN], [botan-2])
+PKG_CHECK_MODULES([BOTAN], [ botan-2 > 2.17.0 ])
 
 # Last line: actually generate all required output files.
 AC_OUTPUT

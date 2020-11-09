@@ -244,7 +244,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 
 	// adding results information
 	for(auto &row: result_rows) {
-	    rv.add(thistestcase + std::get<1>(row) + ".value",  d2s(std::get<2>(row).value()));
+	    rv.add<double>(thistestcase + std::get<1>(row) + ".value",  std::get<2>(row).value());
 	    rv.add(thistestcase + std::get<1>(row) + ".unit",   std::get<2>(row).unit());
 	    rv.add(thistestcase + std::get<1>(row) + ".error",  d2s(std::get<2>(row).error()));
 	    rv.add(thistestcase + std::get<1>(row) + ".relerr", d2s(std::get<2>(row).relerr()));

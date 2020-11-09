@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 3.2.0 - 2020-11-19
+### Added
+- support for HMAC testing
+- new "coverage" optional argument, allows to select which algorithms to test
+
+### Changed
+- Botan 2.17.1+ required to build
+
 ## 3.1.0 - 2020-02-06
 ### Enhanced
 - spreadheet format for json2xlsx script

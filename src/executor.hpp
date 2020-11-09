@@ -5,7 +5,7 @@
 #define EXECUTOR_H
 
 #include <forward_list>
-#include <botan/p11_session.h>
+#include <botan/p11_types.h>
 #include <boost/property_tree/ptree.hpp>
 #include "p11benchmark.hpp"
 #include "../config.h"
