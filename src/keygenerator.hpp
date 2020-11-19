@@ -5,7 +5,7 @@
 #define KEYGENERATOR_H
 
 #include <stdexcept>
-#include <botan/p11_session.h>
+#include <botan/p11_types.h>
 #include "../config.h"
 
 using namespace Botan::PKCS11;
