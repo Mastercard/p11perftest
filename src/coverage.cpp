@@ -79,10 +79,6 @@ Coverage::Coverage(std::string tocover)
 	    m_algo_coverage.insert(AlgoCoverage::des);
 	    break;
 
-	case "des3"_hash:
-	    m_algo_coverage.insert(AlgoCoverage::des3);
-	    break;
-
 	case "aes"_hash:
 	    m_algo_coverage.insert(AlgoCoverage::aes);
 	    break;
@@ -121,10 +117,6 @@ bool Coverage::contains(std::string algo)
 
     case "des"_hash:
 	return contains(AlgoCoverage::des);
-	break;
-
-    case "des3"_hash:
-	return contains(AlgoCoverage::des3);
 	break;
 
     case "aes"_hash:

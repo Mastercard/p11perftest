@@ -66,7 +66,8 @@ int main(int argc, char **argv)
     bool generatekeys = true;
     po::options_description desc("available options");
 
-    const std::string default_coverage("rsa,ecdsa,hmac,des,des3,aes");
+    // default coverage: RSA, ECDSA, HMAC, DES and AES
+    const std::string default_coverage("rsa,ecdsa,hmac,des,aes");
 
     const auto hwthreads = std::thread::hardware_concurrency(); // how many threads do we have on this platform ?
 
@@ -79,7 +80,7 @@ int main(int argc, char **argv)
 	("iterations,i", po::value<int>(&argiter)->default_value(200), "number of iterations")
 	("json,j", "output results as JSON")
         ("jsonfile,o", po::value< std::string >(), "JSON output file name")
-	("coverage,c", po::value< std::string >()->default_value("rsa,ecdsa,hmac,des,des3,aes"), "coverage of test cases (comma-separated list of domains)" )
+	("coverage,c", po::value< std::string >()->default_value(default_coverage), "coverage of test cases (comma-separated list of domains)" )
 	("nogenerate,n", "Do not attempt to generate session keys; instead, use pre-existing token keys");
 
 
