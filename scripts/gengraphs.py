@@ -2,7 +2,6 @@
 # coding: utf-8
 
 import argparse
-import sqlite3
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -18,26 +17,36 @@ def splithalf(string):
     return string[:curpos-1], string[curpos:]
 
 
-def generate_graphs(db, sheetname):
-# Create your connection.
-    with sqlite3.connect(db) as cnx:
-
-        df = pd.read_sql_query(f"SELECT * FROM {sheetname}", cnx)
+def generate_graphs(xlsfp, sheetname):
+    with xlsfp:
+        # read from spreadsheet directly
+        df = pd.read_excel(xlsfp, sheet_name=sheetname)
 
         for testcase in df["test case"].unique():
+            if "signature" in testcase.lower() or "hmac" in testcase.lower():
+                # for signature and HMAC algos, we are interested only in knowing the TPS
+                col2, col3 = 'tps thread value', 'tps global value'
+                measure='tps'
+                unit='TPS'
+            else:
+                # for other algos, we want to know the throughput
+                col2, col3 = 'throughput thread value', 'throughput global value'
+                measure='throughput'
+                unit='Bytes/s'
+
             for vectorsize in sorted(df["vector size"].unique()):
                 print(f"Drawing graph for {testcase} and vector size {vectorsize}...", end='')
-                frame = df.loc[ (df['test case']==testcase) & (df['vector size']==vectorsize), ["threads", "latency average value", "tps thread value", "tps global value"] ]
+                frame = df.loc[ (df['test case']==testcase) & (df['vector size']==vectorsize), ['threads', 'latency average value', col2, col3 ] ]
 
                 fig, ax = plt.subplots(figsize=(16,12))
 
-                ax = frame.plot(colormap='cubehelix', x='threads', y='tps thread value', marker='o', label='TPS/thread', ax=ax)
-                frame.plot(x='threads', y='tps global value', marker='X', label='TPS, global', ax=ax)
+                ax = frame.plot(colormap='cubehelix', x='threads', y=f'{measure} thread value', marker='o', label=f'{measure}/thread', ax=ax)
+                frame.plot(x='threads', y=f'{measure} global value', marker='X', label=f'{measure}, global', ax=ax)
                 frame.plot(x='threads', y='latency average value', marker='^', label='latency', secondary_y=True, ax=ax)
                 title = "{}\n{}".format(*splithalf(f"{testcase} on a {vectorsize} bytes vector"))
                 ax.set_title(title)
                 ax.set_xlabel('# of threads')
-                ax.set_ylabel('Troughput (TPS)')
+                ax.set_ylabel(f'Troughput ({unit})')
                 ax.right_ax.set_ylabel('Latency (ms)')
                 ax.grid('on', which='major', axis='x')
                 ax.grid('on', which='major', axis='y')
@@ -52,11 +61,11 @@ def generate_graphs(db, sheetname):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Generate graphs from SQLITE database of p11perftest results')
-    parser.add_argument('db', help='Path to SQLite3 database')
+    parser = argparse.ArgumentParser(description='Generate graphs from spreadsheet of p11perftest results')
+    parser.add_argument('xls', metavar='FILE', type=argparse.FileType('rb'), help='Path to Excel spreadsheet', )
     parser.add_argument('-t', '--table', help='Table name', default='Sheet1')
     args = parser.parse_args()
 
-    generate_graphs(args.db, args.table)
+    generate_graphs(args.xls, args.table)
 
 

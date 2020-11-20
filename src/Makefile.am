@@ -28,7 +28,8 @@ p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			executor.cpp executor.hpp \
 			timeprecision.cpp timeprecision.hpp \
 			ConsoleTable.cpp ConsoleTable.hpp \
-			coverage.cpp coverage.hpp \
+			testcoverage.cpp testcoverage.hpp \
+			vectorcoverage.cpp vectorcoverage.hpp \
 			p11perftest.cpp
 
 p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_TIMER_LIB) $(BOOST_PROGRAM_OPTIONS_LIB) $(BOOST_CHRONO_LIB)

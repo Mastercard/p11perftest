@@ -1,16 +1,16 @@
-// coverage.hpp: a class to classify test cases per categories
+// testcoverage.hpp: a class to classify test cases per categories
 // -*- mode: c++; c-file-style:"stroustrup"; -*-
 
-#if !defined(COVERAGE_H)
-#define COVERAGE_H
+#if !defined(TESTCOVERAGE_H)
+#define TESTCOVERAGE_H
 
 #include <string>
 
-struct Coverage
+struct TestCoverage
 {
     enum class AlgoCoverage { rsa, ecdsa, hmac, des, aes };
 
-    Coverage(std::string tocover);
+    TestCoverage(std::string tocover);
 
     bool contains(AlgoCoverage algo);
     bool contains(std::string algo);
@@ -22,4 +22,4 @@ private:
 
 
 
-#endif // COVERAGE_H
+#endif // TESTCOVERAGE_H

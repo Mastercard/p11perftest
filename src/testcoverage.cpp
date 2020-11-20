@@ -9,7 +9,7 @@
 #include <iostream>
 #include <boost/tokenizer.hpp>
 #include <set>
-#include "coverage.hpp"
+#include "testcoverage.hpp"
 
 
 // the following is borrowed from https://dev.krzaq.cc/post/switch-on-strings-with-c11/
@@ -56,7 +56,7 @@ constexpr unsigned long long operator "" _hash(char const* p, size_t)
 
 
 
-Coverage::Coverage(std::string tocover)
+TestCoverage::TestCoverage(std::string tocover)
 {
     boost::tokenizer<> toparse(tocover);
 
@@ -89,7 +89,7 @@ Coverage::Coverage(std::string tocover)
     }
 }
 
-bool Coverage::contains(AlgoCoverage algo)
+bool TestCoverage::contains(AlgoCoverage algo)
 {
     auto search = m_algo_coverage.find(algo);
     if(search != m_algo_coverage.end()) {
@@ -100,7 +100,7 @@ bool Coverage::contains(AlgoCoverage algo)
     }
 }
 
-bool Coverage::contains(std::string algo)
+bool TestCoverage::contains(std::string algo)
 {
     switch(fnv1a_64::hash(algo)) {
     case "rsa"_hash:
