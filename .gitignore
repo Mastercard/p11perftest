@@ -22,6 +22,8 @@ libtool
 # PyInstaller
 /bin/
 /build/
+/scripts/build
+/scripts/dist
 
 # emacs
 *~
