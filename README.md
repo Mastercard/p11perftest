@@ -6,7 +6,7 @@ An utility to benchmark speed of operations of a PKCS#11 implementation.
 You will need the following:
  - a decent C++ compiler that supports C++11
  - the [Boost library](https://www.boost.org/) (a recent copy, above 1.60)
- - the [Botan library](https://botan.randombit.net/) (v>2.0)
+ - the [Botan library](https://botan.randombit.net/) (a recent copy, above 2.17.1)
 
 On RedHat/Oracle, you can generally find Boost on RPMs, from the EPEL repository. Check out [this link](https://blogs.oracle.com/wim/using-epel-repos-with-oracle-linux) to add EPEL to your yum repositories. Note that on EPEL, boost is suffixed with a version number - at the time of writing this document, it was `boost169`.
 
@@ -37,15 +37,21 @@ Note that to execute `p11perftest`, you may have to adjust `LD_LIBRARY_PATH` to 
 In case session keys cannot be used (which is the default behaviour), keys must be created directly on the cryptographic token.
 In order to execute the test, you will need to create the following keys upfront:
 
- - `rsa-2048` : a 2048 bits RSA key, with CKA_SIGN=true
- - `rsa-4096` : a 4096 bits RSA key, with CKA_SIGN=true
- - `ecdsa-secp256r1` : a secp256r1 ECDSA key, with CKA_SIGN=true
- - `ecdsa-secp384r1` : a secp384r1 ECDSA key, with CKA_SIGN=true
- - `ecdsa-secp521r1` : a secp521r1 ECDSA key, with CKA_SIGN=true
- - `des-128`  : a 2DES key, with CKA_ENCRYPT=true
- - `des-192`  : a 3DES key, with CKA_ENCRYPT=true
- - `aes-128`  : a 128 bits AES key, with CKA_ENCRYPT=true
- - `aes-256`  : a 256 bits AES key, with CKA_ENCRYPT=true
+| key name           | description                                    |
+|--------------------|------------------------------------------------|
+| `rsa-2048`         | a 2048 bits RSA key, with `CKA_SIGN`           |
+| `rsa-4096`         | a 4096 bits RSA key, with `CKA_SIGN`           |
+| `ecdsa-secp256r1`  | a secp256r1 ECDSA key, with `CKA_SIGN`         |
+| `ecdsa-secp384r1`  | a secp384r1 ECDSA key, with `CKA_SIGN`         |
+| `ecdsa-secp521r1`  | a secp521r1 ECDSA key, with `CKA_SIGN`         |
+| `des-128`          | a 2DES key, with `CKA_ENCRYPT`                 |
+| `des-192`          | a 3DES key, with `CKA_ENCRYPT`                 |
+| `aes-128`          | a 128 bits AES key, with `CKA_ENCRYPT`         |
+| `aes-256`          | a 256 bits AES key, with `CKA_ENCRYPT`         |
+| `hmac-sha1`        | a 160 bits generic secret key, with `CKA_SIGN` |
+| `hmac-sha256`      | a 256 bits generic secret key, with `CKA_SIGN` |
+| `hmac-sha512`      | a 512 bits generic secret key, with `CKA_SIGN` |
+
 
 There is a script at `scripts/createkeys.sh` to create these keys, using the [PKCS#11 toolkit](https://github.com/Mastercard/pkcs11-tools).
 There is also a python script, at `scripts/generatekeys.py`. It requires Python 3, and you will need to deploy the dependent libraries using `pip`:
@@ -78,4 +84,8 @@ JSON output files (when `-j` and/or `-o` options are specified) can be turned in
 $ pip install -r requirements.txt
 $ scripts/json2xlsx myresults.json myresults.xlsx
 ```
+
+## creating graphs
+
+Using the spreadsheet produced at previous step, graphs can be created using `gengraph.py` from `scripts directory`. Just provide the spreadhseet as argument, and graphs will be created automatically.
 
