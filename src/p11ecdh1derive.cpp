@@ -100,12 +100,7 @@ void P11ECDH1DeriveBenchmark::prepare(Session &session, Object &obj)
 
     m_template = std::unique_ptr<SecretKeyProperties>(new SecretKeyProperties(KeyType::GenericSecret));
     m_template->set_sensitive(true);
-    m_template->set_extractable(true);
-
-    // m_template->add_bool(AttributeType::Sensitive, true);
-    // m_template->add_bool(AttributeType::Extractable, false);
-    // m_template->add_numeric(AttributeType::Class, static_cast< CK_OBJECT_CLASS >(ObjectClass::SecretKey));
-    // m_template->add_numeric(AttributeType::KeyType, static_cast< CK_KEY_TYPE >(KeyType::GenericSecret));
+    m_template->set_extractable(false);
     m_template->add_numeric(AttributeType::ValueLen, static_cast< Ulong >(m_payload.size()));
 
 }
