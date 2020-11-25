@@ -2,8 +2,12 @@
 # different targets can be specified in this single file.
 
 ACLOCAL_AMFLAGS = -I m4
-AM_CPPFLAGS = $(BOTAN_CFLAGS) $(BOOST_CPPFLAGS)
-AM_LDFLAGS = $(BOTAN_LDFLAGS) $(BOOST_LDFLAGS) -lpthread
+AM_CPPFLAGS = $(BOTAN_CFLAGS) $(BOOST_CPPFLAGS) $(PTHREAD_CFLAGS)
+AM_LDFLAGS = $(BOTAN_LDFLAGS) $(BOOST_LDFLAGS) $(PTHREAD_LIBS)
+
+if HAS_BOTAN_RPATH
+AM_LDFLAGS += -rpath $(BOTAN_RPATH)
+endif
 
 # bin means install in bindir, PROGRAMS means building a program
 # You can have multiple programs. See slide 307 for different types of target.
@@ -33,6 +37,6 @@ p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			vectorcoverage.cpp vectorcoverage.hpp \
 			p11perftest.cpp
 
-p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_TIMER_LIB) $(BOOST_PROGRAM_OPTIONS_LIB) $(BOOST_CHRONO_LIB)
+p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_TIMER_LIB) $(BOOST_PROGRAM_OPTIONS_LIB) $(BOOST_CHRONO_LIB) $(PTHREAD_LIBS)
 
 
