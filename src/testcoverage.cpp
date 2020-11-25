@@ -71,6 +71,10 @@ TestCoverage::TestCoverage(std::string tocover)
 	    m_algo_coverage.insert(AlgoCoverage::ecdsa);
 	    break;
 
+	case "ecdh"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::ecdh);
+	    break;
+
 	case "hmac"_hash:
 	    m_algo_coverage.insert(AlgoCoverage::hmac);
 	    break;
@@ -109,6 +113,10 @@ bool TestCoverage::contains(std::string algo)
 
     case "ecdsa"_hash:
 	return contains(AlgoCoverage::ecdsa);
+	break;
+
+    case "ecdh"_hash:
+	return contains(AlgoCoverage::ecdh);
 	break;
 
     case "hmac"_hash:

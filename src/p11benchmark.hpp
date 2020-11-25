@@ -33,6 +33,9 @@ protected:
     // crashtestdummy(): here lies actual PKCS#11 calls to measure
     virtual void crashtestdummy(Session &session)=0;
 
+    // cleanup(): perform cleanup after each call of crashtestdummy(), if needed
+    virtual void cleanup(Session &session) { };
+
 public:
     P11Benchmark(const std::string &name,
 		 const std::string &label,

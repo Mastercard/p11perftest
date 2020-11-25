@@ -22,7 +22,8 @@ public:
 	{ RSA,
 	  DES,
 	  AES,
-	  ECC,
+	  ECDSA,
+	  ECDH,
 	  GENERIC
 	};
 
@@ -33,7 +34,8 @@ private:
     bool generate_rsa_keypair(std::string alias, unsigned int bits, std::string unused, Session *session);
     bool generate_aes_key(std::string alias, unsigned int bits, std::string unused, Session *session);
     bool generate_des_key(std::string alias, unsigned int bits, std::string unused, Session *session);
-    bool generate_ecc_keypair(std::string alias, unsigned int unused, std::string curve, Session *session);
+    bool generate_ecdsa_keypair(std::string alias, unsigned int unused, std::string curve, Session *session);
+    bool generate_ecdh_keypair(std::string alias, unsigned int unused, std::string curve, Session *session);
     bool generate_generic_key(std::string alias, unsigned int bits, std::string param, Session *session);
 
     void generate_key_generic( KeyGenerator::KeyType keytype, std::string alias, unsigned int bits, std::string curve);

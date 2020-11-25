@@ -84,6 +84,7 @@ benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uin
 		    crashtestdummy(*session);
 		    t.stop(); // stop it
 		    records.at(i) = t.elapsed().wall - started.wall;
+		    cleanup(*session); // cleanup any created object (e.g. unwrapped or derived keys)
 		}
 	    }
 	}

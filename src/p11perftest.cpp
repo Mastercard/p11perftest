@@ -35,6 +35,7 @@
 #include "executor.hpp"
 #include "p11rsasig.hpp"
 #include "p11ecdsasig.hpp"
+#include "p11ecdh1derive.hpp"
 #include "p11hmacsha1.hpp"
 #include "p11hmacsha256.hpp"
 #include "p11hmacsha512.hpp"
@@ -69,7 +70,7 @@ int main(int argc, char **argv)
     po::options_description desc("available options");
 
     // default coverage: RSA, ECDSA, HMAC, DES and AES
-    const std::string default_tests("rsa,ecdsa,hmac,des,aes");
+    const std::string default_tests("rsa,ecdsa,ecdh,hmac,des,aes");
     const std::string default_vectors("8,16,64,256,1024,4096");
 
     const auto hwthreads = std::thread::hardware_concurrency(); // how many threads do we have on this platform ?
@@ -208,9 +209,15 @@ int main(int argc, char **argv)
 		}
 
 		if(tests.contains("ecdsa")) {
-		    keygenerator.generate_key(KeyGenerator::KeyType::ECC, "ecdsa-secp256r1", "secp256r1");
-		    keygenerator.generate_key(KeyGenerator::KeyType::ECC, "ecdsa-secp384r1", "secp384r1");
-		    keygenerator.generate_key(KeyGenerator::KeyType::ECC, "ecdsa-secp521r1", "secp521r1");
+		    keygenerator.generate_key(KeyGenerator::KeyType::ECDSA, "ecdsa-secp256r1", "secp256r1");
+		    keygenerator.generate_key(KeyGenerator::KeyType::ECDSA, "ecdsa-secp384r1", "secp384r1");
+		    keygenerator.generate_key(KeyGenerator::KeyType::ECDSA, "ecdsa-secp521r1", "secp521r1");
+		}
+
+		if(tests.contains("ecdh")) {
+		    keygenerator.generate_key(KeyGenerator::KeyType::ECDH, "ecdh-secp256r1", "secp256r1");
+		    keygenerator.generate_key(KeyGenerator::KeyType::ECDH, "ecdh-secp384r1", "secp384r1");
+		    keygenerator.generate_key(KeyGenerator::KeyType::ECDH, "ecdh-secp521r1", "secp521r1");
 		}
 
 		if(tests.contains("hmac")) {
@@ -241,6 +248,12 @@ int main(int argc, char **argv)
 		benchmarks.emplace_front( new P11ECDSASigBenchmark("ecdsa-secp256r1") );
 		benchmarks.emplace_front( new P11ECDSASigBenchmark("ecdsa-secp384r1") );
 		benchmarks.emplace_front( new P11ECDSASigBenchmark("ecdsa-secp521r1") );
+	    }
+
+	    if(tests.contains("ecdh")) {
+		benchmarks.emplace_front( new P11ECDH1DeriveBenchmark("ecdh-secp256r1") );
+		benchmarks.emplace_front( new P11ECDH1DeriveBenchmark("ecdh-secp384r1") );
+		benchmarks.emplace_front( new P11ECDH1DeriveBenchmark("ecdh-secp521r1") );
 	    }
 
 	    if(tests.contains("hmac")) {

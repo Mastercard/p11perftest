@@ -6,6 +6,7 @@
 #include <array>
 #include <botan/p11_rsa.h>
 #include <botan/p11_ecdsa.h>
+#include <botan/p11_ecdh.h>
 #include "keygenerator.hpp"
 #include "errorcodes.hpp"
 
@@ -181,7 +182,7 @@ bool KeyGenerator::generate_generic_key(std::string alias, unsigned int bits, st
 }
 
 
-bool KeyGenerator::generate_ecc_keypair(std::string alias, unsigned int unused, std::string curve, Session *session) 
+bool KeyGenerator::generate_ecdsa_keypair(std::string alias, unsigned int unused, std::string curve, Session *session)
 {
     bool rv;
     try {
@@ -216,6 +217,41 @@ bool KeyGenerator::generate_ecc_keypair(std::string alias, unsigned int unused, 
 }
 
 
+bool KeyGenerator::generate_ecdh_keypair(std::string alias, unsigned int unused, std::string curve, Session *session)
+{
+    bool rv;
+    try {
+	Botan::PKCS11::EC_PrivateKeyGenerationProperties priv_generate_props;
+	priv_generate_props.set_token( false );
+	priv_generate_props.set_private( true );
+	priv_generate_props.set_derive( true );
+	priv_generate_props.set_label( alias );
+
+	Botan::PKCS11::EC_PublicKeyGenerationProperties pub_generate_props(
+	    Botan::EC_Group( curve ).DER_encode(Botan::EC_Group_Encoding::EC_DOMPAR_ENC_OID ) );
+
+	pub_generate_props.set_label( alias );
+	pub_generate_props.set_token( false );
+	pub_generate_props.set_derive( true );
+	pub_generate_props.set_private( false );
+
+	Botan::PKCS11::PKCS11_ECDH_KeyPair key_pair = Botan::PKCS11::generate_ecdh_keypair(*session, pub_generate_props, priv_generate_props);
+
+	rv = true;
+    } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
+	std::cerr << "ERROR:: " << bexc.what()
+		  << " (" << errorcode(bexc.error_code()) << ")" << std::endl;
+	rv = false;
+    } catch (Botan::Exception &bexc) {
+	std::cerr << "ERROR:: " << bexc.what() << std::endl;
+	// we print the exception, and move on
+	rv = false;
+    }
+
+    return rv;
+}
+
+
 void KeyGenerator::generate_key_generic(KeyGenerator::KeyType keytype, std::string alias, unsigned int bits, std::string curve)
 {
     int th;
@@ -229,7 +265,8 @@ void KeyGenerator::generate_key_generic(KeyGenerator::KeyType keytype, std::stri
 	{ KeyType::RSA, &KeyGenerator::generate_rsa_keypair },
 	{ KeyType::AES, &KeyGenerator::generate_aes_key } ,
         { KeyType::DES, &KeyGenerator::generate_des_key } ,
-        { KeyType::ECC, &KeyGenerator::generate_ecc_keypair },
+        { KeyType::ECDSA, &KeyGenerator::generate_ecdsa_keypair },
+        { KeyType::ECDH, &KeyGenerator::generate_ecdh_keypair },
 	{ KeyType::GENERIC, &KeyGenerator::generate_generic_key }
     };
 
@@ -275,7 +312,7 @@ void KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias
 void KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias, std::string curve) {
     std::set<std::string> allowed_curves { "secp256r1", "secp384r1", "secp521r1" };
 
-    if(keytype != KeyType::ECC) {
+    if(keytype != KeyType::ECDH && keytype != KeyType::ECDSA) {
 	throw KeyGenerationException { "Invalid keytype/argument combination" };
     }
 

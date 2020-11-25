@@ -8,7 +8,7 @@
 
 struct TestCoverage
 {
-    enum class AlgoCoverage { rsa, ecdsa, hmac, des, aes };
+    enum class AlgoCoverage { rsa, ecdsa, ecdh, hmac, des, aes };
 
     TestCoverage(std::string tocover);
 

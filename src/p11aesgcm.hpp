@@ -16,7 +16,7 @@ class P11AESGCMBenchmark : public P11Benchmark
 	0,
 	128
     };
-    
+
     Mechanism m_mech_aes_gcm { CKM_AES_GCM, &m_gcm_params, sizeof m_gcm_params };
 
     std::vector<uint8_t> m_encrypted;

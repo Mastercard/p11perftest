@@ -12,8 +12,8 @@ AC_LANG(C++)
 # Let's set a C++ compiler
 AC_PROG_CXX
 
-# We need c++11 standard
-AX_CXX_COMPILE_STDCXX_11()
+# We want c++17 standard
+AX_CXX_COMPILE_STDCXX_17()
 
 # This suppresses the error we get for also having the cc version of helper library.
 AC_SUBST([CC])
