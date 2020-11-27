@@ -2,11 +2,19 @@
 # different targets can be specified in this single file.
 
 ACLOCAL_AMFLAGS = -I m4
-AM_CPPFLAGS = $(BOTAN_CFLAGS) $(BOOST_CPPFLAGS) $(PTHREAD_CFLAGS)
-AM_LDFLAGS = $(BOTAN_LDFLAGS) $(BOOST_LDFLAGS) $(PTHREAD_LIBS)
+AM_CPPFLAGS = $(BOTAN_CFLAGS) $(BOOST_CPPFLAGS) $(LIBCRYPTO_CFLAGS) $(PTHREAD_CFLAGS)
+AM_LDFLAGS = $(BOTAN_LDFLAGS) $(BOOST_LDFLAGS) $(LIBCRYPTO_LDFLAGS) $(PTHREAD_LIBS)
 
 if HAS_BOTAN_RPATH
 AM_LDFLAGS += -rpath $(BOTAN_RPATH)
+endif
+
+if HAS_BOOST_RPATH
+AM_LDFLAGS += -rpath $(BOOST_RPATH)
+
+endif
+if HAS_OPENSSL_RPATH
+AM_LDFLAGS += -rpath $(OPENSSL_RPATH)
 endif
 
 # bin means install in bindir, PROGRAMS means building a program
@@ -37,6 +45,6 @@ p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			vectorcoverage.cpp vectorcoverage.hpp \
 			p11perftest.cpp
 
-p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_TIMER_LIB) $(BOOST_PROGRAM_OPTIONS_LIB) $(BOOST_CHRONO_LIB) $(PTHREAD_LIBS)
+p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_TIMER_LIB) $(BOOST_PROGRAM_OPTIONS_LIB) $(BOOST_CHRONO_LIB) $(LIBCRYPTO_LIBS) $(PTHREAD_LIBS)
 
 
