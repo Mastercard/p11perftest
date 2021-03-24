@@ -40,7 +40,7 @@ p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			measure.hpp \
 			executor.cpp executor.hpp \
 			timeprecision.cpp timeprecision.hpp \
-			ConsoleTable.cpp ConsoleTable.hpp \
+			ConsoleTable.cpp ConsoleTable.h \
 			testcoverage.cpp testcoverage.hpp \
 			vectorcoverage.cpp vectorcoverage.hpp \
 			p11perftest.cpp
