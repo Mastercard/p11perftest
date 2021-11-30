@@ -30,3 +30,9 @@ libtool
 *.json
 *.xlsx
 *.ign/
+
+# others
+*.tar
+*.tar.gz
+*.tgz
+
