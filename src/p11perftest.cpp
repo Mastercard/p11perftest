@@ -36,6 +36,9 @@
 #include "p11rsasig.hpp"
 #include "p11ecdsasig.hpp"
 #include "p11ecdh1derive.hpp"
+#include "p11xorkeydataderive.hpp"
+#include "p11genrandom.hpp"
+#include "p11seedrandom.hpp"
 #include "p11hmacsha1.hpp"
 #include "p11hmacsha256.hpp"
 #include "p11hmacsha512.hpp"
@@ -70,7 +73,7 @@ int main(int argc, char **argv)
     po::options_description desc("available options");
 
     // default coverage: RSA, ECDSA, HMAC, DES and AES
-    const std::string default_tests("rsa,ecdsa,ecdh,hmac,des,aes");
+    const std::string default_tests("rsa,ecdsa,ecdh,hmac,des,aes,xorder,rand");
     const std::string default_vectors("8,16,64,256,1024,4096");
 
     const auto hwthreads = std::thread::hardware_concurrency(); // how many threads do we have on this platform ?
@@ -235,6 +238,15 @@ int main(int argc, char **argv)
 		    keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-128", 128);
 		    keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-256", 256);
 		}
+
+		if(tests.contains("xorder")) {
+		    keygenerator.generate_key(KeyGenerator::KeyType::GENERIC, "xorder-128", 128);
+		}
+
+		if(tests.contains("rand")) {
+		    keygenerator.generate_key(KeyGenerator::KeyType::AES, "rand-128", 128); // not really used
+		}
+
 	    }
 
 	    std::forward_list<P11Benchmark *> benchmarks;
@@ -276,6 +288,15 @@ int main(int argc, char **argv)
 		benchmarks.emplace_front( new P11AESCBCBenchmark("aes-256") );
 		benchmarks.emplace_front( new P11AESGCMBenchmark("aes-128") );
 		benchmarks.emplace_front( new P11AESGCMBenchmark("aes-256") );
+	    }
+	    
+	    if(tests.contains("xorder")) {
+		benchmarks.emplace_front( new P11XorKeyDataDeriveBenchmark("xorder-128") );
+	    }
+
+	    if(tests.contains("rand")) {
+		benchmarks.emplace_front( new P11SeedRandomBenchmark("rand-128") );
+		benchmarks.emplace_front( new P11GenerateRandomBenchmark("rand-128") );
 	    }
 
 	    benchmarks.reverse();

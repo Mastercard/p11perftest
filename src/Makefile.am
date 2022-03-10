@@ -35,6 +35,9 @@ p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			p11hmacsha256.cpp p11hmacsha256.hpp \
 			p11hmacsha512.cpp p11hmacsha512.hpp \
 			p11ecdh1derive.cpp p11ecdh1derive.hpp \
+			p11xorkeydataderive.cpp	p11xorkeydataderive.hpp \
+			p11seedrandom.cpp p11seedrandom.hpp \
+			p11genrandom.cpp p11genrandom.hpp \
 			errorcodes.cpp errorcodes.hpp \
 			keygenerator.cpp keygenerator.hpp \
 			measure.hpp \

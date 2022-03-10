@@ -153,13 +153,14 @@ bool KeyGenerator::generate_generic_key(std::string alias, unsigned int bits, st
     ObjectHandle handle;
     Mechanism mech_generic_secret_key_gen { CKM_GENERIC_SECRET_KEY_GEN, nullptr, 0 };
 
-    std::array<Attribute,6> keytemplate {
+    std::array<Attribute,7> keytemplate {
 	{
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Label), const_cast< char* >(alias.c_str()), alias.size() },
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Token), &bfalse, sizeof(Byte) },
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Private), &btrue, sizeof(Byte) },
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Sign), &btrue, sizeof(Byte) },
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Verify), &btrue, sizeof(Byte) },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Derive), &btrue, sizeof(Byte) }, // needed for CKM_XOR_BASE_AND_DATA
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::ValueLen), &len, sizeof(Ulong) }
 	}
     };

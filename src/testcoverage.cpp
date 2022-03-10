@@ -87,6 +87,14 @@ TestCoverage::TestCoverage(std::string tocover)
 	    m_algo_coverage.insert(AlgoCoverage::aes);
 	    break;
 
+	case "xorder"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::xorder);
+	    break;
+
+	case "rand"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::rand);
+	    break;
+
 	default:
 	    std::cerr << "Unknow coverage class: " << token << ", skipping." << std::endl;
 	}
@@ -131,6 +139,13 @@ bool TestCoverage::contains(std::string algo)
 	return contains(AlgoCoverage::aes);
 	break;
 
+    case "xorder"_hash:
+	return contains(AlgoCoverage::xorder);
+	break;
+
+    case "rand"_hash:
+	return contains(AlgoCoverage::rand);
+	break;
     }
     return false;
 }

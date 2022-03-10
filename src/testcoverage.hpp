@@ -8,8 +8,17 @@
 
 struct TestCoverage
 {
-    enum class AlgoCoverage { rsa, ecdsa, ecdh, hmac, des, aes };
-
+    enum class AlgoCoverage { 
+	rsa, 			// RSA
+	ecdsa, 			// ECDSA
+	ecdh, 			// ECDH
+	hmac, 			// HMAC
+	des, 			// DES and 3DES
+	aes, 			// AES
+	xorder, 		// XOR derivation
+	rand 			// Random number generation
+    };
+    
     TestCoverage(std::string tocover);
 
     bool contains(AlgoCoverage algo);
