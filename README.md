@@ -40,10 +40,14 @@ In order to execute the test, you will need to create the following keys upfront
 | key name           | description                                                       |
 |--------------------|-------------------------------------------------------------------|
 | `rsa-2048`         | a 2048 bits RSA key, with `CKA_SIGN`                              |
+| `rsa-3072`         | a 3072 bits RSA key, with `CKA_SIGN`                              |
 | `rsa-4096`         | a 4096 bits RSA key, with `CKA_SIGN`                              |
 | `ecdsa-secp256r1`  | a secp256r1 ECDSA key, with `CKA_SIGN`                            |
 | `ecdsa-secp384r1`  | a secp384r1 ECDSA key, with `CKA_SIGN`                            |
 | `ecdsa-secp521r1`  | a secp521r1 ECDSA key, with `CKA_SIGN`                            |
+| `ecdh-secp256r1`   | a secp256r1 ECDH key, with `CKA_SIGN`                             |
+| `ecdh-secp384r1`   | a secp384r1 ECDH key, with `CKA_SIGN`                             |
+| `ecdh-secp521r1`   | a secp521r1 ECDH key, with `CKA_SIGN`                             |
 | `des-128`          | a 2DES key, with `CKA_ENCRYPT`                                    |
 | `des-192`          | a 3DES key, with `CKA_ENCRYPT`                                    |
 | `aes-128`          | a 128 bits AES key, with `CKA_ENCRYPT`                            |
@@ -78,6 +82,11 @@ available options:
   - `-c [ --coverage ] arg (=rsa,ecdsa,ecdh,hmac,des,aes,xorder,rand)`, coverage of test cases
   - `-v [ --vectors ] arg (=8,16,64,256,1024,4096)`, test vectors to use
   - `-n [ --nogenerate ]`, do not attempt to generate session keys; instead, use pre-existing token
+  - `-k [ --keysizes ] arg (=rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256)`, key sizes or curves to use
+																																			  
+By default, coverage for `des` includes ECB and CBC mode; coverage for `aes` includes ECB, CBC and GCM modes. It is possible to narrow down to specific modes:
+ - for AES, `aesecb`, `aescbc`, or `aesgcm` instead of `aes`
+ - for DES, `desecb` or `descbc` for `des`
 
 
 ## parsing JSON output

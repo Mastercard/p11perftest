@@ -46,6 +46,7 @@ p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			ConsoleTable.cpp ConsoleTable.h \
 			testcoverage.cpp testcoverage.hpp \
 			vectorcoverage.cpp vectorcoverage.hpp \
+			keysizecoverage.cpp keysizecoverage.hpp \
 			p11perftest.cpp
 
 p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_TIMER_LIB) $(BOOST_PROGRAM_OPTIONS_LIB) $(BOOST_CHRONO_LIB) $(LIBCRYPTO_LIBS) $(PTHREAD_LIBS)

@@ -83,8 +83,28 @@ TestCoverage::TestCoverage(std::string tocover)
 	    m_algo_coverage.insert(AlgoCoverage::des);
 	    break;
 
+	case "desecb"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::desecb);
+	    break;
+
+	case "descbc"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::descbc);
+	    break;
+
 	case "aes"_hash:
 	    m_algo_coverage.insert(AlgoCoverage::aes);
+	    break;
+
+	case "aesecb"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::aesecb);
+	    break;
+
+	case "aescbc"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::aescbc);
+	    break;
+
+	case "aesgcm"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::aesgcm);
 	    break;
 
 	case "xorder"_hash:
@@ -131,8 +151,28 @@ bool TestCoverage::contains(std::string algo)
 	return contains(AlgoCoverage::hmac);
 	break;
 
+    case "desecb"_hash:
+	return contains(AlgoCoverage::desecb);
+	break;
+
+    case "descbc"_hash:
+	return contains(AlgoCoverage::descbc);
+	break;
+
     case "des"_hash:
 	return contains(AlgoCoverage::des);
+	break;
+
+    case "aesecb"_hash:
+	return contains(AlgoCoverage::aesecb);
+	break;
+
+    case "aescbc"_hash:
+	return contains(AlgoCoverage::aescbc);
+	break;
+
+    case "aesgcm"_hash:
+	return contains(AlgoCoverage::aesgcm);
 	break;
 
     case "aes"_hash:
