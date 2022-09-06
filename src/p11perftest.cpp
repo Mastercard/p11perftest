@@ -91,7 +91,7 @@ int main(int argc, char **argv)
         ("jsonfile,o", po::value< std::string >(), "JSON output file name")
 	("coverage,c", po::value< std::string >()->default_value(default_tests), "coverage of test cases")
 	("vectors,v", po::value< std::string >()->default_value(default_vectors), "test vectors to use")
-	("keysizes,k", po::value< std::string >()->default_value(default_keysizes), "key sizes or curves to use");
+	("keysizes,k", po::value< std::string >()->default_value(default_keysizes), "key sizes or curves to use")
 	("nogenerate,n", "Do not attempt to generate session keys; use existing token keys instead");
 
 

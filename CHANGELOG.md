@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 3.6.1 - 2022-09-06
+### Fixed
+- `-n` option reinstated, was mistakenly dropped.
+
 ## 3.6.0 - 2022-09-06
 ### Added
 - support for individual selection of block ciphers mode of operation (in addition to existing coverage options)
