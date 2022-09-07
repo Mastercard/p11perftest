@@ -1,17 +1,55 @@
 #!/usr/bin/env python
 
-LIB = '/opt/safenet/lunaclient/lib/libCryptoki2_64.so'
-SPYLIB= '/usr/lib64/pkcs11/pkcs11-spy.so'
-SLOTINDEX = 2
-PASSWORD = 'changeit'
-
-
 import pkcs11
 import os
 import sys
 import argparse
 from pkcs11 import KeyType, Attribute, MechanismFlag, Mechanism
 from pkcs11.util.ec import encode_named_curve_parameters
+
+
+def generate_key(session, keytype, size, label, *args, **kwargs):
+    try:
+        print(f"Generating {label} key")
+        key = session.generate_key( keytype,
+                                    size, 
+                                    label=label, 
+                                    *args,
+                                    **kwargs)
+        
+    except Exception as e:
+        breakpoint()
+        print(f"Ouch caught an exception: {e}")
+        print(f"key with label {label} has NOT been generated")
+        
+
+def generate_keypair(session, keytype, sizeorcurve, label, *args, **kwargs):
+    try:
+        if keytype == KeyType.RSA:
+            print(f"Generating {label} RSA key pair")
+            key = session.generate_keypair( keytype,
+                                            sizeorcurve, 
+                                            label=label, 
+                                            *args,
+                                            **kwargs)
+        elif keytype == KeyType.EC:
+            print(f"Generating {label} EC key pair")
+            param = session.create_domain_parameters(KeyType.EC, {
+                Attribute.EC_PARAMS: encode_named_curve_parameters(sizeorcurve)
+            }, local=True)
+
+            key = param.generate_keypair ( label=label,
+                                           *args,
+                                           **kwargs)
+
+        else:
+            raise f"Unsupported keytype: {keytype}"
+        
+    except Exception as e:
+        print(f"Ouch caught an exception: {e}")
+        print(f"key with label {label} has NOT been generated")
+        
+        
 
 
 def generate_p11perftest_keys(libname, slot, password, store):
@@ -27,110 +65,59 @@ Token: {token}""")
     print('-'*80)
 
 
-    with token.open(user_pin=args.password, rw=True) as session:
+    with token.open(user_pin=password, rw=True) as session:
 
-        print("Generating des-1 key")
-        des1 = session.generate_key( KeyType.DES2,
-                                     128, 
-                                     label='des-128', 
-                                     store=store, 
-                                     capabilities = MechanismFlag.ENCRYPT | MechanismFlag.DECRYPT )
+        keystogenerate = [
+            [ generate_key, KeyType.DES2, 128, 'des-128', { 'capabilities': MechanismFlag.ENCRYPT | MechanismFlag.DECRYPT } ],
+            [ generate_key, KeyType.DES3, 192, 'des-192', { 'capabilities': MechanismFlag.ENCRYPT | MechanismFlag.DECRYPT } ],
+            [ generate_key, KeyType.AES, 128, 'aes-128', { 'capabilities': MechanismFlag.ENCRYPT | MechanismFlag.DECRYPT } ],
+            [ generate_key, KeyType.AES, 192, 'aes-192', { 'capabilities': MechanismFlag.ENCRYPT | MechanismFlag.DECRYPT } ],
+            [ generate_key, KeyType.AES, 256, 'aes-256', { 'capabilities': MechanismFlag.ENCRYPT | MechanismFlag.DECRYPT } ],
 
-        print("Generating des-2 key")
-        des2 = session.generate_key( KeyType.DES3,
-                                     192, 
-                                     label='des-192', 
-                                     store=store, 
-                                     capabilities = MechanismFlag.ENCRYPT | MechanismFlag.DECRYPT )
+            [ generate_keypair, KeyType.RSA, 2048, 'rsa-2048', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY } ],
+            [ generate_keypair, KeyType.RSA, 3072, 'rsa-3072', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY } ],
+            [ generate_keypair, KeyType.RSA, 4096, 'rsa-4096', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY } ],
 
-        print("Generating aes-1 key")
-        aes1 = session.generate_key( KeyType.AES,
-                                     128, 
-                                     label='aes-128', 
-                                     store=store, 
-                                     capabilities = MechanismFlag.ENCRYPT | MechanismFlag.DECRYPT )
+            [ generate_keypair, KeyType.EC, 'secp256r1', 'ecdsa-secp256r1', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY } ],
+            [ generate_keypair, KeyType.EC, 'secp384r1', 'ecdsa-secp384r1', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY } ],
+            [ generate_keypair, KeyType.EC, 'secp521r1', 'ecdsa-secp521r1', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY } ],
 
-        print("Generating aes-2 key")
-        aes2 = session.generate_key( KeyType.AES,
-                                     256, 
-                                     label='aes-256', 
-                                     store=store, 
-                                     capabilities = MechanismFlag.ENCRYPT | MechanismFlag.DECRYPT )
-        
+            [ generate_keypair, KeyType.EC, 'secp256r1', 'ecdh-secp256r1', { 'capabilities': MechanismFlag.DERIVE } ],
+            [ generate_keypair, KeyType.EC, 'secp384r1', 'ecdh-secp384r1', { 'capabilities': MechanismFlag.DERIVE } ],
+            [ generate_keypair, KeyType.EC, 'secp521r1', 'ecdh-secp521r1', { 'capabilities': MechanismFlag.DERIVE } ],
 
-        print("Generating rsa-1 key")
-        rsa1 = session.generate_keypair( KeyType.RSA,
-                                         2048, 
-                                         label='rsa-2048', 
-                                         store=store, 
-                                         capabilities = MechanismFlag.SIGN | MechanismFlag.VERIFY )
+            [ generate_key, KeyType.GENERIC_SECRET, 160, 'hmac-sha1', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY, 
+                                                                        'mechanism': Mechanism.GENERIC_SECRET_KEY_GEN } ],
+            [ generate_key, KeyType.GENERIC_SECRET, 256, 'hmac-sha256', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY, 
+                                                                          'mechanism': Mechanism.GENERIC_SECRET_KEY_GEN } ],
+            [ generate_key, KeyType.GENERIC_SECRET, 512, 'hmac-sha512', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY, 
+                                                                          'mechanism': Mechanism.GENERIC_SECRET_KEY_GEN } ],
+            [ generate_key, KeyType.GENERIC_SECRET, 128, 'xorder-128', { 'capabilities': MechanismFlag.DERIVE, 
+                                                                         'mechanism': Mechanism.GENERIC_SECRET_KEY_GEN } ],
+            [ generate_key, KeyType.AES, 128, 'rand-128', { } ],
 
-        print("Generating rsa-2 key")
-        rsa2 = session.generate_keypair( KeyType.RSA,
-                                         4096, 
-                                         label='rsa-4096', 
-                                         store=store, 
-                                         capabilities = MechanismFlag.SIGN | MechanismFlag.VERIFY )
+        ]
 
 
-        secp256r1 = session.create_domain_parameters(KeyType.EC, {
-            Attribute.EC_PARAMS: encode_named_curve_parameters('secp256r1')
-        }, local=True)
+        for item in keystogenerate:
+            generator, keytype, sizeorcurve, label, kwargs = item
+            # specify if the key is a token key or a session key
 
-        secp384r1 = session.create_domain_parameters(KeyType.EC, {
-            Attribute.EC_PARAMS: encode_named_curve_parameters('secp384r1')
-        }, local=True)
+            kwargs['store'] = store 
+            generator(session, keytype, sizeorcurve, label, **kwargs)
 
-        secp521r1 = session.create_domain_parameters(KeyType.EC, {
-            Attribute.EC_PARAMS: encode_named_curve_parameters('secp521r1')
-        }, local=True)
 
-        print("Generating ecdsa-secp256r1 key")
-        ecdsa_secp256r1 = secp256r1.generate_keypair ( label='ecdsa_secp256r1',
-                                                       store=store,
-                                                       capabilities = MechanismFlag.SIGN | MechanismFlag.VERIFY )
-        
-        print("Generating ecdsa-secp384r1 key")
-        ecdsa_secp256r1 = secp384r1.generate_keypair ( label='ecdsa_secp384r1',
-                                                       store=store,
-                                                       capabilities = MechanismFlag.SIGN | MechanismFlag.VERIFY )
-        
-        print("Generating ecdsa-secp521r1 key")
-        ecdsa_secp256r1 = secp521r1.generate_keypair ( label='ecdsa_secp521r1',
-                                                       store=store,
-                                                       capabilities = MechanismFlag.SIGN | MechanismFlag.VERIFY )
-        
-                                                     
 
 if __name__ == '__main__':
 
 
-    parser = argparse.ArgumentParser(description='Test if PKCS#11 CT can support wrapping RSA private keys')
-    parser.add_argument('library', metavar='PKCS11LIB', help='Path to PKCS#11 library', default=LIB, nargs='?')
-    parser.add_argument('slotindex', type=int, metavar='SLOTINDEX', help='Slot index', default=SLOTINDEX, nargs='?')
-    parser.add_argument('password', metavar='PASSWORD', help='Token password', default=PASSWORD, nargs='?')
-    parser.add_argument('-d','--debug', action='store_true', help='Using pkcs11-spy, debug API calls')
-    parser.add_argument('--pkcs11spy', metavar='FILE', help='Path to PKCS#11 pkcs11-spy library', default=SPYLIB)
-    parser.add_argument('--pkcs11spyoutput', metavar='FILE', help='Path to file where to write pkcs11-spy logs')
-    parser.add_argument('-n', '--noop', action='store_true', help='Perform operations, but do not write keys on token')
+    parser = argparse.ArgumentParser(description='Generate key material needed for p11perftest')
+    parser.add_argument('-l', '--library', metavar='PKCS11LIB', help='Path to PKCS#11 library', required=True)
+    parser.add_argument('-s', '--slotindex', type=int, metavar='SLOTINDEX', help='Slot index', required=True)
+    parser.add_argument('-p', '--pin', '--password', metavar='PASSWORD', help='Token PIN or password', required=True)
+    parser.add_argument('-n', '--nostore', action='store_true', help='Dry run. Perform key generation, but do not write keys on token')
     args = parser.parse_args()
 
-    # if we use pkcs11-spy, setup pkcs11-spy environment accordingly
-    if args.debug==True:
-        os.environ['PKCS11SPY'] = args.library
-        if args.pkcs11spyoutput:
-            os.environ['PKCS11SPY_OUTPUT'] = args.pkcs11spyoutput
-            libname = args.pkcs11spy
-    else:
-        libname = args.library
-    
-
-    generate_p11perftest_keys(libname, args.slotindex, args.password, not args.noop)
-
-
-
-
-
-
+    generate_p11perftest_keys(args.library, args.slotindex, args.pin, not args.nostore)
 
 
