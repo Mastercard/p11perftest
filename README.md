@@ -45,12 +45,13 @@ In order to execute the test, you will need to create the following keys upfront
 | `ecdsa-secp256r1`  | a secp256r1 ECDSA key, with `CKA_SIGN`                            |
 | `ecdsa-secp384r1`  | a secp384r1 ECDSA key, with `CKA_SIGN`                            |
 | `ecdsa-secp521r1`  | a secp521r1 ECDSA key, with `CKA_SIGN`                            |
-| `ecdh-secp256r1`   | a secp256r1 ECDH key, with `CKA_SIGN`                             |
-| `ecdh-secp384r1`   | a secp384r1 ECDH key, with `CKA_SIGN`                             |
-| `ecdh-secp521r1`   | a secp521r1 ECDH key, with `CKA_SIGN`                             |
+| `ecdh-secp256r1`   | a secp256r1 ECDH key, with `CKA_DERIVE`                           |
+| `ecdh-secp384r1`   | a secp384r1 ECDH key, with `CKA_DERIVE`                           |
+| `ecdh-secp521r1`   | a secp521r1 ECDH key, with `CKA_DERIVE`                           |
 | `des-128`          | a 2DES key, with `CKA_ENCRYPT`                                    |
 | `des-192`          | a 3DES key, with `CKA_ENCRYPT`                                    |
 | `aes-128`          | a 128 bits AES key, with `CKA_ENCRYPT`                            |
+| `aes-192`           |a 192 bits AES key, with `CKA_ENCRYPT`                            |
 | `aes-256`          | a 256 bits AES key, with `CKA_ENCRYPT`                            |
 | `hmac-sha1`        | a 160 bits generic secret key, with `CKA_SIGN`                    |
 | `hmac-sha256`      | a 256 bits generic secret key, with `CKA_SIGN`                    |
