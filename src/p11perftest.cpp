@@ -12,6 +12,8 @@
 #include <fstream>
 #include <forward_list>
 #include <thread>
+#include <cstdlib>
+#include <sysexits.h>		// BSD exit codes
 
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/range/adaptor/map.hpp>
@@ -96,8 +98,14 @@ int main(int argc, char **argv)
 
 
     po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, desc), vm);
-    po::notify(vm);
+    
+    try {
+	po::store(po::parse_command_line(argc, argv, desc), vm);
+	po::notify(vm);
+    } catch (const po::error& e) {
+	std::cerr << "*** Error: when parsing program arguments, " << e.what() << std::endl;
+	std::exit(EX_USAGE);
+    }
 
     if(vm.count("help")) {
 	std::cout << desc << std::endl;
