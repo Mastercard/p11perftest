@@ -40,7 +40,7 @@ p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			p11genrandom.cpp p11genrandom.hpp \
 			errorcodes.cpp errorcodes.hpp \
 			keygenerator.cpp keygenerator.hpp \
-			measure.hpp \
+			measure.hpp measure.cpp \
 			executor.cpp executor.hpp \
 			timeprecision.cpp timeprecision.hpp \
 			ConsoleTable.cpp ConsoleTable.h \

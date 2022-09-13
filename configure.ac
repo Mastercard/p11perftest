@@ -84,10 +84,10 @@ AC_OUTPUT
 
 AC_MSG_NOTICE([------------------------------------------------------------------------])
 AC_MSG_NOTICE([compiler       : $CXX])
-AC_MSG_NOTICE([compiler flags : ${BOTAN_CFLAGS} ${BOOST_CPPFLAGS} ${LIBCRYPTO_CFLAGS} $CFLAGS])
+AC_MSG_NOTICE([compiler flags : ${BOTAN_CFLAGS} ${BOOST_CPPFLAGS} ${LIBCRYPTO_CFLAGS} ${PTHREAD_CFLAGS} $CXXFLAGS])
 AC_MSG_NOTICE([linker         : $LD])
 AC_MSG_NOTICE([linker flags   : ${BOTAN_LDFLAGS} ${BOOST_LDFLAGS} ${LIBCRYPTO_LDFLAGS} $LDFLAGS])
-AC_MSG_NOTICE([libraries      : ${BOTAN_LIBS} ${BOOST_LIBS} ${LIBCRYPTO_LIBS} $LIBS])
+AC_MSG_NOTICE([libraries      : ${BOTAN_LIBS} ${BOOST_LIBS} ${LIBCRYPTO_LIBS} ${PTHREAD_LIBS} $LIBS])
 AC_MSG_NOTICE([Botan rpath    : $BOTAN_RPATH])
 AC_MSG_NOTICE([Boost rpath    : $BOOST_RPATH])
 AC_MSG_NOTICE([OpenSSL rpath  : $OPENSSL_RPATH])

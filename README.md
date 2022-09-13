@@ -103,3 +103,10 @@ $ scripts/json2xlsx myresults.json myresults.xlsx
 
 Using the spreadsheet produced at previous step, graphs can be created using `gengraph.py` from `scripts directory`. Just provide the spreadhseet as argument, and graphs will be created automatically.
 
+
+## Calculus of error references
+
+ - https://www.unine.ch/files/live/sites/physique/files/TP/G%C3%A9n%C3%A9ral/Intro%20calcul%20d'erreur.pdf
+ - https://stats.libretexts.org/Bookshelves/Introductory_Statistics/Book%3A_Introductory_Statistics_(Shafer_and_Zhang)/06%3A_Sampling_Distributions/6.01%3A_The_Mean_and_Standard_Deviation_of_the_Sample_Mean
+ - https://stats.libretexts.org/Bookshelves/Introductory_Statistics/Book%3A_Introductory_Statistics_(Shafer_and_Zhang)/06%3A_Sampling_Distributions/6.02%3A_The_Sampling_Distribution_of_the_Sample_Mean
+
