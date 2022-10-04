@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## UNRELEASED
+### Added
+- support for implementation flavours (using `-f` or `--flavour` parameter).
+- Flavours: Entrust in FIPS mode, Safenet Luna in FIPS mode, Utimaco in FIPS mode, generic mode
+- JWE (RFC7516) key unwrapping and data decryption (RSA-OAEP + AESGCM)
+
+### Changed
+- AES-GCM now supports flavours
+
 ### Fixed
 - fixing unhandled exception during program option parsing, causing termination
 

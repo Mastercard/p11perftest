@@ -5,6 +5,7 @@
 #define KEYSIZECOVERAGE_H
 
 #include <string>
+#include <set>
 
 struct KeySizeCoverage
 {

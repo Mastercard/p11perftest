@@ -74,9 +74,9 @@ Token: {token}""")
             [ generate_key, KeyType.AES, 192, 'aes-192', { 'capabilities': MechanismFlag.ENCRYPT | MechanismFlag.DECRYPT } ],
             [ generate_key, KeyType.AES, 256, 'aes-256', { 'capabilities': MechanismFlag.ENCRYPT | MechanismFlag.DECRYPT } ],
 
-            [ generate_keypair, KeyType.RSA, 2048, 'rsa-2048', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY } ],
-            [ generate_keypair, KeyType.RSA, 3072, 'rsa-3072', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY } ],
-            [ generate_keypair, KeyType.RSA, 4096, 'rsa-4096', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY } ],
+            [ generate_keypair, KeyType.RSA, 2048, 'rsa-2048', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY | MechanismFlag.WRAP | MechanismFlag.UNWRAP } ],
+            [ generate_keypair, KeyType.RSA, 3072, 'rsa-3072', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY | MechanismFlag.WRAP | MechanismFlag.UNWRAP} ],
+            [ generate_keypair, KeyType.RSA, 4096, 'rsa-4096', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY | MechanismFlag.WRAP | MechanismFlag.UNWRAP } ],
 
             [ generate_keypair, KeyType.EC, 'secp256r1', 'ecdsa-secp256r1', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY } ],
             [ generate_keypair, KeyType.EC, 'secp384r1', 'ecdsa-secp384r1', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY } ],

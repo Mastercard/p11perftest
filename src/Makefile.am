@@ -25,6 +25,7 @@ bin_PROGRAMS = p11perftest
 
 p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			p11rsasig.cpp p11rsasig.hpp \
+			p11jwe.cpp p11jwe.hpp \
 			p11ecdsasig.cpp p11ecdsasig.hpp \
 			p11des3ecb.cpp p11des3ecb.hpp \
 			p11des3cbc.cpp p11des3cbc.hpp \
@@ -38,6 +39,7 @@ p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			p11xorkeydataderive.cpp	p11xorkeydataderive.hpp \
 			p11seedrandom.cpp p11seedrandom.hpp \
 			p11genrandom.cpp p11genrandom.hpp \
+			stringhash.hpp \
 			errorcodes.cpp errorcodes.hpp \
 			keygenerator.cpp keygenerator.hpp \
 			measure.hpp measure.cpp \
@@ -47,6 +49,7 @@ p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			testcoverage.cpp testcoverage.hpp \
 			vectorcoverage.cpp vectorcoverage.hpp \
 			keysizecoverage.cpp keysizecoverage.hpp \
+			implementation.cpp implementation.hpp \
 			p11perftest.cpp
 
 p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_TIMER_LIB) $(BOOST_PROGRAM_OPTIONS_LIB) $(BOOST_CHRONO_LIB) $(LIBCRYPTO_LIBS) $(PTHREAD_LIBS)

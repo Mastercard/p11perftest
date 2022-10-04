@@ -14,7 +14,7 @@ inline P11DES3CBCBenchmark *P11DES3CBCBenchmark::clone() const {
 }
 
 
-void P11DES3CBCBenchmark::prepare(Session &session, Object &obj)
+void P11DES3CBCBenchmark::prepare(Session &session, Object &obj, std::optional<size_t> threadindex)
 {
     m_encrypted.resize( m_payload.size() );
     m_objhandle = obj.handle();

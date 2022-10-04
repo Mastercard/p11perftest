@@ -11,7 +11,7 @@ class P11HMACSHA256Benchmark : public P11Benchmark
     std::vector<uint8_t> m_digest;
     ObjectHandle  m_objhandle;
 
-    virtual void prepare(Session &session, Object &obj) override;
+    virtual void prepare(Session &session, Object &obj, std::optional<size_t> threadindex) override;
     virtual void crashtestdummy(Session &session) override;
     virtual P11HMACSHA256Benchmark *clone() const override;
 

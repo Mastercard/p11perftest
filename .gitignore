@@ -35,4 +35,7 @@ libtool
 *.tar
 *.tar.gz
 *.tgz
+pkcs11rc
+.pkcs11rc
+*.patch
 

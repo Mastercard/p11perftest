@@ -10,7 +10,7 @@ class P11DES3CBCBenchmark : public P11Benchmark
     std::vector<uint8_t> m_encrypted;
     ObjectHandle  m_objhandle;
 
-    virtual void prepare(Session &session, Object &obj) override;
+    virtual void prepare(Session &session, Object &obj, std::optional<size_t> threadindex) override;
     virtual void crashtestdummy(Session &session) override;
     virtual P11DES3CBCBenchmark *clone() const override;
 

@@ -1,3 +1,5 @@
+// -*- mode: c++; c-file-style:"stroustrup"; -*-
+
 #include "p11des3ecb.hpp"
 
 P11DES3ECBBenchmark::P11DES3ECBBenchmark(const std::string &label) :
@@ -10,7 +12,7 @@ inline P11DES3ECBBenchmark *P11DES3ECBBenchmark::clone() const {
 }
 
 
-void P11DES3ECBBenchmark::prepare(Session &session, Object &obj)
+void P11DES3ECBBenchmark::prepare(Session &session, Object &obj, std::optional<size_t> threadindex)
 {
     m_encrypted.resize( m_payload.size() );
     m_objhandle = obj.handle();

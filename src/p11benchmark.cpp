@@ -1,6 +1,9 @@
+// -*- mode: c++; c-file-style:"stroustrup"; -*-
 // p11benchmark.cpp : a base class for implementing performance test cases
 
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 #include <mutex>
 #include <thread>
 #include <condition_variable>
@@ -20,12 +23,12 @@ extern bool greenlight;
 static std::mutex display_mtx;
 
 
-P11Benchmark::P11Benchmark(const std::string &name, const std::string &label, ObjectClass objectclass)
-    : m_name(name), m_label(label), m_objectclass(objectclass)
+P11Benchmark::P11Benchmark(const std::string &name, const std::string &label, ObjectClass objectclass, const Implementation::Vendor vendor)
+    : m_name(name), m_label(label), m_objectclass(objectclass), m_implementation(Implementation(vendor))
 { }
 
 P11Benchmark::P11Benchmark(const P11Benchmark& other)
-    : m_name(other.m_name), m_label(other.m_label), m_objectclass(other.m_objectclass)
+    : m_name(other.m_name), m_label(other.m_label), m_objectclass(other.m_objectclass), m_implementation(other.m_implementation)
 {
     // std::cout << "copy constructor invoked for " << m_name << std::endl;
 }
@@ -45,26 +48,48 @@ std::string P11Benchmark::features() const
 }
 
 
-benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uint8_t> &payload, unsigned long iterations)
+// build_threaded_label(): build label with thread index
+std::string P11Benchmark::build_threaded_label(std::optional<size_t> threadindex) {
+    std::string label;
+
+    // if threadindex has a value, it means we have generated session keys (one per thread)
+    // in which case we need to recreate the thread-specific key label
+    if(threadindex) {
+	std::stringstream thread_specific_label;
+	thread_specific_label << this->label() << "-th-" << std::setw(5) << std::setfill('0') << threadindex.value();
+	label = thread_specific_label.str();
+    } else {		// else we have std::nullopt, and no session key has been generated, we don't need to transform the name
+	label = this->label();
+    }
+
+    return label;
+}
+
+
+benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uint8_t> &payload, unsigned long iterations, std::optional<size_t> threadindex)
 {
     int return_code = CKR_OK;
     std::vector<nanosecond_type> records(iterations);
 
     try {
+	std::string label = build_threaded_label(threadindex); // build threaded label (if needed)
+
 	m_payload = payload;	// remember the payload
 
 	AttributeContainer search_template;
-	search_template.add_string( AttributeType::Label, m_label );
+	search_template.add_string( AttributeType::Label, label );
 	search_template.add_class( m_objectclass );
 
 	auto found_objs = Object::search<Object>( *session, search_template.attributes() );
 
 	if( found_objs.size()==0 ) {
-	    std::cerr << "Error: no object found for label '" << m_label << "'" << std::endl;
+	    std::cerr << "Error: no object found for label '" << label << "'" << std::endl;
+	} else 	if( found_objs.size()>1 ) {
+	    std::cerr << "Error: more than one object found for label '" << label << "'" << std::endl;
 	} else {
-	    for ( auto &obj: found_objs) {
+	    for (auto &obj: found_objs) {
 
-		prepare(*session, obj);
+		prepare(*session, obj, threadindex);
 
 		boost::timer::cpu_timer t;
 		boost::timer::cpu_times started;

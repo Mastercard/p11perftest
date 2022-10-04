@@ -10,7 +10,7 @@ class P11ECDSASigBenchmark : public P11Benchmark
     std::unique_ptr<Botan::PK_Signer> m_signer;
     Botan::secure_vector<uint8_t> m_digest;
 
-    virtual void prepare(Session &session, Object &obj) override;
+  virtual void prepare(Session &session, Object &obj, std::optional<size_t> threadindex) override;
     virtual void crashtestdummy(Session &session) override;
     virtual P11ECDSASigBenchmark *clone() const override;
 

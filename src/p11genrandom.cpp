@@ -24,7 +24,7 @@ inline P11GenerateRandomBenchmark *P11GenerateRandomBenchmark::clone() const {
     return new P11GenerateRandomBenchmark{*this};
 }
 
-void P11GenerateRandomBenchmark::prepare(Session &session, Object &obj)
+void P11GenerateRandomBenchmark::prepare(Session &session, Object &obj, std::optional<size_t> threadindex)
 {
 
     // TODO refactor to remote the need for a key for every benchmark

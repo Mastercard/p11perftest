@@ -24,7 +24,7 @@ inline P11ECDSASigBenchmark *P11ECDSASigBenchmark::clone() const {
     return new P11ECDSASigBenchmark{*this};
 }
 
-void P11ECDSASigBenchmark::prepare(Session &session, Object &obj)
+void P11ECDSASigBenchmark::prepare(Session &session, Object &obj, std::optional<size_t> threadindex)
 {
     m_ecdsakey = std::unique_ptr<PKCS11_ECDSA_PrivateKey>(new PKCS11_ECDSA_PrivateKey(session, obj.handle()));
     m_signer = std::unique_ptr<Botan::PK_Signer>(new Botan::PK_Signer( *m_ecdsakey,

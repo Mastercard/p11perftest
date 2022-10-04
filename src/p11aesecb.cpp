@@ -10,7 +10,7 @@ inline P11AESECBBenchmark *P11AESECBBenchmark::clone() const {
 }
 
 
-void P11AESECBBenchmark::prepare(Session &session, Object &obj)
+void P11AESECBBenchmark::prepare(Session &session, Object &obj, std::optional<size_t> threadindex)
 {
     m_encrypted.resize( m_payload.size() );
     m_objhandle = obj.handle();

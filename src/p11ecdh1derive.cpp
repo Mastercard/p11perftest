@@ -83,7 +83,7 @@ inline P11ECDH1DeriveBenchmark *P11ECDH1DeriveBenchmark::clone() const {
     return new P11ECDH1DeriveBenchmark{*this};
 }
 
-void P11ECDH1DeriveBenchmark::prepare(Session &session, Object &obj)
+void P11ECDH1DeriveBenchmark::prepare(Session &session, Object &obj, std::optional<size_t> threadindex)
 {
 
     m_objhandle = obj.handle();

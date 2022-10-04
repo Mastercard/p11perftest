@@ -8,53 +8,10 @@
 
 #include <iostream>
 #include <boost/tokenizer.hpp>
-#include <set>
+#include "stringhash.hpp"
 #include "testcoverage.hpp"
 
-
-// the following is borrowed from https://dev.krzaq.cc/post/switch-on-strings-with-c11/
-
-namespace fnv1a_64
-{
-    typedef std::uint64_t hash_t;
-
-    constexpr hash_t prime = 0x100000001B3ull;
-    constexpr hash_t basis = 0xCBF29CE484222325ull;
-
-    constexpr hash_t hash_compile_time(char const* str, hash_t last_value = basis)
-    {
-	return *str ? hash_compile_time(str+1, (*str ^ last_value) * prime) : last_value;
-    }
-
-    hash_t hash(char const* str)
-    {
-	hash_t ret{basis};
-
-	while(*str){
-	    ret ^= *str;
-	    ret *= prime;
-	    str++;
-	}
-
-	return ret;
-    }
-
-    inline hash_t hash(const std::string s)
-    {
-	return hash(s.c_str());
-    }
-
-}
-
-constexpr unsigned long long operator "" _hash(char const* p, size_t)
-{
-	return fnv1a_64::hash_compile_time(p);
-}
-
-// end of borrow
-
-
-
+using namespace stringhash;
 
 TestCoverage::TestCoverage(std::string tocover)
 {
@@ -62,7 +19,7 @@ TestCoverage::TestCoverage(std::string tocover)
 
     for(auto token : toparse) {
 
-	switch(fnv1a_64::hash(token)) {
+	switch(stringhash::hash(token)) {
 	case "rsa"_hash:
 	    m_algo_coverage.insert(AlgoCoverage::rsa);
 	    break;
@@ -115,6 +72,20 @@ TestCoverage::TestCoverage(std::string tocover)
 	    m_algo_coverage.insert(AlgoCoverage::rand);
 	    break;
 
+	case "jwe"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::jwe);
+	    break;
+
+	case "jweoaepsha1"_hash:
+	case "jwesha1"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::jweoaepsha1);
+	    break;
+
+	case "jweoaepsha256"_hash:
+	case "jwesha256"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::jweoaepsha256);
+	    break;
+
 	default:
 	    std::cerr << "Unknow coverage class: " << token << ", skipping." << std::endl;
 	}
@@ -134,7 +105,7 @@ bool TestCoverage::contains(AlgoCoverage algo)
 
 bool TestCoverage::contains(std::string algo)
 {
-    switch(fnv1a_64::hash(algo)) {
+    switch(stringhash::hash(algo)) {
     case "rsa"_hash:
 	return contains(AlgoCoverage::rsa);
 	break;
@@ -186,6 +157,21 @@ bool TestCoverage::contains(std::string algo)
     case "rand"_hash:
 	return contains(AlgoCoverage::rand);
 	break;
+
+    case "jwe"_hash:
+	return contains(AlgoCoverage::jwe);
+	break;
+
+    case "jweoaepsha1"_hash:
+    case "jwesha1"_hash:
+	return contains(AlgoCoverage::jweoaepsha1);
+	break;
+
+    case "jweoaepsha256"_hash:
+    case "jwesha256"_hash:
+	return contains(AlgoCoverage::jweoaepsha256);
+	break;
+
     }
     return false;
 }

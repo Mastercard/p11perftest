@@ -24,7 +24,7 @@ inline P11SeedRandomBenchmark *P11SeedRandomBenchmark::clone() const {
     return new P11SeedRandomBenchmark{*this};
 }
 
-void P11SeedRandomBenchmark::prepare(Session &session, Object &obj)
+void P11SeedRandomBenchmark::prepare(Session &session, Object &obj, std::optional<size_t> threadindex)
 {
     m_seed.resize( m_payload.size() );
 }

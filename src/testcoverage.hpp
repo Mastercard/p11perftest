@@ -4,11 +4,12 @@
 #if !defined(TESTCOVERAGE_H)
 #define TESTCOVERAGE_H
 
+#include <set>
 #include <string>
 
 struct TestCoverage
 {
-    enum class AlgoCoverage { 
+    enum class AlgoCoverage {
 	rsa, 			// RSA
         ecdsa, 			// ECDSA
         ecdh, 			// ECDH
@@ -21,9 +22,12 @@ struct TestCoverage
         aescbc,			// AES CBC
         aesgcm,			// AES GCM
 	xorder, 		// XOR derivation
-	rand 			// Random number generation
+	rand, 			// Random number generation
+	jwe,   			// JWE decryption (RFC7516)
+        jweoaepsha1,		// subset with OAEP(SHA1)
+        jweoaepsha256,		// subset with OAEP(SHA256)	  
     };
-    
+
     TestCoverage(std::string tocover);
 
     bool contains(AlgoCoverage algo);

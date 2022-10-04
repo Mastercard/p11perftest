@@ -14,7 +14,7 @@ inline P11HMACSHA512Benchmark *P11HMACSHA512Benchmark::clone() const {
     return new P11HMACSHA512Benchmark{*this};
 }
 
-void P11HMACSHA512Benchmark::prepare(Session &session, Object &obj)
+void P11HMACSHA512Benchmark::prepare(Session &session, Object &obj, std::optional<size_t> threadindex)
 {
     m_digest.resize( m_digest_size );
     m_objhandle = obj.handle();

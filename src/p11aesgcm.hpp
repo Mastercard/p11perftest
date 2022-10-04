@@ -1,3 +1,6 @@
+// -*- mode: c++; c-file-style:"stroustrup"; -*-
+// p11aes: AES Gallois Counter Mode
+
 #if !defined P11AESGCM_HPP
 #define P11AESGCM_HPP
 
@@ -5,8 +8,7 @@
 
 class P11AESGCMBenchmark : public P11Benchmark
 {
-    Byte m_iv[16];		// according to PKCS#11 v2.40, 12 bytes values
-                                // can be processed more efficiently
+    std::vector<uint8_t> m_iv;
 
     CK_GCM_PARAMS m_gcm_params {
 	nullptr,
@@ -22,14 +24,14 @@ class P11AESGCMBenchmark : public P11Benchmark
     std::vector<uint8_t> m_encrypted;
     ObjectHandle  m_objhandle;
 
-    virtual void prepare(Session &session, Object &obj) override;
+    virtual void prepare(Session &session, Object &obj, std::optional<size_t> threadindex) override;
     virtual void crashtestdummy( Session &session) override;
     virtual P11AESGCMBenchmark *clone() const override;
 
 public:
 
-    P11AESGCMBenchmark(const std::string &name);
-    P11AESGCMBenchmark(const P11AESGCMBenchmark &other);
+  P11AESGCMBenchmark(const std::string &name, const Implementation::Vendor vendor = Implementation::Vendor::generic);
+  P11AESGCMBenchmark(const P11AESGCMBenchmark &other);
 
 };
 

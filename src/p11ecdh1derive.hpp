@@ -33,7 +33,7 @@ class P11ECDH1DeriveBenchmark : public P11Benchmark
     ObjectHandle m_derivedkey;
     std::unique_ptr<SecretKeyProperties> m_template;
 
-    virtual void prepare(Session &session, Object &obj) override;
+    virtual void prepare(Session &session, Object &obj, std::optional<size_t> threadindex) override;
     virtual void crashtestdummy(Session &session) override;
     virtual void cleanup(Session &session) override;
     virtual P11ECDH1DeriveBenchmark *clone() const override;

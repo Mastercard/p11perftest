@@ -39,9 +39,9 @@ In order to execute the test, you will need to create the following keys upfront
 
 | key name           | description                                                       |
 |--------------------|-------------------------------------------------------------------|
-| `rsa-2048`         | a 2048 bits RSA key, with `CKA_SIGN`                              |
-| `rsa-3072`         | a 3072 bits RSA key, with `CKA_SIGN`                              |
-| `rsa-4096`         | a 4096 bits RSA key, with `CKA_SIGN`                              |
+| `rsa-2048`         | a 2048 bits RSA key, with `CKA_SIGN`, `CKA_WRAP` and `CKA_UNWRAP` |
+| `rsa-3072`         | a 3072 bits RSA key, with `CKA_SIGN`, `CKA_WRAP` and `CKA_UNWRAP` |
+| `rsa-4096`         | a 4096 bits RSA key, with `CKA_SIGN`, `CKA_WRAP` and `CKA_UNWRAP` |
 | `ecdsa-secp256r1`  | a secp256r1 ECDSA key, with `CKA_SIGN`                            |
 | `ecdsa-secp384r1`  | a secp384r1 ECDSA key, with `CKA_SIGN`                            |
 | `ecdsa-secp521r1`  | a secp521r1 ECDSA key, with `CKA_SIGN`                            |
@@ -70,8 +70,13 @@ $ pip install -r requirements.txt
 
 ## usage
 
-You must at least specify a library or a password argument, when launching p11perftest.
-available options:
+																										    -k [ --keysizes ] arg (=rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256)
+																											                                        key sizes or curves to use
+																																					  -f [ --flavour ] arg (=generic)       PKCS#11 implementation flavour.
+																																					                                          Possible values: generic, luna,
+																																															                                          utimaco, entrust
+																																																									    -n [ --nogenerate ]                   Do not attempt to generate session
+																																																										                                        keys; use existing token keys instead
   - `-h [ --help ]`, print help message
   - `-l [ --library ] arg`, PKCS#11 library path
   - `-s [ --slot ] arg (=0)`, slot index to use
@@ -80,14 +85,16 @@ available options:
   - `-i [ --iterations ] arg (=200)`, number of iterations
   - `-j [ --json ]`, output results as JSON
   - `-o [ --jsonfile ] arg`, JSON output file name
-  - `-c [ --coverage ] arg (=rsa,ecdsa,ecdh,hmac,des,aes,xorder,rand)`, coverage of test cases
+  - `-c [ --coverage ] arg (=rsa,ecdsa,ecdh,hmac,des,aes,xorder,rand,jwe)`, coverage of test cases
   - `-v [ --vectors ] arg (=8,16,64,256,1024,4096)`, test vectors to use
-  - `-n [ --nogenerate ]`, do not attempt to generate session keys; instead, use pre-existing token
   - `-k [ --keysizes ] arg (=rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256)`, key sizes or curves to use
+  - `-f [ --flavour ] arg (=generic)`, PKCS#11 implementation flavour. Possible values: `generic`, `luna` , `utimaco`, `entrust`
+  - `-n [ --nogenerate ]`, do not attempt to generate session keys; instead, use pre-existing token
 																																			  
-By default, coverage for `des` includes ECB and CBC mode; coverage for `aes` includes ECB, CBC and GCM modes. It is possible to narrow down to specific modes:
+By default, coverage for `des` includes ECB and CBC mode; coverage for `aes` includes ECB, CBC and GCM modes; coverage for `jwe` includes RSA-OAEP and RSA-OAEP-SHA256. It is possible to narrow down to specific modes:
  - for AES, `aesecb`, `aescbc`, or `aesgcm` instead of `aes`
  - for DES, `desecb` or `descbc` for `des`
+ - for JWE, `jweoaepsha1` for RSA-OAEP or `jweoaepsha256` for RSA-OAEP-SHA256
 
 
 ## parsing JSON output

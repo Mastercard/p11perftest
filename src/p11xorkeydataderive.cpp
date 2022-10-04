@@ -29,7 +29,7 @@ inline P11XorKeyDataDeriveBenchmark *P11XorKeyDataDeriveBenchmark::clone() const
     return new P11XorKeyDataDeriveBenchmark{*this};
 }
 
-void P11XorKeyDataDeriveBenchmark::prepare(Session &session, Object &obj)
+void P11XorKeyDataDeriveBenchmark::prepare(Session &session, Object &obj, std::optional<size_t> threadindex)
 {
 
     m_objhandle = obj.handle();

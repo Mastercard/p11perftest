@@ -1,5 +1,5 @@
-// executor.hpp: a class to organize execution in a threaded fashion
 // -*- mode: c++; c-file-style:"stroustrup"; -*-
+// executor.hpp: a class to organize execution in a threaded fashion
 
 #if !defined(EXECUTOR_H)
 #define EXECUTOR_H
@@ -20,18 +20,22 @@ class Executor
     const int m_numthreads;
     double m_timer_res;
     double m_timer_res_err;
+    bool m_generate_session_keys;
 
 public:
     Executor( const std::map<const std::string,
 	      const std::vector<uint8_t> > &vectors,
 	      std::vector<std::unique_ptr<Session> > &sessions,
 	      const int numthreads,
-	      std::pair<double, double> precision):
+	      std::pair<double, double> precision,
+	      bool generate_session_keys)
+	:
 	m_vectors(vectors),
 	m_sessions(sessions),
 	m_numthreads(numthreads),
 	m_timer_res(precision.first),
-	m_timer_res_err(precision.second)
+	m_timer_res_err(precision.second),
+	m_generate_session_keys(generate_session_keys)
     { }
 
     Executor( const Executor &) = delete;
@@ -42,7 +46,7 @@ public:
 
     double precision() { return m_timer_res + m_timer_res_err; }
 
-    ptree benchmark( P11Benchmark &benchmark, const int iter, const std::forward_list<std::string> shortlist  );
+    ptree benchmark( P11Benchmark &benchmark, const int iter, const std::forward_list<std::string> shortlist );
 
 };
 

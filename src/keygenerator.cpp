@@ -1,7 +1,9 @@
-// keygenerator.cpp: a class to organize generation of keys on several threads
 // -*- mode: c++; c-file-style:"stroustrup"; -*-
+// keygenerator.cpp: a class to organize generation of keys on several threads
 
 #include <iostream>
+#include <sstream>
+#include <iomanip>
 #include <future>
 #include <array>
 #include <botan/p11_rsa.h>
@@ -21,6 +23,7 @@ bool KeyGenerator::generate_rsa_keypair(std::string alias, unsigned int bits, st
 	priv_generate_props.set_token( false );
 	priv_generate_props.set_private( true );
 	priv_generate_props.set_sign( true );
+	priv_generate_props.set_unwrap( true ); // needed by JWE
 	priv_generate_props.set_label( alias );
 
 	Botan::PKCS11::RSA_PublicKeyGenerationProperties pub_generate_props( bits );
@@ -28,6 +31,7 @@ bool KeyGenerator::generate_rsa_keypair(std::string alias, unsigned int bits, st
 	pub_generate_props.set_label( alias );
 	pub_generate_props.set_token( false );
 	pub_generate_props.set_verify( true );
+	pub_generate_props.set_wrap( true ); // needed by JWE
 	pub_generate_props.set_private( false );
 
 	Botan::PKCS11::PKCS11_RSA_KeyPair rsa_keypair = Botan::PKCS11::generate_rsa_keypair( *session, pub_generate_props, priv_generate_props );
@@ -274,11 +278,14 @@ void KeyGenerator::generate_key_generic(KeyGenerator::KeyType keytype, std::stri
     auto chooser = [&fnmap](KeyGenerator::KeyType kt) { return fnmap.at(kt);  };
 
     for(th=0; th<m_numthreads;th++) {
+	std::stringstream thread_specific_alias(alias);
+
+	thread_specific_alias << alias << "-th-" << std::setw(5) << std::setfill('0') << th;
 
 	future_array[th] = std::async( std::launch::async,
 	 			       chooser(keytype),
 				       this,
-				       alias,
+				       thread_specific_alias.str(),
 				       bits,
 				       curve,
 	 			       m_sessions[th].get());
@@ -325,6 +332,3 @@ void KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias
 
     return generate_key_generic(keytype, alias, 0, curve);
 }
-
-
-

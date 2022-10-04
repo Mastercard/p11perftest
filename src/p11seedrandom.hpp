@@ -18,7 +18,7 @@ class P11SeedRandomBenchmark : public P11Benchmark
     // for this mechanism, we will only XOR AES keys of 16 bytes.
     std::vector<uint8_t> m_seed;
 
-    virtual void prepare(Session &session, Object &obj) override;
+    virtual void prepare(Session &session, Object &obj, std::optional<size_t> threadindex) override;
     virtual void crashtestdummy(Session &session) override;
     virtual P11SeedRandomBenchmark *clone() const override;
 

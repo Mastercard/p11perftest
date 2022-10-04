@@ -8,52 +8,10 @@
 
 #include <iostream>
 #include <boost/tokenizer.hpp>
-#include <set>
+#include "stringhash.hpp"
 #include "keysizecoverage.hpp"
 
-
-// the following is borrowed from https://dev.krzaq.cc/post/switch-on-strings-with-c11/
-
-namespace fnv1a_64_k
-{
-    typedef std::uint64_t hash_t;
-
-    constexpr hash_t prime = 0x100000001B3ull;
-    constexpr hash_t basis = 0xCBF29CE484222325ull;
-
-    constexpr hash_t hash_compile_time(char const* str, hash_t last_value = basis)
-    {
-	return *str ? hash_compile_time(str+1, (*str ^ last_value) * prime) : last_value;
-    }
-
-    hash_t hash(char const* str)
-    {
-	hash_t ret{basis};
-
-	while(*str){
-	    ret ^= *str;
-	    ret *= prime;
-	    str++;
-	}
-
-	return ret;
-    }
-
-    inline hash_t hash(const std::string s)
-    {
-	return hash(s.c_str());
-    }
-
-}
-
-constexpr unsigned long long operator "" _khash(char const* p, size_t)
-{
-	return fnv1a_64_k::hash_compile_time(p);
-}
-
-// end of borrow
-
-
+using namespace stringhash;
 
 KeySizeCoverage::KeySizeCoverage(std::string tocover)
 {
@@ -61,60 +19,60 @@ KeySizeCoverage::KeySizeCoverage(std::string tocover)
 
     for(auto token : toparse) {
 
-	switch(fnv1a_64_k::hash(token)) {
-	case "rsa2048"_khash:
+	switch(stringhash::hash(token)) {
+	case "rsa2048"_hash:
 	    m_keysize_coverage.insert(KeySize::rsa_2048);
 	    break;
 
-	case "rsa3072"_khash:
+	case "rsa3072"_hash:
 	    m_keysize_coverage.insert(KeySize::rsa_3072);
 	    break;
 
-	case "rsa4096"_khash:
+	case "rsa4096"_hash:
 	    m_keysize_coverage.insert(KeySize::rsa_4096);
 	    break;
 
-        case "ecnistp256"_khash:
+        case "ecnistp256"_hash:
 	    m_keysize_coverage.insert(KeySize::ec_nistp256);
 	    break;
 
-        case "ecnistp384"_khash:
+        case "ecnistp384"_hash:
 	    m_keysize_coverage.insert(KeySize::ec_nistp384);
 	    break;
 
-        case "ecnistp521"_khash:
+        case "ecnistp521"_hash:
 	    m_keysize_coverage.insert(KeySize::ec_nistp521);
 	    break;
 
-        case "hmac160"_khash:
+        case "hmac160"_hash:
 	    m_keysize_coverage.insert(KeySize::hmac_160);
 	    break;
 
-        case "hmac256"_khash:
+        case "hmac256"_hash:
 	    m_keysize_coverage.insert(KeySize::hmac_256);
 	    break;
 
-        case "hmac512"_khash:
+        case "hmac512"_hash:
 	    m_keysize_coverage.insert(KeySize::hmac_512);
 	    break;
 
-	case "des128"_khash:
+	case "des128"_hash:
 	    m_keysize_coverage.insert(KeySize::des_128);
 	    break;
 
-	case "des192"_khash:
+	case "des192"_hash:
 	    m_keysize_coverage.insert(KeySize::des_192);
 	    break;
 
-	case "aes128"_khash:
+	case "aes128"_hash:
 	    m_keysize_coverage.insert(KeySize::aes_128);
 	    break;
 
-	case "aes192"_khash:
+	case "aes192"_hash:
 	    m_keysize_coverage.insert(KeySize::aes_192);
 	    break;
 
-	case "aes256"_khash:
+	case "aes256"_hash:
 	    m_keysize_coverage.insert(KeySize::aes_256);
 	    break;
 
@@ -137,61 +95,61 @@ bool KeySizeCoverage::contains(KeySize sizeorcurve)
 
 bool KeySizeCoverage::contains(std::string sizeorcurve)
 {
-    switch(fnv1a_64_k::hash(sizeorcurve)) {
+    switch(stringhash::hash(sizeorcurve)) {
 
-    case "rsa2048"_khash:
+    case "rsa2048"_hash:
 	return contains(KeySize::rsa_2048);
 	break;
 
-    case "rsa3072"_khash:
+    case "rsa3072"_hash:
 	return contains(KeySize::rsa_3072);
 	break;
 
-    case "rsa4096"_khash:
+    case "rsa4096"_hash:
 	return contains(KeySize::rsa_4096);
 	break;
 
-    case "ecnistp256"_khash:
+    case "ecnistp256"_hash:
 	return contains(KeySize::ec_nistp256);
 	break;
 
-    case "ecnistp384"_khash:
+    case "ecnistp384"_hash:
 	return contains(KeySize::ec_nistp384);
 	break;
 
-    case "ecnistp521"_khash:
+    case "ecnistp521"_hash:
 	return contains(KeySize::ec_nistp521);
 	break;
 
-    case "hmac160"_khash:
+    case "hmac160"_hash:
 	return contains(KeySize::hmac_160);
 	break;
 
-    case "hmac256"_khash:
+    case "hmac256"_hash:
 	return contains(KeySize::hmac_256);
 	break;
 
-    case "hmac512"_khash:
+    case "hmac512"_hash:
 	return contains(KeySize::hmac_512);
 	break;
 
-    case "des128"_khash:
+    case "des128"_hash:
 	return contains(KeySize::des_128);
 	break;
 
-    case "des192"_khash:
+    case "des192"_hash:
 	return contains(KeySize::des_192);
 	break;
 
-    case "aes128"_khash:
+    case "aes128"_hash:
 	return contains(KeySize::aes_128);
 	break;
 
-    case "aes192"_khash:
+    case "aes192"_hash:
 	return contains(KeySize::aes_192);
 	break;
 
-    case "aes256"_khash:
+    case "aes256"_hash:
 	return contains(KeySize::aes_256);
 	break;
     }

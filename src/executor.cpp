@@ -1,3 +1,4 @@
+// -*- mode: c++; c-file-style:"stroustrup"; -*-
 // executor.cpp: a class to organize execution in a threaded fashion
 
 #include <iostream>
@@ -42,7 +43,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
     ptree rv;
 
     for(auto testcase: shortlist) {
-	int th;
+	size_t th;
 	std::vector<benchmark_result_t> elapsed_time_array(m_numthreads);
 	std::vector<std::future<benchmark_result_t> > future_array(m_numthreads);
 	std::vector<P11Benchmark *> benchmark_array(m_numthreads);
@@ -95,12 +96,23 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	    // make a copy of the benchmark object, for each thread
 	    benchmark_array[th] = benchmark.clone(); // get a "clone" of the object
 
-	    future_array[th] = std::async( std::launch::async,
-					   &P11Benchmark::execute,
-					   benchmark_array[th],
-					   m_sessions[th].get(),
-					   m_vectors.at(testcase),
-					   iter);
+	    if(m_generate_session_keys) {
+		future_array[th] = std::async( std::launch::async,
+					       &P11Benchmark::execute,
+					       benchmark_array[th],
+					       m_sessions[th].get(),
+					       m_vectors.at(testcase),
+					       iter,
+					       std::optional<size_t>(th));
+	    } else {
+		future_array[th] = std::async( std::launch::async,
+					       &P11Benchmark::execute,
+					       benchmark_array[th],
+					       m_sessions[th].get(),
+					       m_vectors.at(testcase),
+					       iter,
+					       std::nullopt);
+	    }
 	}
 
 	// start the wall clock
