@@ -12,11 +12,11 @@
 #include "p11jwe.hpp"
 
 
-P11JWEBenchmark::P11JWEBenchmark(const std::string &label, 
+P11JWEBenchmark::P11JWEBenchmark(const std::string &label,
 				 const Implementation::Vendor vendor,
-				 const HashAlg hashalg, 
+				 const HashAlg hashalg,
 				 const SymAlg symalg) :
-    P11Benchmark( "JWE(RFC7516): RSA PKCS OAEP", label, ObjectClass::PrivateKey, vendor ), 
+    P11Benchmark( "JWE(RFC7516): RSA PKCS OAEP", label, ObjectClass::PrivateKey, vendor ),
     m_symalg(symalg),
     m_hashalg(hashalg)
 {
@@ -34,7 +34,7 @@ P11JWEBenchmark::P11JWEBenchmark(const std::string &label,
 	newname += "SHA256)"s;
 	break;
     }
-    
+
     newname += " + AES GCM"s;
     switch(m_symalg) {
     case SymAlg::GCM128:
@@ -49,8 +49,8 @@ P11JWEBenchmark::P11JWEBenchmark(const std::string &label,
 	newname += "256"s;
 	break;
     }
-    
-    rename(newname+", with key "s+label);
+
+    rename(newname);
 }
 
 

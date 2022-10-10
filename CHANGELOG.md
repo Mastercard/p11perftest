@@ -4,11 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## UNRELEASED
+## 3.7.0 - 2022-10-10
 ### Added
 - support for implementation flavours (using `-f` or `--flavour` parameter).
 - Flavours: Entrust in FIPS mode, Safenet Luna in FIPS mode, Utimaco in FIPS mode, generic mode
 - JWE (RFC7516) key unwrapping and data decryption (RSA-OAEP + AESGCM)
+- PKCS#1 OAEP decryption, with SHA1 and SHA256
 
 ### Changed
 - AES-GCM now supports flavours

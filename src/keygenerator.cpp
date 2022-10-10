@@ -24,6 +24,7 @@ bool KeyGenerator::generate_rsa_keypair(std::string alias, unsigned int bits, st
 	priv_generate_props.set_private( true );
 	priv_generate_props.set_sign( true );
 	priv_generate_props.set_unwrap( true ); // needed by JWE
+	priv_generate_props.set_decrypt( true ); // needed by PKCS#1 OAEP Decrypt
 	priv_generate_props.set_label( alias );
 
 	Botan::PKCS11::RSA_PublicKeyGenerationProperties pub_generate_props( bits );
@@ -32,6 +33,7 @@ bool KeyGenerator::generate_rsa_keypair(std::string alias, unsigned int bits, st
 	pub_generate_props.set_token( false );
 	pub_generate_props.set_verify( true );
 	pub_generate_props.set_wrap( true ); // needed by JWE
+	pub_generate_props.set_encrypt( true ); // needed by PKCS#11 OAEP Decrypt
 	pub_generate_props.set_private( false );
 
 	Botan::PKCS11::PKCS11_RSA_KeyPair rsa_keypair = Botan::PKCS11::generate_rsa_keypair( *session, pub_generate_props, priv_generate_props );

@@ -5,9 +5,9 @@ p11keygen -k des -b 192  -i des-192 encrypt
 p11keygen -k aes -b 128  -i aes-128 encrypt
 p11keygen -k aes -b 128  -i aes-192 encrypt
 p11keygen -k aes -b 256  -i aes-256 encrypt
-p11keygen -k rsa -b 2048 -i rsa-2048 sign verify wrap unwrap
-p11keygen -k rsa -b 3072 -i rsa-2048 sign verify wrap unwrap
-p11keygen -k rsa -b 4096 -i rsa-4096 sign verify wrap unwrap
+p11keygen -k rsa -b 2048 -i rsa-2048 sign verify wrap unwrap encrypt decrypt
+p11keygen -k rsa -b 3072 -i rsa-2048 sign verify wrap unwrap encrypt decrypt
+p11keygen -k rsa -b 4096 -i rsa-4096 sign verify wrap unwrap encrypt decrypt
 p11keygen -k ec -q prime256v1 -i ecdsa-secp256r1 sign verify
 p11keygen -k ec -q secp384r1 -i ecdsa-secp384r1 sign verify
 p11keygen -k ec -q secp521r1 -i ecdsa-secp521r1 sign verify

@@ -37,27 +37,27 @@ Note that to execute `p11perftest`, you may have to adjust `LD_LIBRARY_PATH` to 
 In case session keys cannot be used (which is the default behaviour), keys must be created directly on the cryptographic token.
 In order to execute the test, you will need to create the following keys upfront:
 
-| key name           | description                                                       |
-|--------------------|-------------------------------------------------------------------|
-| `rsa-2048`         | a 2048 bits RSA key, with `CKA_SIGN`, `CKA_WRAP` and `CKA_UNWRAP` |
-| `rsa-3072`         | a 3072 bits RSA key, with `CKA_SIGN`, `CKA_WRAP` and `CKA_UNWRAP` |
-| `rsa-4096`         | a 4096 bits RSA key, with `CKA_SIGN`, `CKA_WRAP` and `CKA_UNWRAP` |
-| `ecdsa-secp256r1`  | a secp256r1 ECDSA key, with `CKA_SIGN`                            |
-| `ecdsa-secp384r1`  | a secp384r1 ECDSA key, with `CKA_SIGN`                            |
-| `ecdsa-secp521r1`  | a secp521r1 ECDSA key, with `CKA_SIGN`                            |
-| `ecdh-secp256r1`   | a secp256r1 ECDH key, with `CKA_DERIVE`                           |
-| `ecdh-secp384r1`   | a secp384r1 ECDH key, with `CKA_DERIVE`                           |
-| `ecdh-secp521r1`   | a secp521r1 ECDH key, with `CKA_DERIVE`                           |
-| `des-128`          | a 2DES key, with `CKA_ENCRYPT`                                    |
-| `des-192`          | a 3DES key, with `CKA_ENCRYPT`                                    |
-| `aes-128`          | a 128 bits AES key, with `CKA_ENCRYPT`                            |
-| `aes-192`           |a 192 bits AES key, with `CKA_ENCRYPT`                            |
-| `aes-256`          | a 256 bits AES key, with `CKA_ENCRYPT`                            |
-| `hmac-sha1`        | a 160 bits generic secret key, with `CKA_SIGN`                    |
-| `hmac-sha256`      | a 256 bits generic secret key, with `CKA_SIGN`                    |
-| `hmac-sha512`      | a 512 bits generic secret key, with `CKA_SIGN`                    |
-| `xorder-128`       | a 128 bits generic secret key, with `CKA_DERIVE`                  |
-| `rand-128`         | a 128 bits AES key (not used during testing), presence yet needed |
+| key name           | description							                            |
+|--------------------|----------------------------------------------------------------------------------------------|
+| `rsa-2048`         | a 2048 bits RSA key, with `CKA_SIGN`, `CKA_ENCRYPT`, `CKA_DECRYPT`, `CKA_WRAP`, `CKA_UNWRAP` |
+| `rsa-3072`         | a 3072 bits RSA key, with `CKA_SIGN`, `CKA_ENCRYPT`, `CKA_DECRYPT`, `CKA_WRAP`, `CKA_UNWRAP` |
+| `rsa-4096`         | a 4096 bits RSA key, with `CKA_SIGN`, `CKA_ENCRYPT`, `CKA_DECRYPT`, `CKA_WRAP`, `CKA_UNWRAP` |
+| `ecdsa-secp256r1`  | a secp256r1 ECDSA key, with `CKA_SIGN`                                                       |
+| `ecdsa-secp384r1`  | a secp384r1 ECDSA key, with `CKA_SIGN`                                                       |
+| `ecdsa-secp521r1`  | a secp521r1 ECDSA key, with `CKA_SIGN`                                                       |
+| `ecdh-secp256r1`   | a secp256r1 ECDH key, with `CKA_DERIVE`                                                      |
+| `ecdh-secp384r1`   | a secp384r1 ECDH key, with `CKA_DERIVE`                                                      |
+| `ecdh-secp521r1`   | a secp521r1 ECDH key, with `CKA_DERIVE`                                                      |
+| `des-128`          | a 2DES key, with `CKA_ENCRYPT`                                                               |
+| `des-192`          | a 3DES key, with `CKA_ENCRYPT`                                                               |
+| `aes-128`          | a 128 bits AES key, with `CKA_ENCRYPT`                                                       |
+| `aes-192`           |a 192 bits AES key, with `CKA_ENCRYPT`                                                       |
+| `aes-256`          | a 256 bits AES key, with `CKA_ENCRYPT`                                                       |
+| `hmac-sha1`        | a 160 bits generic secret key, with `CKA_SIGN`                                               |
+| `hmac-sha256`      | a 256 bits generic secret key, with `CKA_SIGN`                                               |
+| `hmac-sha512`      | a 512 bits generic secret key, with `CKA_SIGN`                                               |
+| `xorder-128`       | a 128 bits generic secret key, with `CKA_DERIVE`                                             |
+| `rand-128`         | a 128 bits AES key (not used during testing), presence yet needed                            |
 
 
 There is a script at `scripts/createkeys.sh` to create these keys, using the [PKCS#11 toolkit](https://github.com/Mastercard/pkcs11-tools).
@@ -70,14 +70,7 @@ $ pip install -r requirements.txt
 
 ## usage
 
-																										    -k [ --keysizes ] arg (=rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256)
-																											                                        key sizes or curves to use
-																																					  -f [ --flavour ] arg (=generic)       PKCS#11 implementation flavour.
-																																					                                          Possible values: generic, luna,
-																																															                                          utimaco, entrust
-																																																									    -n [ --nogenerate ]                   Do not attempt to generate session
-																																																										                                        keys; use existing token keys instead
-  - `-h [ --help ]`, print help message
+																									  - `-h [ --help ]`, print help message
   - `-l [ --library ] arg`, PKCS#11 library path
   - `-s [ --slot ] arg (=0)`, slot index to use
   - `-p [ --password ] arg`, password for token in slot
@@ -85,16 +78,17 @@ $ pip install -r requirements.txt
   - `-i [ --iterations ] arg (=200)`, number of iterations
   - `-j [ --json ]`, output results as JSON
   - `-o [ --jsonfile ] arg`, JSON output file name
-  - `-c [ --coverage ] arg (=rsa,ecdsa,ecdh,hmac,des,aes,xorder,rand,jwe)`, coverage of test cases
+  - `-c [ --coverage ] arg (=rsa,ecdsa,ecdh,hmac,des,aes,xorder,rand,jwe,oaep)`, coverage of test cases
   - `-v [ --vectors ] arg (=8,16,64,256,1024,4096)`, test vectors to use
   - `-k [ --keysizes ] arg (=rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256)`, key sizes or curves to use
   - `-f [ --flavour ] arg (=generic)`, PKCS#11 implementation flavour. Possible values: `generic`, `luna` , `utimaco`, `entrust`
-  - `-n [ --nogenerate ]`, do not attempt to generate session keys; instead, use pre-existing token
-																																			  
-By default, coverage for `des` includes ECB and CBC mode; coverage for `aes` includes ECB, CBC and GCM modes; coverage for `jwe` includes RSA-OAEP and RSA-OAEP-SHA256. It is possible to narrow down to specific modes:
+  - `-n [ --nogenerate ]`, do not attempt to generate session keys; instead, use pre-existing keys on token
+
+By default, coverage for `des` includes ECB and CBC mode; coverage for `aes` includes ECB, CBC and GCM modes; coverage for `jwe` includes RSA-OAEP and RSA-OAEP-SHA256; coverage for `oaep` includes OAEP with SHA1 and OAEP with SHA256. It is possible to narrow down to specific modes:
  - for AES, `aesecb`, `aescbc`, or `aesgcm` instead of `aes`
  - for DES, `desecb` or `descbc` for `des`
  - for JWE, `jweoaepsha1` for RSA-OAEP or `jweoaepsha256` for RSA-OAEP-SHA256
+ - for OAEP, `oaepsha1` for OAEP with SHA1 or `oaepsha256` for OAEP with SHA256
 
 
 ## parsing JSON output

@@ -25,7 +25,10 @@ struct TestCoverage
 	rand, 			// Random number generation
 	jwe,   			// JWE decryption (RFC7516)
         jweoaepsha1,		// subset with OAEP(SHA1)
-        jweoaepsha256,		// subset with OAEP(SHA256)	  
+        jweoaepsha256,		// subset with OAEP(SHA256)
+	oaep,			// PKCS#1 OAEP decryption (all hashing algorithms)
+	oaepsha1,		// PKCS#1 OAEP decryption (SHA1)
+	oaepsha256		// PKCS#1 OAEP decryption (SHA256)
     };
 
     TestCoverage(std::string tocover);

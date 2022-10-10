@@ -38,6 +38,7 @@
 #include "keygenerator.hpp"
 #include "executor.hpp"
 #include "p11rsasig.hpp"
+#include "p11oaepdec.hpp"
 #include "p11jwe.hpp"
 #include "p11ecdsasig.hpp"
 #include "p11ecdh1derive.hpp"
@@ -74,10 +75,10 @@ int main(int argc, char **argv)
     bool json = false;
     std::fstream jsonout;
     bool generate_session_keys = true;
-    po::options_description desc("available options");
+    po::options_description desc("command line options");
 
     // default coverage: RSA, ECDSA, HMAC, DES and AES
-    const auto default_tests {"rsa,ecdsa,ecdh,hmac,des,aes,xorder,rand,jwe"};
+    const auto default_tests {"rsa,ecdsa,ecdh,hmac,des,aes,xorder,rand,jwe,oaep"};
     const auto default_vectors {"8,16,64,256,1024,4096"};
     const auto default_keysizes{"rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256"};
     const auto default_flavour{"generic"};
@@ -100,8 +101,8 @@ int main(int argc, char **argv)
 	("keysizes,k", po::value< std::string >()->default_value(default_keysizes), "key sizes or curves to use")
 	("flavour,f", po::value< std::string >()->default_value(default_flavour), help_text_flavour.c_str() )
 	("nogenerate,n", "Do not attempt to generate session keys; use existing token keys instead");
-	
-    
+
+
 
     po::variables_map vm;
 
@@ -236,7 +237,13 @@ int main(int argc, char **argv)
 		KeyGenerator keygenerator( sessions, argnthreads );
 
 		std::cout << "Generating session keys for " << argnthreads << " thread(s)\n";
-		if(tests.contains("rsa") || tests.contains("jwe") || tests.contains("jweoaepsha1") || tests.contains("jweoaepsha256") ) {
+		if(tests.contains("rsa")
+		   || tests.contains("jwe")
+		   || tests.contains("jweoaepsha1")
+		   || tests.contains("jweoaepsha256")
+		   || tests.contains("oaep")
+		   || tests.contains("oaepsha1")
+		   || tests.contains("oaepsha256") ) {
 		    if(keysizes.contains("rsa2048")) keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-2048", 2048);
 		    if(keysizes.contains("rsa3072")) keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-3072", 3072);
 		    if(keysizes.contains("rsa4096")) keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-4096", 4096);
@@ -288,12 +295,27 @@ int main(int argc, char **argv)
 
 	    std::forward_list<P11Benchmark *> benchmarks;
 
+	    // RSA PKCS#1 signature
 	    if(tests.contains("rsa")) {
 		if(keysizes.contains("rsa2048")) benchmarks.emplace_front( new P11RSASigBenchmark("rsa-2048") );
 		if(keysizes.contains("rsa3072")) benchmarks.emplace_front( new P11RSASigBenchmark("rsa-3072") );
 		if(keysizes.contains("rsa4096")) benchmarks.emplace_front( new P11RSASigBenchmark("rsa-4096") );
 	    }
 
+	    // RSA PKCS#1 OAEP decryption
+	    if(tests.contains("oaep") || tests.contains("oaepsha1")) {
+		if(keysizes.contains("rsa2048")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-2048", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA1) );
+		if(keysizes.contains("rsa3072")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-3072", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA1) );
+		if(keysizes.contains("rsa4096")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-4096", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA1) );
+	    }
+
+	    if(tests.contains("oaep") || tests.contains("oaepsha256")) {
+		if(keysizes.contains("rsa2048")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-2048", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA256) );
+		if(keysizes.contains("rsa3072")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-3072", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA256) );
+		if(keysizes.contains("rsa4096")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-4096", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA256) );
+	    }
+
+	    // JWE ( RSA OAEP + AES GCM )
 	    if(tests.contains("jwe") || tests.contains("jweoaepsha1")) {
 		if(keysizes.contains("rsa2048")) {
 		    if(keysizes.contains("aes128")) 
