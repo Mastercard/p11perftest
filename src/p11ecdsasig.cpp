@@ -1,6 +1,23 @@
+// -*- mode: c++; c-file-style:"stroustrup"; -*-
+
+//
+// Copyright (c) 2018 Mastercard
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
 #include "p11ecdsasig.hpp"
 #include <botan/hash.h>
-//#include <iostream>
 
 P11ECDSASigBenchmark::P11ECDSASigBenchmark(const std::string &label) :
     P11Benchmark( "ECDSA Signature (CKM_ECDSA)", label, ObjectClass::PrivateKey ) { }
@@ -11,8 +28,6 @@ P11ECDSASigBenchmark::P11ECDSASigBenchmark(const P11ECDSASigBenchmark & other) :
 {
     // we don't want to copy specific members,
     // the only we need to matter for m_rng
-
-    //std::cout << "P11ECDSASigBenchmark copy constructor invoked for " << name() << std::endl;
 
     m_ecdsakey = nullptr;
     m_signer = nullptr;
@@ -45,5 +60,3 @@ void P11ECDSASigBenchmark::crashtestdummy(Session &session)
 {
     auto signature = m_signer->sign_message( m_digest, m_rng );
 }
-
-

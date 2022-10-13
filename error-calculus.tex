@@ -1,0 +1,72 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage[latin1]{inputenc}
+
+\title{p11perftest error calculus}
+\author{Eric Devolder, Mastercard}
+
+\begin{document}
+
+\hypertarget{error-calculus-within-p11perftest}{%
+\section{Error calculus within p11perftest}\label{error-calculus-within-p11perftest}}
+
+The utility p11perftest is making a lot of measures, it is therefore essential to be able to quantify the error on each measurement.
+
+\hypertarget{precision-of-platform-timer}{%
+\subsection{Precision of platform timer}\label{precision-of-platform-timer}}
+
+The base measurement is time. When a PKCS\#11 call is performed, time is measured when it starts and when it ends, and latency (abbreviated \(lat\)) is computed by subtracting both times.
+
+\[lat = t_{2} - t_{1}\]
+
+Time is measured using platform timers. Precision of these timers may vary, but it is generally around \( 1 \mu s\).
+
+Let \(\varepsilon\) be the resolution of the platform timer, and let \(\mathrm{\Delta}\varepsilon\) be the error on \(\varepsilon\) measurement:
+
+\[\varepsilon \pm \mathrm{\Delta}\varepsilon\]
+
+\(\mathrm{\Delta}\varepsilon\) is obtained from the square root of the mean variance:
+
+\[\mathrm{\Delta}\varepsilon = \ \sqrt{{\sigma_{\overline{\varepsilon}}}^{2}} = \sqrt{\frac{1}{n}{\sigma_{\varepsilon}}^{2}}\]
+
+With \({\sigma_{\epsilon}}^{2}\) being the variance estimator of
+\(\varepsilon:\)
+
+\[{\sigma_{\varepsilon}}^{2} = \frac{1}{n - 1}\sum_{i = 1}^{n}\left( \varepsilon_{i} - \overline{\varepsilon} \right)\]
+
+p11perftest performs 100 measurements to estimate \(\varepsilon + \mathrm{\Delta}\varepsilon\). This value is later used to set an error on the elapsed wall clock throughout a whole test case. It is however not directly used for error calculus of other values, as latency will also be measured statistically. The only condition being, for the results to be significant, to have \(\varepsilon + \mathrm{\Delta}\varepsilon\) remain much smaller than the actual measured timings:
+
+\[\varepsilon + \mathrm{\Delta}\varepsilon\  \ll \ lat\]
+
+\[\varepsilon + \mathrm{\Delta}\varepsilon\  < 100\ \cdot lat\]
+
+\hypertarget{error-on-latency}{
+\subsection{Error on latency}\label{error-on-latency}}
+
+It is measured using the same statistical methods as for timer precision
+above:
+
+\[\mathrm{\Delta}lat = \ \sqrt{{\sigma_{\overline{lat}}}^{2}} = \sqrt{\frac{1}{n}{\sigma_{lat}}^{2}}\]
+
+\[{\sigma_{lat}}^{2} = \frac{1}{n - 1}\sum_{i = 1}^{n}\left( {lat}_{i} - \overline{lat} \right)\]
+
+Note that all latencies in p11perftest are expressed in ms.
+
+\hypertarget{error-on-tps}{%
+\subsection{Error on TPS}\label{error-on-tps}}
+
+The number of transactions per second, abbreviated \(tps\), is obtained through the equation:
+
+\[tps = \frac{1000}{lat}\]
+
+\[{\mathrm{\Delta}tps}^{2} = {\sigma_{\overline{tps}}}^{2} = \left( \frac{\partial tps}{\partial lat} \right)^{2} \cdot {\sigma_{\overline{lat}}}^{2} = \left( \frac{1000}{{lat}^{2}} \right)^{2} \cdot {\sigma_{\overline{lat}}}^{2}\]
+
+Therefore,
+
+\[\mathrm{\Delta}tps = \frac{1000}{{lat}^{2}} \cdot \sigma_{\overline{lat}}\]
+
+\end{document}
+
+

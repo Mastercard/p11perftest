@@ -1,4 +1,20 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+#
+# Copyright (c) 2021 Mastercard
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
 p11keygen -k des -b 128  -i des-128 encrypt
 p11keygen -k des -b 192  -i des-192 encrypt
@@ -19,4 +35,3 @@ p11keygen -k generic -b 256 -i hmac-sha256 sign verify
 p11keygen -k generic -b 512 -i hmac-sha512 sign verify
 p11keygen -k generic -b 128 -i xorder-128 derive
 p11keygen -k aes -b 128 -i rand-128
-

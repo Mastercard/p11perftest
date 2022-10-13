@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 3.8.0 - 2022-10-13
+### Added
+- PyInstaller spec file for `generatekey.py`
+- Library, slot and passwords can be deduced from `PKCS11LIB`, `PKCS11SLOT` and `PKCS11PASSWORD` environment variables, when available
+- More slot and token information is provided
+
+### Changed
+- enhanced exception processing in main loop
+- adjusted licensing information for the whole project
+
 ## 3.7.0 - 2022-10-10
 ### Added
 - support for implementation flavours (using `-f` or `--flavour` parameter).
@@ -182,4 +192,3 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## 0.1.0 - 2018-04-11
 ### Added
 - initial release.
-  

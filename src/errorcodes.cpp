@@ -1,5 +1,21 @@
 // -*- mode: c++; c-file-style:"stroustrup"; -*-
 
+//
+// Copyright (c) 2018 Mastercard
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
 #include <botan/p11.h>
 #include "errorcodes.hpp"
 
@@ -7,34 +23,34 @@ const std::string errorcode(int rc) {
     switch ( rc ) {
     case CKR_OK:
 	return "CKR_OK";
-	
+
     case CKR_CANCEL:
 	return "CKR_CANCEL";
-	
+
     case CKR_HOST_MEMORY:
 	return "CKR_HOST_MEMORY";
-	
+
     case CKR_SLOT_ID_INVALID:
 	return "CKR_SLOT_ID_INVALID";
-	
+
     case CKR_GENERAL_ERROR:
 	return "CKR_GENERAL_ERROR";
-	
+
     case CKR_FUNCTION_FAILED:
 	return "CKR_FUNCTION_FAILED";
-	
+
     case CKR_ARGUMENTS_BAD:
 	return "CKR_ARGUMENTS_BAD";
-	
+
     case CKR_NO_EVENT:
 	return "CKR_NO_EVENT";
-	
+
     case CKR_NEED_TO_CREATE_THREADS:
 	return "CKR_NEED_TO_CREATE_THREADS";
 
     case CKR_CANT_LOCK:
 	return "CKR_CANT_LOCK";
-	
+
     case CKR_ATTRIBUTE_READ_ONLY:
 	return "CKR_ATTRIBUTE_READ_ONLY";
 
@@ -49,19 +65,19 @@ const std::string errorcode(int rc) {
 
     case CKR_DATA_INVALID:
 	return "CKR_DATA_INVALID";
-	
+
     case CKR_DATA_LEN_RANGE:
 	return "CKR_DATA_LEN_RANGE";
-	
+
     case CKR_DEVICE_ERROR:
 	return "CKR_DEVICE_ERROR";
-	
+
     case CKR_DEVICE_MEMORY:
 	return "CKR_DEVICE_MEMORY";
-	
+
     case CKR_DEVICE_REMOVED:
 	return "CKR_DEVICE_REMOVED";
-	
+
     case CKR_ENCRYPTED_DATA_INVALID:
 	return "CKR_ENCRYPTED_DATA_INVALID";
 
@@ -82,22 +98,22 @@ const std::string errorcode(int rc) {
 
     case CKR_KEY_SIZE_RANGE:
 	return "CKR_KEY_SIZE_RANGE";
-	
+
     case CKR_KEY_TYPE_INCONSISTENT:
 	return "CKR_KEY_TYPE_INCONSISTENT";
 
     case CKR_KEY_NOT_NEEDED:
 	return "CKR_KEY_NOT_NEEDED";
-	
+
     case CKR_KEY_CHANGED:
 	return "CKR_KEY_CHANGED";
-	
+
     case CKR_KEY_NEEDED:
 	return "CKR_KEY_NEEDED";
-	
+
     case CKR_KEY_INDIGESTIBLE:
 	return "CKR_KEY_INDIGESTIBLE";
-	
+
     case CKR_KEY_FUNCTION_NOT_PERMITTED:
 	return "CKR_KEY_FUNCTION_NOT_PERMITTED";
 
@@ -118,31 +134,31 @@ const std::string errorcode(int rc) {
 
     case CKR_OPERATION_ACTIVE:
 	return "CKR_OPERATION_ACTIVE";
-	
+
     case CKR_OPERATION_NOT_INITIALIZED:
 	return "CKR_OPERATION_NOT_INITIALIZED";
 
     case CKR_PIN_INCORRECT:
 	return "CKR_PIN_INCORRECT";
-	
+
     case CKR_PIN_INVALID:
 	return "CKR_PIN_INVALID";
-	
+
     case CKR_PIN_LEN_RANGE:
 	return "CKR_PIN_LEN_RANGE";
-	
+
     case CKR_PIN_EXPIRED:
 	return "CKR_PIN_EXPIRED";
-	
+
     case CKR_PIN_LOCKED:
 	return "CKR_PIN_LOCKED";
-	
+
     case CKR_SESSION_CLOSED:
 	return "CKR_SESSION_CLOSED";
-	
+
     case CKR_SESSION_COUNT:
 	return "CKR_SESSION_COUNT";
-	
+
     case CKR_SESSION_HANDLE_INVALID:
 	return "CKR_SESSION_HANDLE_INVALID";
 
@@ -154,7 +170,7 @@ const std::string errorcode(int rc) {
 
     case CKR_SESSION_EXISTS:
 	return "CKR_SESSION_EXISTS";
-	
+
     case CKR_SESSION_READ_ONLY_EXISTS:
 	return "CKR_SESSION_READ_ONLY_EXISTS";
 
@@ -230,13 +246,13 @@ const std::string errorcode(int rc) {
 
     case CKR_RANDOM_NO_RNG:
 	return "CKR_RANDOM_NO_RNG";
-	
+
     case CKR_DOMAIN_PARAMS_INVALID:
 	return "CKR_DOMAIN_PARAMS_INVALID";
 
     case CKR_BUFFER_TOO_SMALL:
 	return "CKR_BUFFER_TOO_SMALL";
-	
+
     case CKR_SAVED_STATE_INVALID:
 	return "CKR_SAVED_STATE_INVALID";
 
@@ -245,7 +261,7 @@ const std::string errorcode(int rc) {
 
     case CKR_STATE_UNSAVEABLE:
 	return "CKR_STATE_UNSAVEABLE";
-	
+
     case CKR_CRYPTOKI_NOT_INITIALIZED:
 	return "CKR_CRYPTOKI_NOT_INITIALIZED";
 
@@ -254,16 +270,16 @@ const std::string errorcode(int rc) {
 
     case CKR_MUTEX_BAD:
 	return "CKR_MUTEX_BAD";
-	
+
     case CKR_MUTEX_NOT_LOCKED:
 	return "CKR_MUTEX_NOT_LOCKED";
-	
+
     case CKR_NEW_PIN_MODE:
 	return "CKR_NEW_PIN_MODE";
-	
+
     case CKR_NEXT_OTP:
 	return "CKR_NEXT_OTP";
-	
+
     case CKR_EXCEEDED_MAX_ITERATIONS:
 	return "CKR_EXCEEDED_MAX_ITERATIONS";
 
@@ -275,7 +291,7 @@ const std::string errorcode(int rc) {
 
     case CKR_PIN_TOO_WEAK:
 	return "CKR_PIN_TOO_WEAK";
-	
+
     case CKR_PUBLIC_KEY_INVALID:
 	return "CKR_PUBLIC_KEY_INVALID";
 

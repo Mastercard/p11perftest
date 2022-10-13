@@ -1,6 +1,22 @@
 // -*- mode: c++; c-file-style:"stroustrup"; -*-
+
+//
+// Copyright (c) 2018 Mastercard
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
 #include "p11rsasig.hpp"
-//#include <iostream>
 
 P11RSASigBenchmark::P11RSASigBenchmark(const std::string &label) :
     P11Benchmark( "RSA PKCS#1 Signature with SHA256 hashing (CKM_SHA256_RSA_PKCS)", label, ObjectClass::PrivateKey ) { }
@@ -11,9 +27,6 @@ P11RSASigBenchmark::P11RSASigBenchmark(const P11RSASigBenchmark & other) :
 {
     // we don't want to copy specific members,
     // the only we need to matter for m_rng
-
-    //std::cout << "P11RSASigBenchmark copy constructor invoked for " << name() << std::endl;
-
     m_rsakey = nullptr;
     m_signer = nullptr;
     m_rng.force_reseed();
@@ -37,5 +50,3 @@ void P11RSASigBenchmark::crashtestdummy(Session &session)
 {
     auto signature = m_signer->sign_message( m_payload, m_rng );
 }
-
-

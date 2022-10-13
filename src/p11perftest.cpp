@@ -1,14 +1,29 @@
 // -*- mode: c++; c-file-style:"stroustrup"; -*-
 
+//
+// Copyright (c) 2018 Mastercard
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
 // p11perftest: a simple benchmarker for PKCS#11 interfaces
 //
 // Author: Eric Devolder <eric.devolder@mastercard.com>
 //
-// (c)2018 MasterCard
-
 
 #include <iostream>
 #include <string>
+#include <string_view>
 #include <iomanip>
 #include <fstream>
 #include <forward_list>
@@ -59,6 +74,19 @@ namespace po = boost::program_options;
 namespace pt = boost::property_tree;
 namespace p11 = Botan::PKCS11;
 
+std::string env_mapper(std::string env_var)
+{
+    if(env_var == "PKCS11LIB") {
+	return "library";
+    } else if(env_var == "PKCS11SLOT") {
+	return "slot";
+    } else if(env_var == "PKCS11PASSWORD") {
+	return "password";
+    } else {
+	return "";
+    }
+}
+
 int main(int argc, char **argv)
 {
     std::cout << "-- " PACKAGE ": a small utility to benchmark PKCS#11 operations --\n"
@@ -68,14 +96,16 @@ int main(int argc, char **argv)
 	      << "  (c) Mastercard\n"
 	      << std::endl;
 
+    int rv = EXIT_SUCCESS;
     pt::ptree results;
-    int argslot;
+    int argslot = -1;
     int argiter;
     int argnthreads;
     bool json = false;
     std::fstream jsonout;
     bool generate_session_keys = true;
-    po::options_description desc("command line options");
+    po::options_description cliopts("command line options");
+    po::options_description envvars("environment variables");
 
     // default coverage: RSA, ECDSA, HMAC, DES and AES
     const auto default_tests {"rsa,ecdsa,ecdh,hmac,des,aes,xorder,rand,jwe,oaep"};
@@ -87,27 +117,31 @@ int main(int argc, char **argv)
     const auto hwthreads = std::thread::hardware_concurrency(); // how many threads do we have on this platform ?
 
 
-    desc.add_options()
+    cliopts.add_options()
 	("help,h", "print help message")
-	("library,l", po::value< std::string >(), "PKCS#11 library path")
-	("slot,s", po::value<int>(&argslot)->default_value(0), "slot index to use")
-	("password,p", po::value< std::string >(), "password for token in slot")
+	("library,l", po::value< std::string >(), "PKCS#11 library path\noverrides PKCS11LIB environment variable")
+	("slot,s", po::value<int>(&argslot), "slot index to use\noverrides PKCS11SLOT environment variable")
+	("password,p", po::value< std::string >(), "password for token in slot\noverrides PKCS11PASSWORD environment variable")
 	("threads,t", po::value<int>(&argnthreads)->default_value(1), "number of concurrent threads")
 	("iterations,i", po::value<int>(&argiter)->default_value(200), "number of iterations")
 	("json,j", "output results as JSON")
-        ("jsonfile,o", po::value< std::string >(), "JSON output file name")
+	("jsonfile,o", po::value< std::string >(), "JSON output file name")
 	("coverage,c", po::value< std::string >()->default_value(default_tests), "coverage of test cases")
 	("vectors,v", po::value< std::string >()->default_value(default_vectors), "test vectors to use")
 	("keysizes,k", po::value< std::string >()->default_value(default_keysizes), "key sizes or curves to use")
 	("flavour,f", po::value< std::string >()->default_value(default_flavour), help_text_flavour.c_str() )
 	("nogenerate,n", "Do not attempt to generate session keys; use existing token keys instead");
 
-
+    envvars.add_options()
+	("library", po::value< std::string >(), "PKCS#11 library path\noverrides PKCS11LIB environment variable")
+	("slot", po::value<int>(&argslot), "slot index to use\noverrides PKCS11SLOT environment variable")
+	("password", po::value< std::string >(), "password for token in slot\noverrides PKCS11PASSWORD environment variable");
 
     po::variables_map vm;
 
     try {
-	po::store(po::parse_command_line(argc, argv, desc), vm);
+	po::store(po::parse_command_line(argc, argv, cliopts), vm);
+	po::store(po::parse_environment(envvars,boost::function1< std::string, std::string >(env_mapper)), vm);
 	po::notify(vm);
     } catch (const po::error& e) {
 	std::cerr << "*** Error: when parsing program arguments, " << e.what() << std::endl;
@@ -115,8 +149,8 @@ int main(int argc, char **argv)
     }
 
     if(vm.count("help")) {
-	std::cout << desc << std::endl;
-	return 0;		// exit prematurely
+	std::cout << cliopts << std::endl;
+	return EXIT_SUCCESS;      // exit prematurely
     }
 
     // retrieve the test coverage
@@ -135,7 +169,7 @@ int main(int argc, char **argv)
 	vendor = implementation.vendor();
     } catch(...) {
 	std::cerr << "Unkown or unsupported implementation flavour:" << vm["flavour"].as<std::string>() << std::endl;
-	std::exit(EXIT_FAILURE);
+	std::exit(EX_USAGE);
     }
 
     if(vm.count("json")) {
@@ -145,18 +179,18 @@ int main(int argc, char **argv)
 	    jsonout.open( vm["jsonfile"].as<std::string>(), std::fstream::out ); // open file for writing
 	}
     } else if(vm.count("jsonfile")) {
-        std::cerr << "When jsonfile option is used, -j or -jsonfile is mandatory\n";
-	std::cerr << desc << '\n';
+	std::cerr << "When jsonfile option is used, -j or -jsonfile is mandatory\n";
+	std::cerr << cliopts << '\n';
     }
 
     if (vm.count("nogenerate")) {
 	generate_session_keys = false;
     }
 
-    if (vm.count("library")==0 || vm.count("password")==0 ) {
-	std::cerr << "You must at least specify a library and a password argument\n";
-	std::cerr << desc << '\n';
-	return 1;
+    if (vm.count("library")==0 || vm.count("password")==0 || argslot==-1) {
+	std::cerr << "You must specify at leasr a path to a PKCS#11 library, a slot index and a password\n";
+	std::cerr << cliopts << '\n';
+	std::exit(EX_USAGE);
     }
 
     if(argnthreads>hwthreads) {
@@ -184,8 +218,24 @@ int main(int argc, char **argv)
 
     p11::Slot slot( module, slotids.at( argslot ) );
 
+    // print chosen slot index
+    std::cout << "Slot index: " << vm["slot"].as<int>() << '\n';
+    // print chosen slot index
+    std::cout << "Slot number: " << slotids.at(argslot) << " (0x" << std::hex << slotids.at(argslot) << ")\n";
     // print firmware version of the slot
     p11::SlotInfo slot_info = slot.get_slot_info();
+
+    // print slot description
+    std::string_view slot_description { reinterpret_cast<const char *>(slot_info.slotDescription), sizeof(slot_info.slotDescription) };
+    std::cout << "Slot description: " << slot_description << '\n';
+
+    // print token manufacturer ID
+    std::string_view manufacturer_id { reinterpret_cast<const char *>(slot_info.manufacturerID), sizeof(slot_info.manufacturerID) };
+    std::cout << "Slot manufacturerID: " << manufacturer_id << '\n';
+
+    std::cout << "Slot hardware version: "
+	      << std::to_string( slot_info.hardwareVersion.major ) << '.'
+	      << std::to_string( slot_info.hardwareVersion.minor ) << '\n';
     std::cout << "Slot firmware version: "
 	      << std::to_string( slot_info.firmwareVersion.major ) << '.'
 	      << std::to_string( slot_info.firmwareVersion.minor ) << '\n';
@@ -193,8 +243,30 @@ int main(int argc, char **argv)
     // detect if we have a token inserted
     if(slot_info.flags & CKF_TOKEN_PRESENT) {
 	try {
-	    // print firmware version of the token
 	    p11::TokenInfo token_info = slot.get_token_info();
+
+	    // print token label
+	    std::string_view label { reinterpret_cast<const char *>(token_info.label), sizeof(token_info.label) };
+	    std::cout << "Token label: " << label << '\n';
+
+	    // print token manufacturer ID
+	    std::string_view manufacturer_id { reinterpret_cast<const char *>(token_info.manufacturerID), sizeof(token_info.manufacturerID) };
+	    std::cout << "Token manufacturerID: " << manufacturer_id << '\n';
+
+	    // print token model
+	    std::string_view model { reinterpret_cast<const char *>(token_info.model), sizeof(token_info.model) };
+	    std::cout << "Token model: " << model << '\n';
+
+	    // print token serial number
+	    std::string_view serial_number { reinterpret_cast<const char *>(token_info.serialNumber), sizeof(token_info.serialNumber) };
+	    std::cout << "Token S/N: " << serial_number << '\n';
+
+	    // print hardware version of the token
+	    std::cout << "Token hardware version: "
+		      << std::to_string( token_info.hardwareVersion.major ) << '.'
+		      << std::to_string( token_info.hardwareVersion.minor ) << '\n';
+
+	    // print firmware version of the token
 	    std::cout << "Token firmware version: "
 		      << std::to_string( token_info.firmwareVersion.major ) << '.'
 		      << std::to_string( token_info.firmwareVersion.minor ) << '\n';
@@ -318,54 +390,54 @@ int main(int argc, char **argv)
 	    // JWE ( RSA OAEP + AES GCM )
 	    if(tests.contains("jwe") || tests.contains("jweoaepsha1")) {
 		if(keysizes.contains("rsa2048")) {
-		    if(keysizes.contains("aes128")) 
+		    if(keysizes.contains("aes128"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192")) 
+		    if(keysizes.contains("aes192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256")) 
+		    if(keysizes.contains("aes256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM256) );
 		}
 		if(keysizes.contains("rsa3072")) {
-		    if(keysizes.contains("aes128")) 
+		    if(keysizes.contains("aes128"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192")) 
+		    if(keysizes.contains("aes192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256")) 
+		    if(keysizes.contains("aes256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM256) );
 		}
 		if(keysizes.contains("rsa4096")) {
-		    if(keysizes.contains("aes128")) 
+		    if(keysizes.contains("aes128"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192")) 
+		    if(keysizes.contains("aes192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256")) 
+		    if(keysizes.contains("aes256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM256) );
 		}
 	    }
 
 	    if(tests.contains("jwe") || tests.contains("jweoaepsha256")) {
 		if(keysizes.contains("rsa2048")) {
-		    if(keysizes.contains("aes128")) 
+		    if(keysizes.contains("aes128"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192")) 
+		    if(keysizes.contains("aes192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256")) 
+		    if(keysizes.contains("aes256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM256) );
 		}
 		if(keysizes.contains("rsa3072")) {
-		    if(keysizes.contains("aes128")) 
+		    if(keysizes.contains("aes128"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192")) 
+		    if(keysizes.contains("aes192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256")) 
+		    if(keysizes.contains("aes256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM256) );
 		}
 		if(keysizes.contains("rsa4096")) {
-		    if(keysizes.contains("aes128")) 
+		    if(keysizes.contains("aes128"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192")) 
+		    if(keysizes.contains("aes192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256")) 
+		    if(keysizes.contains("aes256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM256) );
 		}
 	    }
@@ -445,14 +517,25 @@ int main(int argc, char **argv)
 	    }
 	}
 	catch ( KeyGenerationException &e) {
-	    std::cerr << "Ouch, got an error while generating keys: " << e.what() << '\n';
-	    std::cerr << "bailing out" << std::endl;
+	    std::cerr << "Ouch, got an error while generating keys: " << e.what() << '\n'
+		      << "bailing out" << std::endl;
+	}
+	catch ( std::exception &e) {
+	    std::cerr << "Ouch, got an error while execution: " << e.what() << '\n'
+		      << "diagnostic:\n"
+		      << boost::current_exception_diagnostic_information() << '\n'
+		      << "bailing out" << std::endl;
+	    rv = EX_SOFTWARE;
 	}
 	catch (...) {
-	    std::cerr << boost::current_exception_diagnostic_information() << std::endl;
+	    std::cerr << "Ouch, got an error while execution\n"
+		      << "diagnostic:\n"
+		      << boost::current_exception_diagnostic_information() << '\n'
+		      << "bailing out" << std::endl;
+	    rv = EX_SOFTWARE;
 	}
     } else {
       std::cout << "The slot at index " << argslot << " has no token. Aborted.\n";
     }
-    return 0;
+    return rv;
 }

@@ -1,4 +1,21 @@
 // -*- mode: c++; c-file-style:"stroustrup"; -*-
+
+//
+// Copyright (c) 2018 Mastercard
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
 // executor.cpp: a class to organize execution in a threaded fashion
 
 #include <iostream>
@@ -136,7 +153,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 
 	bacc::accumulator_set< double, bacc::stats<
 	    bacc::tag::mean,
-            bacc::tag::min,
+	    bacc::tag::min,
 	    bacc::tag::max,
 	    bacc::tag::count,
 	    bacc::tag::variance > > acc;
@@ -241,7 +258,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 		    d2s(std::get<2>(row).value(),12),
 		    d2s(std::get<2>(row).error(),12),
 		std::get<2>(row).unit(),
-	        d2s(std::get<2>(row).relerr()*100,3)+'%'  };
+		d2s(std::get<2>(row).relerr()*100,3)+'%'  };
 	}
 
 	std::cout << "Test case results:\n" << results << std::endl;
@@ -268,4 +285,3 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 
     return rv;
 }
-

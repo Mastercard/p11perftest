@@ -1,10 +1,20 @@
 // -*- mode: c++; c-file-style:"stroustrup"; -*-
 
-// p11perftest: a simple benchmarker for PKCS#11 interfaces
 //
-// Author: Eric Devolder <eric.devolder@mastercard.com>
+// Copyright (c) 2018 Mastercard
 //
-// (c)2018 MasterCard
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 
 #include <iostream>
 #include <botan/asn1_obj.h>
@@ -34,5 +44,3 @@ void P11SeedRandomBenchmark::crashtestdummy(Session &session)
     Ulong returned_len=m_seed.size();
     session.module()->C_SeedRandom( session.handle(), m_seed.data(), m_seed.size());
 }
-
-
