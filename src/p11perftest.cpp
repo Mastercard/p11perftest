@@ -132,7 +132,7 @@ int main(int argc, char **argv)
 	("iterations,i", po::value<int>(&argiter)->default_value(200), "number of iterations")
 	("skip", po::value<int>(&argskipiter)->default_value(0),
 	 "number of iterations to skip before recording for statistics\n"
-	 "(in addition to iterarions)")
+	 "(in addition to iterations)")
 	("json,j", "output results as JSON")
 	("jsonfile,o", po::value< std::string >(), "JSON output file name")
 	("coverage,c", po::value< std::string >()->default_value(default_tests),
