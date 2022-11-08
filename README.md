@@ -4,7 +4,7 @@ An utility to benchmark speed of operations of a PKCS#11 implementation.
 # Installing
 ## Pre-requisites
 You will need the following:
- - a recent/decent C++ compiler that supports C++17
+ - a recent/decent C++ compiler that supports [C++17](https://en.cppreference.com/w/cpp/17)
  - the [Boost library](https://www.boost.org/) (a recent copy, above 1.60)
  - the [Botan library](https://botan.randombit.net/) (a recent copy, above 2.17.1)
 
@@ -80,6 +80,7 @@ Here is the full list of supported arguments:
   - `-p [ --password ] arg`, password for token in slot
   - `-t [ --threads ] arg (=1)`, number of concurrent threads
   - `-i [ --iterations ] arg (=200)`, number of iterations
+  - `--skip arg (=0)`, number of iterations to skip before recording for statistics (in addition to iterations)
   - `-j [ --json ]`, output results as JSON
   - `-o [ --jsonfile ] arg`, JSON output file name
   - `-c [ --coverage ] arg (=rsa,ecdsa,ecdh,hmac,des,aes,xorder,rand,jwe,oaep)`, coverage of test cases
@@ -88,12 +89,22 @@ Here is the full list of supported arguments:
   - `-f [ --flavour ] arg (=generic)`, PKCS#11 implementation flavour. Possible values: `generic`, `luna` , `utimaco`, `entrust`
   - `-n [ --nogenerate ]`, do not attempt to generate session keys; instead, use pre-existing keys on token
 
+Some arguments allow to specify more than one value. To do so, just separate values with a comma `,` and *without* space between values.
+
+### Skipping iterations
+Some tokens tend to show a different performance for the first call of an API, compared to the subsequent ones. The parameter `--skip` allows to skip any number of iterations, i.e. these are executed but not accounted for in statistics.
+
 ### Specific algorithms
 By default, coverage for `des` includes ECB and CBC mode; coverage for `aes` includes ECB, CBC and GCM modes; coverage for `jwe` includes RSA-OAEP and RSA-OAEP-SHA256; coverage for `oaep` includes OAEP with SHA1 and OAEP with SHA256. It is possible to narrow down to specific modes:
  - for AES, `aesecb`, `aescbc`, or `aesgcm` instead of `aes`
  - for DES, `desecb` or `descbc` for `des`
  - for JWE, `jweoaepsha1` for RSA-OAEP or `jweoaepsha256` for RSA-OAEP-SHA256
  - for OAEP, `oaepsha1` for OAEP with SHA1 or `oaepsha256` for OAEP with SHA25
+
+### algorithms and key sizes
+Some tests need more than one key type to operate. If specific key sizes are chosen, it is important to include all keys needed by the algorithms. Forgetting to give one of the key sizes lead to skip the test case, even if specified on the command line.
+- for JWE, both RSA and AES key sizes must be specified
+- for OAEP, both RSA and AES key sizes must be specified
 
 ### Environment variables
 All environment variables below can be used instead of command line options. When both are present, command line option takes precedence.
