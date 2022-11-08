@@ -54,7 +54,7 @@ namespace bacc = boost::accumulators;
 constexpr double nano_to_milli = 1000000.0 ;
 
 
-ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::forward_list<std::string> shortlist )
+ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const size_t skipiter, const std::forward_list<std::string> shortlist )
 {
 
     ptree rv;
@@ -90,6 +90,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 	    { "key label", "label", benchmark.label() },
 	    { "number of threads", "threads", i2s(m_numthreads) },
 	    { "iterations/thread", "iterations", i2s(iter) },
+	    { "skipped iterarions/thread", "iterations", i2s(skipiter) },
 	    { "total of iterations", "total iterations", i2s(iter*m_numthreads) }
 	};
 
@@ -120,6 +121,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 					       m_sessions[th].get(),
 					       m_vectors.at(testcase),
 					       iter,
+					       skipiter,
 					       std::optional<size_t>(th));
 	    } else {
 		future_array[th] = std::async( std::launch::async,
@@ -128,6 +130,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const int iter, const std::f
 					       m_sessions[th].get(),
 					       m_vectors.at(testcase),
 					       iter,
+					       skipiter,
 					       std::nullopt);
 	    }
 	}

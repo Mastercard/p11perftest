@@ -85,7 +85,7 @@ public:
 
     virtual std::string features() const;
 
-    benchmark_result_t execute(Session* session, const std::vector<uint8_t> &payload, unsigned long iterations, std::optional<size_t> threadindex);
+    benchmark_result_t execute(Session* session, const std::vector<uint8_t> &payload, size_t iterations, size_t skipiterations, std::optional<size_t> threadindex);
 
 };
 

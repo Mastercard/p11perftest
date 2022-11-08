@@ -83,13 +83,13 @@ std::string P11Benchmark::build_threaded_label(std::optional<size_t> threadindex
 }
 
 
-benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uint8_t> &payload, unsigned long iterations, std::optional<size_t> threadindex)
+benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uint8_t> &payload, size_t iterations, size_t skipiterations, std::optional<size_t> threadindex)
 {
     int return_code = CKR_OK;
     std::vector<nanosecond_type> records(iterations);
 
     try {
-	std::string label = build_threaded_label(threadindex); // build threaded label (if needed)
+	auto label = build_threaded_label(threadindex); // build threaded label (if needed)
 
 	m_payload = payload;	// remember the payload
 
@@ -120,13 +120,19 @@ benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uin
 		}
 
 		// ok go now!
-		for (unsigned long i=0; i<iterations; i++) {
+
+		// first run iterations that are skipped, i.e. not taken into account for stats
+		for (size_t i=0; i<skipiterations; i++) {
+		    crashtestdummy(*session);
+		    cleanup(*session); // cleanup any created object (e.g. unwrapped or derived keys)
+		}
+		for (size_t i=0; i<iterations; i++) {
 		    t.start(); // start it
 		    started.wall = t.elapsed().wall; // remember wall clock
 		    crashtestdummy(*session);
 		    t.stop(); // stop it
-		    records.at(i) = t.elapsed().wall - started.wall;
 		    cleanup(*session); // cleanup any created object (e.g. unwrapped or derived keys)
+		    records.at(i) = t.elapsed().wall - started.wall;
 		}
 	    }
 	}

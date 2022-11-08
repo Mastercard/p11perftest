@@ -99,7 +99,7 @@ int main(int argc, char **argv)
     int rv = EXIT_SUCCESS;
     pt::ptree results;
     int argslot = -1;
-    int argiter;
+    int argiter, argskipiter;
     int argnthreads;
     bool json = false;
     std::fstream jsonout;
@@ -119,14 +119,29 @@ int main(int argc, char **argv)
 
     cliopts.add_options()
 	("help,h", "print help message")
-	("library,l", po::value< std::string >(), "PKCS#11 library path\noverrides PKCS11LIB environment variable")
-	("slot,s", po::value<int>(&argslot), "slot index to use\noverrides PKCS11SLOT environment variable")
-	("password,p", po::value< std::string >(), "password for token in slot\noverrides PKCS11PASSWORD environment variable")
+	("library,l", po::value< std::string >(),
+	 "PKCS#11 library path\n"
+	 "overrides PKCS11LIB environment variable")
+	("slot,s", po::value<int>(&argslot),
+	 "slot index to use\n"
+	 "overrides PKCS11SLOT environment variable")
+	("password,p", po::value< std::string >(),
+	 "password for token in slot\n"
+	 "overrides PKCS11PASSWORD environment variable")
 	("threads,t", po::value<int>(&argnthreads)->default_value(1), "number of concurrent threads")
 	("iterations,i", po::value<int>(&argiter)->default_value(200), "number of iterations")
+	("skip", po::value<int>(&argskipiter)->default_value(0),
+	 "number of iterations to skip before recording for statistics\n"
+	 "(in addition to iterarions)")
 	("json,j", "output results as JSON")
 	("jsonfile,o", po::value< std::string >(), "JSON output file name")
-	("coverage,c", po::value< std::string >()->default_value(default_tests), "coverage of test cases")
+	("coverage,c", po::value< std::string >()->default_value(default_tests),
+	 "coverage of test cases\n"
+	 "Note: the following test cases are compound:\n"
+	 " - aes  = aesecb + aescbc + aesgcm\n"
+	 " - des  = desecb + descbc\n"
+	 " - oaep = oaepsha1 + oaepsha256\n"
+	 " - jwe  = jweoaepsha1 + jweoaepsha256")
 	("vectors,v", po::value< std::string >()->default_value(default_vectors), "test vectors to use")
 	("keysizes,k", po::value< std::string >()->default_value(default_keysizes), "key sizes or curves to use")
 	("flavour,f", po::value< std::string >()->default_value(default_flavour), help_text_flavour.c_str() )
@@ -505,7 +520,7 @@ int main(int argc, char **argv)
 	    testvecsnames.sort();	// sort in alphabetical order
 
 	    for(auto benchmark : benchmarks) {
-		results.add_child( benchmark->name()+" using "+benchmark->label(), executor.benchmark( *benchmark, argiter, testvecsnames ));
+		results.add_child( benchmark->name()+" using "+benchmark->label(), executor.benchmark( *benchmark, argiter, argskipiter, testvecsnames ));
 		free(benchmark);
 	    }
 

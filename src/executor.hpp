@@ -63,7 +63,7 @@ public:
 
     double precision() { return m_timer_res + m_timer_res_err; }
 
-    ptree benchmark( P11Benchmark &benchmark, const int iter, const std::forward_list<std::string> shortlist );
+    ptree benchmark( P11Benchmark &benchmark, const size_t iter, const size_t skipiter, const std::forward_list<std::string> shortlist );
 
 };
 
