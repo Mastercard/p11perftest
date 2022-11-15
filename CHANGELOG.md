@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
+
+## 3.9.1 - 2022-11-08
+### Fixed
+- Typo in command line
+
 ## 3.9.0 - 2022-11-08
 ### Added
 - It is now possible to specify a number of iterations to skip at the beginning, in addition to the regular iterations
