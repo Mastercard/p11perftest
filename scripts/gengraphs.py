@@ -42,14 +42,15 @@ def generate_graphs(xlsfp, sheetname):
         for testcase in df["test case"].unique():
             if "signature" in testcase.lower() or "hmac" in testcase.lower():
                 # for signature and HMAC algos, we are interested only in knowing the TPS
-                col2, col3 = 'tps global value', col3name.format(measure)
                 measure = 'tps'
                 unit = 'TPS'
+                col2, col3 = 'tps global value', col3name.format(measure)
             else:
                 # for other algos, we want to know the throughput
-                col2, col3 = 'throughput global value', col3name.format(measure)
                 measure = 'throughput'
                 unit = 'Bytes/s'
+                col2, col3 = 'throughput global value', col3name.format(measure)
+
 
             for item in sorted(df[graph_parameter].unique()):
                 print(f"Drawing graph for {testcase} and {graph_parameter} {item}...", end='')
