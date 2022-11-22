@@ -42,29 +42,33 @@ def generate_graphs(xlsfp, sheetname):
         for testcase in df["test case"].unique():
             if "signature" in testcase.lower() or "hmac" in testcase.lower():
                 # for signature and HMAC algos, we are interested only in knowing the TPS
-                col2, col3 = 'tps thread value', 'tps global value'
                 measure = 'tps'
                 unit = 'TPS'
+                col2, col3 = 'tps global value', col3name.format(measure)
             else:
                 # for other algos, we want to know the throughput
-                col2, col3 = 'throughput thread value', 'throughput global value'
                 measure = 'throughput'
                 unit = 'Bytes/s'
+                col2, col3 = 'throughput global value', col3name.format(measure)
 
-            for vectorsize in sorted(df["vector size"].unique()):
-                print(f"Drawing graph for {testcase} and vector size {vectorsize}...", end='')
-                frame = df.loc[(df['test case'] == testcase) & (df['vector size'] == vectorsize),
-                               ['threads', 'latency average value', col2, col3]]
+
+            for item in sorted(df[graph_parameter].unique()):
+                print(f"Drawing graph for {testcase} and {graph_parameter} {item}...", end='')
+                frame = df.loc[(df['test case'] == testcase) & (df[graph_parameter] == item),
+                               [xvar, 'latency average value', col2]]
+                frame['latency_upper'] = frame['latency average value'] + df['latency average error']
+                frame['latency_lower'] = frame['latency average value'] - df['latency average error']
+                frame[col3] = frame[col2] / frame[xvar]
 
                 fig, ax = plt.subplots(figsize=(16, 12))
 
-                ax = frame.plot(colormap='cubehelix', x='threads', y=f'{measure} thread value', marker='o',
-                                label=f'{measure}/thread', ax=ax)
-                frame.plot(x='threads', y=f'{measure} global value', marker='X', label=f'{measure}, global', ax=ax)
-                frame.plot(x='threads', y='latency average value', marker='^', label='latency', secondary_y=True, ax=ax)
-                title = "{}\n{}".format(*splithalf(f"{testcase} on a {vectorsize} bytes vector"))
+                ax = frame.plot(colormap='cubehelix', x=xvar, y=ycomparison.format(measure), marker='o',
+                                label=f'{measure}/{xvar}', ax=ax)
+                frame.plot(x=xvar, y=f'{measure} global value', marker='X', label=f'{measure}, global', ax=ax)
+                frame.plot(x=xvar, y='latency average value', marker='^', label='latency', secondary_y=True, ax=ax)
+                title = "{}\n{}".format(*splithalf(titletext.format(testcase, item)))
                 ax.set_title(title)
-                ax.set_xlabel('# of threads')
+                ax.set_xlabel(xlabel)
                 ax.set_ylabel(f'Troughput ({unit})')
                 ax.right_ax.set_ylabel('Latency (ms)')
                 ax.grid('on', which='major', axis='x')
@@ -72,8 +76,8 @@ def generate_graphs(xlsfp, sheetname):
                 ax.right_ax.grid('on', which='major', axis='y', linestyle='--')
                 plt.tight_layout()
                 filename = testcase.lower().replace(' ', '_')
-                plt.savefig(f'{filename}-vec{vectorsize}.svg', format='svg', orientation='landscape')
-                plt.savefig(f'{filename}-vec{vectorsize}.png', format='png', orientation='landscape')
+                plt.savefig(f'{filename}-{fnsub}{item}.svg', format='svg', orientation='landscape')
+                plt.savefig(f'{filename}-{fnsub}{item}.png', format='png', orientation='landscape')
                 plt.cla()
                 plt.close(fig)
                 print('OK', flush=True)
@@ -83,6 +87,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate graphs from spreadsheet of p11perftest results')
     parser.add_argument('xls', metavar='FILE', type=argparse.FileType('rb'), help='Path to Excel spreadsheet', )
     parser.add_argument('-t', '--table', help='Table name', default='Sheet1')
+    parser.add_argument('-s', '--size', action='store_true',
+                        help='''Generate graphs showing vector size vs throughput/latency
+                                 (default: threads vs throughput/latency)''')
     args = parser.parse_args()
+
+    params = [('vector size', 'threads', '# of Threads', '{} thread value', 'vec', '{} thread value', "{} on a {} Bytes Vector"),
+              ('threads', 'vector size', 'Vector Size (Bytes)', '{} per vector size', 'threads', '{} per vector size', "{} on {} Threads")]
+    graph_parameter, xvar, xlabel, ycomparison, fnsub, col3name, titletext = params[args.size]
 
     generate_graphs(args.xls, args.table)
