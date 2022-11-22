@@ -21,16 +21,17 @@ import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 
+
 def splithalf(string):
     """split a sentence in two halves"""
-    midpos=len(string)//2
-    curpos=0
+    midpos = len(string) // 2
+    curpos = 0
 
-    for wordlen in map(len,string.split(' ')):
+    for wordlen in map(len, string.split(' ')):
         curpos += wordlen + 1
-        if curpos>midpos:
+        if curpos > midpos:
             break
-    return string[:curpos-1], string[curpos:]
+    return string[:curpos - 1], string[curpos:]
 
 
 def generate_graphs(xlsfp, sheetname):
@@ -42,21 +43,23 @@ def generate_graphs(xlsfp, sheetname):
             if "signature" in testcase.lower() or "hmac" in testcase.lower():
                 # for signature and HMAC algos, we are interested only in knowing the TPS
                 col2, col3 = 'tps thread value', 'tps global value'
-                measure='tps'
-                unit='TPS'
+                measure = 'tps'
+                unit = 'TPS'
             else:
                 # for other algos, we want to know the throughput
                 col2, col3 = 'throughput thread value', 'throughput global value'
-                measure='throughput'
-                unit='Bytes/s'
+                measure = 'throughput'
+                unit = 'Bytes/s'
 
             for vectorsize in sorted(df["vector size"].unique()):
                 print(f"Drawing graph for {testcase} and vector size {vectorsize}...", end='')
-                frame = df.loc[ (df['test case']==testcase) & (df['vector size']==vectorsize), ['threads', 'latency average value', col2, col3 ] ]
+                frame = df.loc[(df['test case'] == testcase) & (df['vector size'] == vectorsize),
+                               ['threads', 'latency average value', col2, col3]]
 
-                fig, ax = plt.subplots(figsize=(16,12))
+                fig, ax = plt.subplots(figsize=(16, 12))
 
-                ax = frame.plot(colormap='cubehelix', x='threads', y=f'{measure} thread value', marker='o', label=f'{measure}/thread', ax=ax)
+                ax = frame.plot(colormap='cubehelix', x='threads', y=f'{measure} thread value', marker='o',
+                                label=f'{measure}/thread', ax=ax)
                 frame.plot(x='threads', y=f'{measure} global value', marker='X', label=f'{measure}, global', ax=ax)
                 frame.plot(x='threads', y='latency average value', marker='^', label='latency', secondary_y=True, ax=ax)
                 title = "{}\n{}".format(*splithalf(f"{testcase} on a {vectorsize} bytes vector"))
@@ -68,15 +71,15 @@ def generate_graphs(xlsfp, sheetname):
                 ax.grid('on', which='major', axis='y')
                 ax.right_ax.grid('on', which='major', axis='y', linestyle='--')
                 plt.tight_layout()
-                filename=testcase.lower().replace(' ','_')
+                filename = testcase.lower().replace(' ', '_')
                 plt.savefig(f'{filename}-vec{vectorsize}.svg', format='svg', orientation='landscape')
                 plt.savefig(f'{filename}-vec{vectorsize}.png', format='png', orientation='landscape')
                 plt.cla()
                 plt.close(fig)
                 print('OK', flush=True)
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate graphs from spreadsheet of p11perftest results')
     parser.add_argument('xls', metavar='FILE', type=argparse.FileType('rb'), help='Path to Excel spreadsheet', )
     parser.add_argument('-t', '--table', help='Table name', default='Sheet1')
