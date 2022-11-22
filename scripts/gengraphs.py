@@ -56,6 +56,8 @@ def generate_graphs(xlsfp, sheetname):
                 print(f"Drawing graph for {testcase} and {graph_parameter} {item}...", end='')
                 frame = df.loc[(df['test case'] == testcase) & (df[graph_parameter] == item),
                                [xvar, 'latency average value', col2]]
+                frame['latency_upper'] = frame['latency average value'] + df['latency average error']
+                frame['latency_lower'] = frame['latency average value'] - df['latency average error']
                 frame[col3] = frame[col2] / frame[xvar]
 
                 fig, ax = plt.subplots(figsize=(16, 12))
@@ -64,7 +66,7 @@ def generate_graphs(xlsfp, sheetname):
                                 label=f'{measure}/{xvar}', ax=ax)
                 frame.plot(x=xvar, y=f'{measure} global value', marker='X', label=f'{measure}, global', ax=ax)
                 frame.plot(x=xvar, y='latency average value', marker='^', label='latency', secondary_y=True, ax=ax)
-                title = "{}\n{}".format(*splithalf(f"{testcase} on a {item} bytes vector")) # CHANGE
+                title = "{}\n{}".format(*splithalf(titletext.format(testcase, item)))
                 ax.set_title(title)
                 ax.set_xlabel(xlabel)
                 ax.set_ylabel(f'Troughput ({unit})')
@@ -90,9 +92,8 @@ if __name__ == '__main__':
                                  (default: threads vs throughput/latency)''')
     args = parser.parse_args()
 
-    params = [('vector size', 'threads', 'Vector Size (Bytes)', '{} thread value', 'vec', '{} thread value'),
-              ('threads', 'vector size', '# of Threads', '{} per vector size', 'threads', '{} per vector size')]
-
-    graph_parameter, xvar, xlabel, ycomparison, fnsub, col3name = params[args.size]
+    params = [('vector size', 'threads', '# of Threads', '{} thread value', 'vec', '{} thread value', "{} on a {} Bytes Vector"),
+              ('threads', 'vector size', 'Vector Size (Bytes)', '{} per vector size', 'threads', '{} per vector size', "{} on {} Threads")]
+    graph_parameter, xvar, xlabel, ycomparison, fnsub, col3name, titletext = params[args.size]
 
     generate_graphs(args.xls, args.table)
