@@ -34,6 +34,19 @@ def splithalf(string):
     return string[:curpos - 1], string[curpos:]
 
 
+
+def format_title1(s1, s2):
+    if str(s2)[0]==8:
+        return f"{s1} on an {s2} Bytes Vector".format(s1, s2)
+    else:
+        return f"{s1} on a {s2} Bytes Vector".format(s1, s2)
+    
+def format_title2(s1, s2):
+    if s2==1:
+        return f"{s1} on {s2} Thread".format(s1, s2)
+    else:
+        return f"{s1} on {s2} Threads".format(s1, s2)
+
 def generate_graphs(xlsfp, sheetname):
     with xlsfp:
         # read from spreadsheet directly
@@ -65,16 +78,16 @@ def generate_graphs(xlsfp, sheetname):
 
 
                 ax.plot(frame[xvar], frame[f'{measure} global value'], marker='X', color='tab:blue')
-                title = "{}\n{}".format(*splithalf(titletext.format(testcase, item)))
+                title = "{}\n{}".format(*splithalf(format_title(testcase, item)))
                 ax.set_title(title)
                 ax.set_xlabel(xlabel)
-                ax.set_ylabel(f'Troughput ({unit})')
+                ax.set_ylabel(f'Throughput ({unit})')
                 ax.grid('on', which='both', axis='x')
                 ax.grid('on', which='major', axis='y')
 
                 ax1 = ax.twinx() # add second plot to the same axes, sharing x-axis
                 ax1.plot(np.nan, marker='X', label=f'{measure}, global', color='tab:blue')  # Make an agent in ax
-                ax1.plot(frame[xvar], frame['latency average value'], label='latency', color='black')
+                ax1.plot(frame[xvar], frame['latency average value'], label='latency', color='black', marker='^')
                 ax1.plot(frame[xvar], frame['latency_upper'], label='latency error region', color='grey', alpha=0.5)
                 ax1.plot(frame[xvar], frame['latency_lower'], color='grey', alpha=0.5)
                 plt.fill_between(frame[xvar], frame['latency_upper'], frame['latency_lower'],
@@ -84,11 +97,12 @@ def generate_graphs(xlsfp, sheetname):
 
 
                 # second subplot with tp per item
-                ax2.plot(frame[xvar], frame[ycomparison.format(measure)], marker='o', label=f'{measure}/vector size')
-                ax2.set_xlabel('Vector Size (Bytes)')
-                ax2.set_ylabel(f'Throughput per vector size ({unit})')
+                ax2.plot(frame[xvar], frame[ycomparison.format(measure)], marker='o', label=f'{measure}/vector size', color='tab:red')
+                ax2.set_xlabel(xlabel)
+                ax2.set_ylabel(f'Throughput ({unit})')
                 ax2.grid('on', which='both', axis='x')
                 ax2.grid('on', which='major', axis='y')
+                ax2.legend()
 
 
                 plt.tight_layout()
@@ -109,8 +123,8 @@ if __name__ == '__main__':
                                  (default: threads vs throughput/latency)''')
     args = parser.parse_args()
 
-    params = {False: ('vector size', 'threads', '# of Threads', '{} thread value', 'vec', '{} thread value', "{} on a {} Bytes Vector"),
-              True: ('threads', 'vector size', 'Vector Size (Bytes)', '{} per vector size', 'threads', '{} per vector size', "{} on {} Threads")}
-    graph_parameter, xvar, xlabel, ycomparison, fnsub, col3name, titletext = params[args.size]
+    params = {False: ('vector size', 'threads', '# of Threads', '{} thread value', 'vec', '{} thread value', format_title1),
+              True: ('threads', 'vector size', 'Vector Size (Bytes)', '{} per vector size', 'threads', '{} per vector size', format_title2)}
+    graph_parameter, xvar, xlabel, ycomparison, fnsub, col3name, format_title = params[args.size]
 
     generate_graphs(args.xls, args.table)
