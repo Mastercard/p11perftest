@@ -21,6 +21,8 @@ import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.optimize import curve_fit
+
 
 def splithalf(string):
     """split a sentence in two halves"""
@@ -36,11 +38,11 @@ def splithalf(string):
 
 
 def format_title1(s1, s2):
-    if str(s2)[0]==8:
+    if str(s2)[0]=='8':
         return f"{s1} on an {s2} Bytes Vector".format(s1, s2)
     else:
         return f"{s1} on a {s2} Bytes Vector".format(s1, s2)
-    
+
 def format_title2(s1, s2):
     if s2==1:
         return f"{s1} on {s2} Thread".format(s1, s2)
@@ -104,6 +106,34 @@ def generate_graphs(xlsfp, sheetname):
                 ax2.grid('on', which='major', axis='y')
                 ax2.legend()
 
+
+                # add some regression lines
+                def rline_throughput():
+                    def throughput_model(z, a, b):
+                        return a * z / (z + b)
+
+                    popt, pcov = curve_fit(throughput_model, frame['vector size'], frame[f'{measure} global value'] / 10000)
+                    x_tp = np.linspace(16, 2048, 1000)
+                    y_tp = throughput_model(x_tp, *popt)
+                    df_throughput_model = pd.DataFrame({'vector size': x_tp, 'model values': y_tp * 10000})
+                    ax.plot(df_throughput_model['vector size'], df_throughput_model['model values'], marker=',', color='tab:green', linestyle='--')
+                    ax1.plot(np.nan, color='tab:green', linestyle='--', label=r"""Throughput model: $y=\frac{{{}x}}{{x+{}}}$""".format(int(popt[0] * 10000), int(popt[1])))
+
+                def rline_latency():
+                    def latency_model(z, a, b):
+                        return a + z * b
+
+                    popt1, pcov1 = curve_fit(latency_model, frame['vector size'], frame['latency average value'])
+                    x_lt = np.linspace(16, 2048, 100)
+                    y_lt = latency_model(x_lt, *popt1)
+                    df_latency_model = pd.DataFrame({'vector size': x_lt, 'model values': y_lt})
+                    a, b = '{0:.3f}'.format(popt1[0]), '{0:.3f}'.format(popt1[1])
+                    ax1.plot(df_latency_model['vector size'], df_latency_model['model values'], marker=',', color='orange', label=r'Latency model: $y={}+{}x$'.format(a, b))
+                    ax1.legend()
+
+                if args.size:
+                    rline_throughput()
+                    rline_latency()
 
                 plt.tight_layout()
                 filename = testcase.lower().replace(' ', '_')
