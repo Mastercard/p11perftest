@@ -20,6 +20,8 @@
 import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy.optimize import curve_fit
 
 
 def splithalf(string):
@@ -33,6 +35,19 @@ def splithalf(string):
             break
     return string[:curpos - 1], string[curpos:]
 
+
+
+def format_title1(s1, s2):
+    if str(s2)[0]=='8':
+        return f"{s1} on an {s2} Bytes Vector".format(s1, s2)
+    else:
+        return f"{s1} on a {s2} Bytes Vector".format(s1, s2)
+
+def format_title2(s1, s2):
+    if s2==1:
+        return f"{s1} on {s2} Thread".format(s1, s2)
+    else:
+        return f"{s1} on {s2} Threads".format(s1, s2)
 
 def generate_graphs(xlsfp, sheetname):
     with xlsfp:
@@ -60,20 +75,66 @@ def generate_graphs(xlsfp, sheetname):
                 frame['latency_lower'] = frame['latency average value'] - df['latency average error']
                 frame[col3] = frame[col2] / frame[xvar]
 
-                fig, ax = plt.subplots(figsize=(16, 12))
 
-                ax = frame.plot(colormap='cubehelix', x=xvar, y=ycomparison.format(measure), marker='o',
-                                label=f'{measure}/{xvar}', ax=ax)
-                frame.plot(x=xvar, y=f'{measure} global value', marker='X', label=f'{measure}, global', ax=ax)
-                frame.plot(x=xvar, y='latency average value', marker='^', label='latency', secondary_y=True, ax=ax)
-                title = "{}\n{}".format(*splithalf(titletext.format(testcase, item)))
+                fig, (ax, ax2) = plt.subplots(2, figsize=(16, 16), height_ratios=(3, 1))
+
+
+                ax.plot(frame[xvar], frame[f'{measure} global value'], marker='X', color='tab:blue')
+                title = "{}\n{}".format(*splithalf(format_title(testcase, item)))
                 ax.set_title(title)
                 ax.set_xlabel(xlabel)
-                ax.set_ylabel(f'Troughput ({unit})')
-                ax.right_ax.set_ylabel('Latency (ms)')
-                ax.grid('on', which='major', axis='x')
+                ax.set_ylabel(f'Throughput ({unit})')
+                ax.grid('on', which='both', axis='x')
                 ax.grid('on', which='major', axis='y')
-                ax.right_ax.grid('on', which='major', axis='y', linestyle='--')
+
+                ax1 = ax.twinx() # add second plot to the same axes, sharing x-axis
+                ax1.plot(np.nan, marker='X', label=f'{measure}, global', color='tab:blue')  # Make an agent in ax
+                ax1.plot(frame[xvar], frame['latency average value'], label='latency', color='black', marker='^')
+                ax1.plot(frame[xvar], frame['latency_upper'], label='latency error region', color='grey', alpha=0.5)
+                ax1.plot(frame[xvar], frame['latency_lower'], color='grey', alpha=0.5)
+                plt.fill_between(frame[xvar], frame['latency_upper'], frame['latency_lower'],
+                                 facecolor='grey', alpha=0.5)
+                ax1.set_ylabel('Latency (ms)')
+                ax1.legend()
+
+
+                # second subplot with tp per item
+                ax2.plot(frame[xvar], frame[ycomparison.format(measure)], marker='o', label=f'{measure}/vector size', color='tab:red')
+                ax2.set_xlabel(xlabel)
+                ax2.set_ylabel(f'Throughput ({unit})')
+                ax2.grid('on', which='both', axis='x')
+                ax2.grid('on', which='major', axis='y')
+                ax2.legend()
+
+
+                # add some regression lines
+                def rline_throughput():
+                    def throughput_model(z, a, b):
+                        return a * z / (z + b)
+
+                    popt, pcov = curve_fit(throughput_model, frame['vector size'], frame[f'{measure} global value'] / 10000)
+                    x_tp = np.linspace(16, 2048, 1000)
+                    y_tp = throughput_model(x_tp, *popt)
+                    df_throughput_model = pd.DataFrame({'vector size': x_tp, 'model values': y_tp * 10000})
+                    ax.plot(df_throughput_model['vector size'], df_throughput_model['model values'], marker=',', color='tab:green', linestyle='--')
+                    ax1.plot(np.nan, color='tab:green', linestyle='--', label=r"""Throughput model: $y=\frac{{{}x}}{{x+{}}}$""".format(int(popt[0] * 10000), int(popt[1])))
+
+                def rline_latency():
+                    def latency_model(z, a, b):
+                        return a + z * b
+
+                    popt1, pcov1 = curve_fit(latency_model, frame['vector size'], frame['latency average value'])
+                    x_lt = np.linspace(16, 2048, 100)
+                    y_lt = latency_model(x_lt, *popt1)
+                    df_latency_model = pd.DataFrame({'vector size': x_lt, 'model values': y_lt})
+                    a, b = '{0:.3f}'.format(popt1[0]), '{0:.3f}'.format(popt1[1])
+                    ax1.plot(df_latency_model['vector size'], df_latency_model['model values'], marker=',', color='orange', label=r'Latency model: $y={}+{}x$'.format(a, b))
+                    ax1.legend()
+
+                if args.size:
+                    rline_throughput()
+                    rline_latency()
+
                 plt.tight_layout()
                 filename = testcase.lower().replace(' ', '_')
                 plt.savefig(f'{filename}-{fnsub}{item}.svg', format='svg', orientation='landscape')
@@ -92,8 +153,8 @@ if __name__ == '__main__':
                                  (default: threads vs throughput/latency)''')
     args = parser.parse_args()
 
-    params = [('vector size', 'threads', '# of Threads', '{} thread value', 'vec', '{} thread value', "{} on a {} Bytes Vector"),
-              ('threads', 'vector size', 'Vector Size (Bytes)', '{} per vector size', 'threads', '{} per vector size', "{} on {} Threads")]
-    graph_parameter, xvar, xlabel, ycomparison, fnsub, col3name, titletext = params[args.size]
+    params = {False: ('vector size', 'threads', '# of Threads', '{} thread value', 'vec', '{} thread value', format_title1),
+              True: ('threads', 'vector size', 'Vector Size (Bytes)', '{} per vector size', 'threads', '{} per vector size', format_title2)}
+    graph_parameter, xvar, xlabel, ycomparison, fnsub, col3name, format_title = params[args.size]
 
     generate_graphs(args.xls, args.table)
