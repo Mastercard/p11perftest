@@ -156,7 +156,11 @@ if __name__ == '__main__':
     size.add_argument('--reglines', help='add lines of best fit for latency and throughput using predefined mathematical model', action='store_true')
     threads = subparsers.add_parser('threads', help='''Set number of threads as independent variable.''')
 
+
     args = parser.parse_args()
+
+    if args.indvar==None:
+        args.indvar = 'threads'
 
     params = {'threads': ('vector size', 'threads', '# of Threads', '{} thread value', 'vec', '{} thread value', format_title1),
               'size': ('threads', 'vector size', 'Vector Size (Bytes)', '{} per vector size', 'threads', '{} per vector size', format_title2)}
