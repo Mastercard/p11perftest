@@ -124,8 +124,8 @@ $ scripts/json2xlsx myresults.json myresults.xlsx
 ## Creating graphs
 Using the spreadsheet produced at previous step, graphs can be created using `gengraph.py` from the `scripts` directory. Just provide the spreadhseet as argument, and graphs will be created automatically.
 There are two possibilities for the graphs that are generated:
-  1. The effect of number of threads on latency and throughput, for fixed vector sizes (this is the default).
-  2. The effect of vector size on latency and throughput, for fixed numbers of threads.
+  1. The effect of number of threads on latency and throughput, for fixed vector sizes (this is the default). Usage: `gengraphs.py FILE` or optionally `gengraphs.py FILE threads`.
+  2. The effect of vector size on latency and throughput, for fixed numbers of threads. Usage `gengraphs.py FILE size [--reglines]`, where the optional switch --reglines will draw lines of best fit for latency and throughput.
 
 Run `python gengraphs.py -h` for usage. 
 
