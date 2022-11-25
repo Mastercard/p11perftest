@@ -131,9 +131,10 @@ def generate_graphs(xlsfp, sheetname):
                     ax1.plot(df_latency_model['vector size'], df_latency_model['model values'], marker=',', color='orange', label=r'Latency model: $y={}+{}x$'.format(a, b))
                     ax1.legend()
 
-                if args.size:
-                    rline_throughput()
-                    rline_latency()
+                if hasattr(args, "reglines"):
+                    if args.reglines:
+                        rline_throughput()
+                        rline_latency()
 
                 plt.tight_layout()
                 filename = testcase.lower().replace(' ', '_')
@@ -148,13 +149,21 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate graphs from spreadsheet of p11perftest results')
     parser.add_argument('xls', metavar='FILE', type=argparse.FileType('rb'), help='Path to Excel spreadsheet', )
     parser.add_argument('-t', '--table', help='Table name', default='Sheet1')
-    parser.add_argument('-s', '--size', action='store_true',
-                        help='''Generate graphs showing vector size vs throughput/latency
-                                 (default: threads vs throughput/latency)''')
+
+    subparsers = parser.add_subparsers(dest='indvar')
+    size = subparsers.add_parser('size',
+                                 help='''Set vector size as independent variable.''')
+    size.add_argument('--reglines', help='add lines of best fit for latency and throughput using predefined mathematical model', action='store_true')
+    threads = subparsers.add_parser('threads', help='''Set number of threads as independent variable.''')
+
+
     args = parser.parse_args()
 
-    params = {False: ('vector size', 'threads', '# of Threads', '{} thread value', 'vec', '{} thread value', format_title1),
-              True: ('threads', 'vector size', 'Vector Size (Bytes)', '{} per vector size', 'threads', '{} per vector size', format_title2)}
-    graph_parameter, xvar, xlabel, ycomparison, fnsub, col3name, format_title = params[args.size]
+    if args.indvar==None:
+        args.indvar = 'threads'
+
+    params = {'threads': ('vector size', 'threads', '# of Threads', '{} thread value', 'vec', '{} thread value', format_title1),
+              'size': ('threads', 'vector size', 'Vector Size (Bytes)', '{} per vector size', 'threads', '{} per vector size', format_title2)}
+    graph_parameter, xvar, xlabel, ycomparison, fnsub, col3name, format_title = params[args.indvar]
 
     generate_graphs(args.xls, args.table)
