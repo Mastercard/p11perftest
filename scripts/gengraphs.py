@@ -71,15 +71,23 @@ def generate_graphs(xlsfp, sheetname):
                 print(f"Drawing graph for {testcase} and {graph_parameter} {item}...", end='')
                 frame = df.loc[(df['test case'] == testcase) & (df[graph_parameter] == item),
                                [xvar, 'latency average value', col2]]
+                frame['tp_upper'] = frame[col2] + df[f'{measure} thread error']
+                frame['tp_lower'] = frame[col2] - df[f'{measure} thread error']
                 frame['latency_upper'] = frame['latency average value'] + df['latency average error']
                 frame['latency_lower'] = frame['latency average value'] - df['latency average error']
-                frame[col3] = frame[col2] / frame[xvar]
 
+                frame[col3] = frame[col2] / frame[xvar]
+                frame['tp_xvar_upper'] = frame[col3] + df[f'{measure} thread error'] / frame[xvar]
+                frame['tp_xvar_lower'] = frame[col3] - df[f'{measure} thread error'] / frame[xvar]
 
                 fig, (ax, ax2) = plt.subplots(2, figsize=(16, 16), height_ratios=(3, 1))
 
 
                 ax.plot(frame[xvar], frame[f'{measure} global value'], marker='X', color='tab:blue')
+                ax.plot(frame[xvar], frame['tp_upper'], color='tab:blue', alpha=0.5)
+                ax.plot(frame[xvar], frame['tp_lower'], color='tab:blue', alpha=0.5)
+                ax.fill_between(frame[xvar], frame['tp_upper'], frame['tp_lower'],
+                                 facecolor='tab:blue', alpha=0.5)
                 title = "{}\n{}".format(*splithalf(format_title(testcase, item)))
                 ax.set_title(title)
                 ax.set_xlabel(xlabel)
@@ -89,17 +97,22 @@ def generate_graphs(xlsfp, sheetname):
 
                 ax1 = ax.twinx() # add second plot to the same axes, sharing x-axis
                 ax1.plot(np.nan, marker='X', label=f'{measure}, global', color='tab:blue')  # Make an agent in ax
+                ax1.plot(np.nan, label=f'{measure} error', color='tab:blue', alpha=0.5)  # Make an agent in ax
                 ax1.plot(frame[xvar], frame['latency average value'], label='latency', color='black', marker='^')
                 ax1.plot(frame[xvar], frame['latency_upper'], label='latency error region', color='grey', alpha=0.5)
                 ax1.plot(frame[xvar], frame['latency_lower'], color='grey', alpha=0.5)
-                plt.fill_between(frame[xvar], frame['latency_upper'], frame['latency_lower'],
+                ax1.fill_between(frame[xvar], frame['latency_upper'], frame['latency_lower'],
                                  facecolor='grey', alpha=0.5)
                 ax1.set_ylabel('Latency (ms)')
                 ax1.legend()
 
 
                 # second subplot with tp per item
-                ax2.plot(frame[xvar], frame[ycomparison.format(measure)], marker='o', label=f'{measure}/vector size', color='tab:red')
+                ax2.plot(frame[xvar], frame[ycomparison.format(measure)], marker='o', label=f'{measure}/{xvar}', color='tab:red')
+                ax2.plot(frame[xvar], frame['tp_xvar_upper'], color='tab:red', label=f'{measure}/{xvar} error region',  alpha=0.5)
+                ax2.plot(frame[xvar], frame['tp_xvar_lower'], color='tab:red', alpha=0.5)
+                ax2.fill_between(frame[xvar], frame['tp_xvar_upper'], frame['tp_xvar_lower'],
+                                facecolor='tab:red', alpha=0.5)
                 ax2.set_xlabel(xlabel)
                 ax2.set_ylabel(f'Throughput ({unit})')
                 ax2.grid('on', which='both', axis='x')
