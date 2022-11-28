@@ -36,12 +36,12 @@ def splithalf(string):
     return string[:curpos - 1], string[curpos:]
 
 
-
 def format_title1(s1, s2):
     if str(s2)[0]=='8':
         return f"{s1} on an {s2} Bytes Vector".format(s1, s2)
     else:
         return f"{s1} on a {s2} Bytes Vector".format(s1, s2)
+
 
 def format_title2(s1, s2):
     if s2==1:
@@ -49,38 +49,93 @@ def format_title2(s1, s2):
     else:
         return f"{s1} on {s2} Threads".format(s1, s2)
 
-def generate_graphs(xlsfp, sheetname):
-    with xlsfp:
+
+def create_dataframe(xls, sheetname):
+    """create a dataframe from an excel file; are we interested in throughput or transactions?"""
+    df = pd.read_excel(xls, sheet_name=sheetname)
+
+    for testcase in df["test case"].unique():
+        if "signature" in testcase.lower() or "hmac" in testcase.lower():
+            # for signature and HMAC algos, we are interested only in knowing the TPS
+            measure = 'tps'
+            unit = 'TPS'
+            col2, col3 = 'tps global value', col3name.format(measure)
+        else:
+            # for other algos, we want to know the throughput
+            measure = 'throughput'
+            unit = 'Bytes/s'
+            col2, col3 = 'throughput global value', col3name.format(measure)
+
+    return df, measure, unit, col2, col3
+
+
+def create_graph_frame(df, testcase, item, col2, col3, measure):
+    frame = df.loc[(df['test case'] == testcase) & (df[graph_parameter] == item),
+                                   [xvar, 'latency average value', col2]]
+    frame['tp_upper'] = frame[col2] + df[f'{measure} thread error']
+    frame['tp_lower'] = frame[col2] - df[f'{measure} thread error']
+    frame['latency_upper'] = frame['latency average value'] + df['latency average error']
+    frame['latency_lower'] = frame['latency average value'] - df['latency average error']
+
+    frame[col3] = frame[col2] / frame[xvar]
+    frame['tp_xvar_upper'] = frame[col3] + df[f'{measure} thread error'] / frame[xvar]
+    frame['tp_xvar_lower'] = frame[col3] - df[f'{measure} thread error'] / frame[xvar]
+    return frame
+
+
+def comparison_labels(xlsfp, xlsfp2):
+    if not args.comparison:
+        xlsfp.label = '', ''
+    else:
+        if xlsfp2.name.find('hotfix') == 0 and xlsfp.name.find('hotfix') == -1:
+            xlsfp2.label = 'new', '(new)'
+            xlsfp.label = 'old', '(old)'
+        else:
+            xlsfp2.label = 'old', '(old)'
+            xlsfp.label = 'new', '(new)'
+
+
+def generate_graphs(xlsfp, sheetname, xlsfp2):
+    comparison_labels(xlsfp, xlsfp2)
+    xls_tuple = xlsfp, xlsfp
+    if args.comparison:
+        xls_tuple = xlsfp, xlsfp2
+
+    with xls_tuple[0], xls_tuple[1]:
         # read from spreadsheet directly
-        df = pd.read_excel(xlsfp, sheet_name=sheetname)
+        df1, measure1, unit, col2, col3 = create_dataframe(xlsfp, sheetname)
+        if args.comparison:
+            df2, measure2, unit, col2, col3 = create_dataframe(xlsfp2, 'Sheet1')
+            if not (measure1 == measure2) and (df1[graph_parameter].unique() == df2[graph_parameter].unique()):
+                raise AssertionError('Please compare similar things.')
+            measure = measure1
+        else:
+            measure = measure1
 
-        for testcase in df["test case"].unique():
-            if "signature" in testcase.lower() or "hmac" in testcase.lower():
-                # for signature and HMAC algos, we are interested only in knowing the TPS
-                measure = 'tps'
-                unit = 'TPS'
-                col2, col3 = 'tps global value', col3name.format(measure)
-            else:
-                # for other algos, we want to know the throughput
-                measure = 'throughput'
-                unit = 'Bytes/s'
-                col2, col3 = 'throughput global value', col3name.format(measure)
-
-
-            for item in sorted(df[graph_parameter].unique()):
+        for testcase in df1["test case"].unique():
+            for item in sorted(df1[graph_parameter].unique()):
                 print(f"Drawing graph for {testcase} and {graph_parameter} {item}...", end='')
-                frame = df.loc[(df['test case'] == testcase) & (df[graph_parameter] == item),
-                               [xvar, 'latency average value', col2]]
-                frame['latency_upper'] = frame['latency average value'] + df['latency average error']
-                frame['latency_lower'] = frame['latency average value'] - df['latency average error']
-                frame[col3] = frame[col2] / frame[xvar]
-
+                frame1 = create_graph_frame(df1, testcase, item, col2, col3, measure)
+                if args.comparison:
+                    frame2  = create_graph_frame(df2, testcase, item, col2, col3, measure)
 
                 fig, (ax, ax2) = plt.subplots(2, figsize=(16, 16), height_ratios=(3, 1))
 
+                ax.plot(frame1[xvar], frame1[f'{measure} global value'], marker='v', color='tab:blue')
+                ax.plot(frame1[xvar], frame1['tp_upper'], color='tab:blue', alpha=0.4)
+                ax.plot(frame1[xvar], frame1['tp_lower'], color='tab:blue', alpha=0.4)
+                ax.fill_between(frame1[xvar], frame1['tp_upper'], frame1['tp_lower'], facecolor='tab:blue', alpha=0.4)
+                if args.comparison:
+                    ax.plot(frame2[xvar], frame2[f'{measure} global value'], marker='^', color='tab:blue', linestyle='--')
+                    ax.plot(frame2[xvar], frame2['tp_upper'], color='tab:blue', alpha=0.4, linestyle='--')
+                    ax.plot(frame2[xvar], frame2['tp_lower'], color='tab:blue', alpha=0.4, linestyle='--')
+                    ax.fill_between(frame2[xvar], frame2['tp_upper'], frame2['tp_lower'],
+                                    facecolor='tab:blue', alpha=0.4, linestyle='--')
 
-                ax.plot(frame[xvar], frame[f'{measure} global value'], marker='X', color='tab:blue')
-                title = "{}\n{}".format(*splithalf(format_title(testcase, item)))
+                title = format_title(testcase, item)
+                if args.comparison:
+                    title += f': {xlsfp.label[0]} vs {xlsfp2.label[0]}'
+                title = "{}\n{}".format(*splithalf(title))
                 ax.set_title(title)
                 ax.set_xlabel(xlabel)
                 ax.set_ylabel(f'Throughput ({unit})')
@@ -88,18 +143,41 @@ def generate_graphs(xlsfp, sheetname):
                 ax.grid('on', which='major', axis='y')
 
                 ax1 = ax.twinx() # add second plot to the same axes, sharing x-axis
-                ax1.plot(np.nan, marker='X', label=f'{measure}, global', color='tab:blue')  # Make an agent in ax
-                ax1.plot(frame[xvar], frame['latency average value'], label='latency', color='black', marker='^')
-                ax1.plot(frame[xvar], frame['latency_upper'], label='latency error region', color='grey', alpha=0.5)
-                ax1.plot(frame[xvar], frame['latency_lower'], color='grey', alpha=0.5)
-                plt.fill_between(frame[xvar], frame['latency_upper'], frame['latency_lower'],
-                                 facecolor='grey', alpha=0.5)
+                ax1.plot(np.nan, marker='v', label=f'{measure}, global {xlsfp.label[1]}', color='tab:blue')  # Make an agent in ax
+                ax1.plot(np.nan, label=f'{measure} error', color='tab:blue', alpha=0.4)  # Make an agent in ax
+                if args.comparison:
+                    ax1.plot(np.nan, marker='^', label=f'{measure}, global {xlsfp2.label[1]}', color='tab:blue', linestyle='--')  # Make an agent in ax
+
+                ax1.plot(frame1[xvar], frame1['latency average value'], label=f'latency {xlsfp.label[1]}', color='black', marker='p')
+                ax1.plot(frame1[xvar], frame1['latency_upper'], label='latency error region', color='grey', alpha=0.4)
+                ax1.plot(frame1[xvar], frame1['latency_lower'], color='grey', alpha=0.4)
+                ax1.fill_between(frame1[xvar], frame1['latency_upper'], frame1['latency_lower'],
+                                 facecolor='grey', alpha=0.4)
+
+                if args.comparison:
+                    ax1.plot(frame2[xvar], frame2['latency average value'], label=f'latency {xlsfp2.label[1]}', color='black', marker='*', linestyle='--')
+                    ax1.plot(frame2[xvar], frame2['latency_upper'], color='grey', alpha=0.4, linestyle='--')
+                    ax1.plot(frame2[xvar], frame2['latency_lower'], color='grey', alpha=0.4, linestyle='--')
+                    ax1.fill_between(frame2[xvar], frame2['latency_upper'], frame2['latency_lower'],
+                                     facecolor='grey', alpha=0.4, linestyle='--')
+
                 ax1.set_ylabel('Latency (ms)')
                 ax1.legend()
 
-
                 # second subplot with tp per item
-                ax2.plot(frame[xvar], frame[ycomparison.format(measure)], marker='o', label=f'{measure}/vector size', color='tab:red')
+                ax2.plot(frame1[xvar], frame1[ycomparison.format(measure)], marker='+', label=f'{measure}/{xvar} {xlsfp.label[1]}', color='tab:red')
+                ax2.plot(frame1[xvar], frame1['tp_xvar_upper'], color='tab:red', label=f'{measure}/{xvar} error region',  alpha=0.4)
+                ax2.plot(frame1[xvar], frame1['tp_xvar_lower'], color='tab:red', alpha=0.4)
+                ax2.fill_between(frame1[xvar], frame1['tp_xvar_upper'], frame1['tp_xvar_lower'],
+                                facecolor='tab:red', alpha=0.4)
+                if args.comparison:
+                    ax2.plot(frame2[xvar], frame2[ycomparison.format(measure)], marker='x', label=f'{measure}/{xvar} {xlsfp2.label[1]}',
+                             color='tab:red', linestyle='--')
+                    ax2.plot(frame2[xvar], frame2['tp_xvar_upper'], color='tab:red', alpha=0.4, linestyle='--')
+                    ax2.plot(frame2[xvar], frame2['tp_xvar_lower'], color='tab:red', alpha=0.4, linestyle='--')
+                    ax2.fill_between(frame2[xvar], frame2['tp_xvar_upper'], frame2['tp_xvar_lower'],
+                                     facecolor='tab:red', alpha=0.4)
+
                 ax2.set_xlabel(xlabel)
                 ax2.set_ylabel(f'Throughput ({unit})')
                 ax2.grid('on', which='both', axis='x')
@@ -112,18 +190,18 @@ def generate_graphs(xlsfp, sheetname):
                     def throughput_model(z, a, b):
                         return a * z / (z + b)
 
-                    popt, pcov = curve_fit(throughput_model, frame['vector size'], frame[f'{measure} global value'] / 10000)
+                    popt, pcov = curve_fit(throughput_model, frame1['vector size'], frame1[f'{measure} global value'] / 10000)
                     x_tp = np.linspace(16, 2048, 1000)
                     y_tp = throughput_model(x_tp, *popt)
                     df_throughput_model = pd.DataFrame({'vector size': x_tp, 'model values': y_tp * 10000})
                     ax.plot(df_throughput_model['vector size'], df_throughput_model['model values'], marker=',', color='tab:green', linestyle='--')
-                    ax1.plot(np.nan, color='tab:green', linestyle='--', label=r"""Throughput model: $y=\frac{{{}x}}{{x+{}}}$""".format(int(popt[0] * 10000), int(popt[1])))
+                    ax1.plot(np.nan, linestyle='--', color='tab:green', label=r"""Throughput model: $y=\frac{{{}x}}{{x+{}}}$""".format(int(popt[0] * 10000), int(popt[1])))
 
                 def rline_latency():
                     def latency_model(z, a, b):
                         return a + z * b
 
-                    popt1, pcov1 = curve_fit(latency_model, frame['vector size'], frame['latency average value'])
+                    popt1, pcov1 = curve_fit(latency_model, frame1['vector size'], frame1['latency average value'])
                     x_lt = np.linspace(16, 2048, 100)
                     y_lt = latency_model(x_lt, *popt1)
                     df_latency_model = pd.DataFrame({'vector size': x_lt, 'model values': y_lt})
@@ -147,8 +225,10 @@ def generate_graphs(xlsfp, sheetname):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate graphs from spreadsheet of p11perftest results')
-    parser.add_argument('xls', metavar='FILE', type=argparse.FileType('rb'), help='Path to Excel spreadsheet', )
+    parser.add_argument('xls', metavar='FILE', type=argparse.FileType('rb'), help='Path to Excel spreadsheet')
     parser.add_argument('-t', '--table', help='Table name', default='Sheet1')
+
+    parser.add_argument('-c', '--comparison', help='Compare two datasets. Provide the path to a second Excel spreadsheet.', metavar='FILE', type=argparse.FileType('rb'))
 
     subparsers = parser.add_subparsers(dest='indvar')
     size = subparsers.add_parser('size',
@@ -166,4 +246,7 @@ if __name__ == '__main__':
               'size': ('threads', 'vector size', 'Vector Size (Bytes)', '{} per vector size', 'threads', '{} per vector size', format_title2)}
     graph_parameter, xvar, xlabel, ycomparison, fnsub, col3name, format_title = params[args.indvar]
 
-    generate_graphs(args.xls, args.table)
+    if not hasattr(args, 'comparison'):
+        args.comparison = False
+
+    generate_graphs(args.xls, args.table, args.comparison)
