@@ -71,15 +71,23 @@ def generate_graphs(xlsfp, sheetname):
                 print(f"Drawing graph for {testcase} and {graph_parameter} {item}...", end='')
                 frame = df.loc[(df['test case'] == testcase) & (df[graph_parameter] == item),
                                [xvar, 'latency average value', col2]]
+                frame['tp_upper'] = frame[col2] + df[f'{measure} thread error']
+                frame['tp_lower'] = frame[col2] - df[f'{measure} thread error']
                 frame['latency_upper'] = frame['latency average value'] + df['latency average error']
                 frame['latency_lower'] = frame['latency average value'] - df['latency average error']
-                frame[col3] = frame[col2] / frame[xvar]
 
+                frame[col3] = frame[col2] / frame[xvar]
+                frame['tp_xvar_upper'] = frame[col3] + df[f'{measure} thread error'] / frame[xvar]
+                frame['tp_xvar_lower'] = frame[col3] - df[f'{measure} thread error'] / frame[xvar]
 
                 fig, (ax, ax2) = plt.subplots(2, figsize=(16, 16), height_ratios=(3, 1))
 
 
                 ax.plot(frame[xvar], frame[f'{measure} global value'], marker='X', color='tab:blue')
+                ax.plot(frame[xvar], frame['tp_upper'], color='tab:blue', alpha=0.5)
+                ax.plot(frame[xvar], frame['tp_lower'], color='tab:blue', alpha=0.5)
+                ax.fill_between(frame[xvar], frame['tp_upper'], frame['tp_lower'],
+                                 facecolor='tab:blue', alpha=0.5)
                 title = "{}\n{}".format(*splithalf(format_title(testcase, item)))
                 ax.set_title(title)
                 ax.set_xlabel(xlabel)
@@ -89,17 +97,22 @@ def generate_graphs(xlsfp, sheetname):
 
                 ax1 = ax.twinx() # add second plot to the same axes, sharing x-axis
                 ax1.plot(np.nan, marker='X', label=f'{measure}, global', color='tab:blue')  # Make an agent in ax
+                ax1.plot(np.nan, label=f'{measure} error', color='tab:blue', alpha=0.5)  # Make an agent in ax
                 ax1.plot(frame[xvar], frame['latency average value'], label='latency', color='black', marker='^')
                 ax1.plot(frame[xvar], frame['latency_upper'], label='latency error region', color='grey', alpha=0.5)
                 ax1.plot(frame[xvar], frame['latency_lower'], color='grey', alpha=0.5)
-                plt.fill_between(frame[xvar], frame['latency_upper'], frame['latency_lower'],
+                ax1.fill_between(frame[xvar], frame['latency_upper'], frame['latency_lower'],
                                  facecolor='grey', alpha=0.5)
                 ax1.set_ylabel('Latency (ms)')
                 ax1.legend()
 
 
                 # second subplot with tp per item
-                ax2.plot(frame[xvar], frame[ycomparison.format(measure)], marker='o', label=f'{measure}/vector size', color='tab:red')
+                ax2.plot(frame[xvar], frame[ycomparison.format(measure)], marker='o', label=f'{measure}/{xvar}', color='tab:red')
+                ax2.plot(frame[xvar], frame['tp_xvar_upper'], color='tab:red', label=f'{measure}/{xvar} error region',  alpha=0.5)
+                ax2.plot(frame[xvar], frame['tp_xvar_lower'], color='tab:red', alpha=0.5)
+                ax2.fill_between(frame[xvar], frame['tp_xvar_upper'], frame['tp_xvar_lower'],
+                                facecolor='tab:red', alpha=0.5)
                 ax2.set_xlabel(xlabel)
                 ax2.set_ylabel(f'Throughput ({unit})')
                 ax2.grid('on', which='both', axis='x')
@@ -131,9 +144,10 @@ def generate_graphs(xlsfp, sheetname):
                     ax1.plot(df_latency_model['vector size'], df_latency_model['model values'], marker=',', color='orange', label=r'Latency model: $y={}+{}x$'.format(a, b))
                     ax1.legend()
 
-                if args.size:
-                    rline_throughput()
-                    rline_latency()
+                if hasattr(args, "reglines"):
+                    if args.reglines:
+                        rline_throughput()
+                        rline_latency()
 
                 plt.tight_layout()
                 filename = testcase.lower().replace(' ', '_')
@@ -148,13 +162,21 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate graphs from spreadsheet of p11perftest results')
     parser.add_argument('xls', metavar='FILE', type=argparse.FileType('rb'), help='Path to Excel spreadsheet', )
     parser.add_argument('-t', '--table', help='Table name', default='Sheet1')
-    parser.add_argument('-s', '--size', action='store_true',
-                        help='''Generate graphs showing vector size vs throughput/latency
-                                 (default: threads vs throughput/latency)''')
+
+    subparsers = parser.add_subparsers(dest='indvar')
+    size = subparsers.add_parser('size',
+                                 help='''Set vector size as independent variable.''')
+    size.add_argument('--reglines', help='add lines of best fit for latency and throughput using predefined mathematical model', action='store_true')
+    threads = subparsers.add_parser('threads', help='''Set number of threads as independent variable.''')
+
+
     args = parser.parse_args()
 
-    params = {False: ('vector size', 'threads', '# of Threads', '{} thread value', 'vec', '{} thread value', format_title1),
-              True: ('threads', 'vector size', 'Vector Size (Bytes)', '{} per vector size', 'threads', '{} per vector size', format_title2)}
-    graph_parameter, xvar, xlabel, ycomparison, fnsub, col3name, format_title = params[args.size]
+    if args.indvar==None:
+        args.indvar = 'threads'
+
+    params = {'threads': ('vector size', 'threads', '# of Threads', '{} thread value', 'vec', '{} thread value', format_title1),
+              'size': ('threads', 'vector size', 'Vector Size (Bytes)', '{} per vector size', 'threads', '{} per vector size', format_title2)}
+    graph_parameter, xvar, xlabel, ycomparison, fnsub, col3name, format_title = params[args.indvar]
 
     generate_graphs(args.xls, args.table)
