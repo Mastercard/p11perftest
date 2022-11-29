@@ -36,19 +36,18 @@ def splithalf(string):
     return string[:curpos - 1], string[curpos:]
 
 
-
 def format_title1(s1, s2):
     if str(s2)[0]=='8':
         return f"{s1} on an {s2} Bytes Vector".format(s1, s2)
     else:
         return f"{s1} on a {s2} Bytes Vector".format(s1, s2)
 
+
 def format_title2(s1, s2):
     if s2==1:
         return f"{s1} on {s2} Thread".format(s1, s2)
     else:
         return f"{s1} on {s2} Threads".format(s1, s2)
-
 
 
 def create_dataframe(xls, sheetname):
@@ -69,6 +68,7 @@ def create_dataframe(xls, sheetname):
 
     return df, measure, unit, col2, col3
 
+
 def create_graph_frame(df, testcase, item, col2, col3, measure):
     frame = df.loc[(df['test case'] == testcase) & (df[graph_parameter] == item),
                                    [xvar, 'latency average value', col2]]
@@ -86,14 +86,14 @@ def create_graph_frame(df, testcase, item, col2, col3, measure):
 def comparison_labels(xlsfp, xlsfp2):
     if not args.comparison:
         xlsfp.label = '', ''
-
     else:
         if xlsfp2.name.find('hotfix') == 0 and xlsfp.name.find('hotfix') == -1:
-            xlsfp.label = 'new', '(new)'
-            xlsfp2.label = 'old', '(old)'
-        else:
-            xlsfp.label = 'old', '(old)'
             xlsfp2.label = 'new', '(new)'
+            xlsfp.label = 'old', '(old)'
+        else:
+            xlsfp2.label = 'old', '(old)'
+            xlsfp.label = 'new', '(new)'
+
 
 def generate_graphs(xlsfp, sheetname, xlsfp2):
     comparison_labels(xlsfp, xlsfp2)
@@ -102,12 +102,10 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
         xls_tuple = xlsfp, xlsfp2
 
     with xls_tuple[0], xls_tuple[1]:
-
         # read from spreadsheet directly
         df1, measure1, unit, col2, col3 = create_dataframe(xlsfp, sheetname)
         if args.comparison:
             df2, measure2, unit, col2, col3 = create_dataframe(xlsfp2, 'Sheet1')
-
             if not (measure1 == measure2) and (df1[graph_parameter].unique() == df2[graph_parameter].unique()):
                 raise AssertionError('Please compare similar things.')
             measure = measure1
@@ -126,8 +124,7 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
                 ax.plot(frame1[xvar], frame1[f'{measure} global value'], marker='v', color='tab:blue')
                 ax.plot(frame1[xvar], frame1['tp_upper'], color='tab:blue', alpha=0.4)
                 ax.plot(frame1[xvar], frame1['tp_lower'], color='tab:blue', alpha=0.4)
-                ax.fill_between(frame1[xvar], frame1['tp_upper'], frame1['tp_lower'],
-                                 facecolor='tab:blue', alpha=0.4)
+                ax.fill_between(frame1[xvar], frame1['tp_upper'], frame1['tp_lower'], facecolor='tab:blue', alpha=0.4)
                 if args.comparison:
                     ax.plot(frame2[xvar], frame2[f'{measure} global value'], marker='^', color='tab:blue', linestyle='--')
                     ax.plot(frame2[xvar], frame2['tp_upper'], color='tab:blue', alpha=0.4, linestyle='--')
@@ -166,7 +163,6 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
 
                 ax1.set_ylabel('Latency (ms)')
                 ax1.legend()
-
 
                 # second subplot with tp per item
                 ax2.plot(frame1[xvar], frame1[ycomparison.format(measure)], marker='+', label=f'{measure}/{xvar} {xlsfp.label[1]}', color='tab:red')
