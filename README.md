@@ -127,7 +127,7 @@ There are two possibilities for the graphs that are generated:
   1. The effect of number of threads on latency and throughput, for fixed vector sizes (this is the default). Usage: `gengraphs.py FILE [threads]` where the optional switch `threads` is redundant.
   2. The effect of vector size on latency and throughput, for fixed numbers of threads. Usage `gengraphs.py FILE size [--reglines]`, where the optional switch --reglines will draw lines of best fit for latency and throughput.
 
-Run `python gengraphs.py -h` for usage. 
+There is a further option to compare two data sets using the `--comparison` switch. Run `python gengraphs.py -h` for usage. 
 
 # Author, copyright and licensing
 `p11perftest` originally created by Eric Devolder.
