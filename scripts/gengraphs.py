@@ -86,13 +86,15 @@ def create_graph_frame(df, testcase, item, col2, col3, measure):
 def comparison_labels(xlsfp, xlsfp2):
     if not args.comparison:
         xlsfp.label = '', ''
+        print('Not in comparison mode, ignoring labels. Did you forget to specify -c flag?')
     else:
-        if xlsfp2.name.find('hotfix') == 0 and xlsfp.name.find('hotfix') == -1:
-            xlsfp2.label = 'new', '(new)'
-            xlsfp.label = 'old', '(old)'
+        if args.labels == None:
+            print(args.labels, type(args.labels))
+            xlsfp.label = 'data set 1', '(data set 1)'
+            xlsfp2.label = 'data set 2', '(data set 2)'
         else:
-            xlsfp2.label = 'old', '(old)'
-            xlsfp.label = 'new', '(new)'
+            xlsfp.label = args.labels[0], f'({args.labels[0]})'
+            xlsfp2.label = args.labels[1], f'({args.labels[1]})'
 
 
 def generate_graphs(xlsfp, sheetname, xlsfp2):
@@ -237,12 +239,13 @@ if __name__ == '__main__':
 
     parser.add_argument('-c', '--comparison', help='Compare two datasets. Provide the path to a second Excel spreadsheet.', metavar='FILE', type=argparse.FileType('rb'))
 
+
     subparsers = parser.add_subparsers(dest='indvar')
     size = subparsers.add_parser('size',
                                  help='''Set vector size as independent variable.''')
     size.add_argument('--reglines', help='add lines of best fit for latency and throughput using predefined mathematical model', action='store_true')
     threads = subparsers.add_parser('threads', help='''Set number of threads as independent variable.''')
-
+    parser.add_argument('-l', '--labels', help='Dataset labels (defaults to "data set 1" and "data set 2")', nargs=2)
 
     args = parser.parse_args()
 
@@ -255,5 +258,4 @@ if __name__ == '__main__':
 
     if not hasattr(args, 'comparison'):
         args.comparison = False
-
     generate_graphs(args.xls, args.table, args.comparison)
