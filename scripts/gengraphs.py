@@ -90,7 +90,6 @@ def comparison_labels(xlsfp, xlsfp2):
             print('Not in comparison mode, ignoring labels. Did you forget to specify -c flag?')
     else:
         if args.labels == None:
-            print(args.labels, type(args.labels))
             xlsfp.label = 'data set 1', '(data set 1)'
             xlsfp2.label = 'data set 2', '(data set 2)'
         else:
