@@ -197,6 +197,7 @@ void P11JWEBenchmark::prepare(Session &session, Object &obj, std::optional<size_
 
     case Implementation::Vendor::utimaco:
     case Implementation::Vendor::entrust:
+    case Implementation::Vendor::marvell:	
     {
 	// IV is 12 bytes wide
 	// and MUST be filled with 0x00

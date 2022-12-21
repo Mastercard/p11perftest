@@ -78,13 +78,14 @@ void P11AESGCMBenchmark::prepare(Session &session, Object &obj, std::optional<si
 
     case Implementation::Vendor::utimaco:
     case Implementation::Vendor::entrust:
+    case Implementation::Vendor::marvell:
     {
 	// IV is 12 bytes wide
 	// and MUST be filled with 0x00
 	// payload becomes [ PAYLOAD | AUTH (16 bytes) ]
 
 	m_iv.resize(12);
-	std::fill(m_iv.begin(), m_iv.end(), 0);
+	std::fill(m_iv.begin(), m_iv.end(), 0); // not useful, but left for clarity
 
 	// adjust GCM_PARAMS accordingly
 
@@ -108,6 +109,7 @@ void P11AESGCMBenchmark::prepare(Session &session, Object &obj, std::optional<si
 void P11AESGCMBenchmark::crashtestdummy(Session &session)
 {
     Ulong returned_len=m_encrypted.size();
+    std::fill(m_iv.begin(), m_iv.end(), 0); // the IV must be cleared after every call to C_Encrypt()
     session.module()->C_EncryptInit(session.handle(), &m_mech_aes_gcm, m_objhandle);
     session.module()->C_Encrypt( session.handle(), m_payload.data(), m_payload.size(), m_encrypted.data(), &returned_len);
 }

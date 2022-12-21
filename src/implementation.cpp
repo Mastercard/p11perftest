@@ -43,6 +43,9 @@ Implementation::Implementation(std::string vendor)
 	m_vendor = Vendor::entrust;
 	break;
 
+    case "marvell"_hash:
+	m_vendor = Vendor::marvell;
+	break;
 
     default:
 	throw "Unknown implementation"; // TODO handle this better

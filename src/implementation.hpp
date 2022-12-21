@@ -31,7 +31,8 @@ struct Implementation {
 	generic,
 	luna,
 	utimaco,
-	entrust
+	entrust,
+	marvell
     };
 
     Implementation(std::string vendor);
@@ -39,7 +40,7 @@ struct Implementation {
     bool operator==(const Implementation& other);
     inline Vendor vendor() { return m_vendor; }
 
-    static auto choices() { return "generic, luna, utimaco, entrust"s; }
+    static auto choices() { return "generic, luna, utimaco, entrust, marvell"s; }
 
 private:
     Vendor m_vendor;
