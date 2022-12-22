@@ -72,21 +72,22 @@ def create_dataframe(xls, sheetname):
 def create_graph_frame(df, testcase, item, col2, col3, measure):
     frame = df.loc[(df['test case'] == testcase) & (df[graph_parameter] == item),
                                    [xvar, 'latency average value', col2]]
-    frame['tp_upper'] = frame[col2] + df[f'{measure} thread error']
-    frame['tp_lower'] = frame[col2] - df[f'{measure} thread error']
+    frame['tp_upper'] = frame[col2] + df[f'{measure} global error']
+    frame['tp_lower'] = frame[col2] - df[f'{measure} global error']
     frame['latency_upper'] = frame['latency average value'] + df['latency average error']
     frame['latency_lower'] = frame['latency average value'] - df['latency average error']
 
     frame[col3] = frame[col2] / frame[xvar]
-    frame['tp_xvar_upper'] = frame[col3] + df[f'{measure} thread error'] / frame[xvar]
-    frame['tp_xvar_lower'] = frame[col3] - df[f'{measure} thread error'] / frame[xvar]
+    frame['tp_xvar_upper'] = frame[col3] + df[f'{measure} global error'] / frame[xvar]
+    frame['tp_xvar_lower'] = frame[col3] - df[f'{measure} global error'] / frame[xvar]
     return frame
 
 
 def comparison_labels(xlsfp, xlsfp2):
     if not args.comparison:
         xlsfp.label = '', ''
-        print('Not in comparison mode, ignoring labels. Did you forget to specify -c flag?')
+        if args.labels != None:
+            print('Not in comparison mode, ignoring labels. Did you forget to specify -c flag?')
     else:
         if args.labels == None:
             xlsfp.label = 'data set 1', '(data set 1)'
@@ -197,12 +198,12 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
                     def throughput_model(z, a, b):
                         return a * z / (z + b)
 
-                    popt, pcov = curve_fit(throughput_model, frame1['vector size'], frame1[f'{measure} global value'] / 10000)
+                    popt, pcov = curve_fit(throughput_model, frame1['vector size'], frame1[f'{measure} global value'] / 100000)
                     x_tp = np.linspace(16, 2048, 1000)
                     y_tp = throughput_model(x_tp, *popt)
-                    df_throughput_model = pd.DataFrame({'vector size': x_tp, 'model values': y_tp * 10000})
+                    df_throughput_model = pd.DataFrame({'vector size': x_tp, 'model values': y_tp * 100000})
                     ax.plot(df_throughput_model['vector size'], df_throughput_model['model values'], marker=',', color='tab:green', linestyle='--')
-                    ax1.plot(np.nan, linestyle='--', color='tab:green', label=r"""Throughput model: $y=\frac{{{}x}}{{x+{}}}$""".format(int(popt[0] * 10000), int(popt[1])))
+                    ax1.plot(np.nan, linestyle='--', color='tab:green', label=r"""Throughput model: $y=\frac{{{}x}}{{x+{}}}$""".format(int(popt[0] * 100000), int(popt[1])))
 
                 def rline_latency():
                     def latency_model(z, a, b):
