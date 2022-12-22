@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 3.11.3 - 2022-12-22
+### Fixed
+- `gengraphs.py` throughput error used wrong data field
+- `gengraphs.py` fix reglines for larger data
+- `gengraphs.py` fix buggy error message
+
+## 3.11.2 - 2022-12-22
+### Fixed
+- dependency issue to matplotlib, for `gengraph`
+
+## 3.11.1 - 2022-12-21
+### Fixed
+- AES GCM: removed IV buffer cleanup for flavours that do not require it
+
+## 3.11.0 - 2022-12-21
+### Added
+- support for GCM and JWE for Marvell HSMs
+
 ## 3.10.0 - 2022-12-01
 ### Added
 - `gengraphs.py` can now plot graphs as a function of the payload size, in addition to the number of threads
