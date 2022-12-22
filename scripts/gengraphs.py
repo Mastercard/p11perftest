@@ -53,6 +53,7 @@ def format_title2(s1, s2):
 def create_dataframe(xls, sheetname):
     """create a dataframe from an excel file; are we interested in throughput or transactions?"""
     df = pd.read_excel(xls, sheet_name=sheetname)
+    df.sort_values(by=[xvar])
 
     for testcase in df["test case"].unique():
         if "signature" in testcase.lower() or "hmac" in testcase.lower():
