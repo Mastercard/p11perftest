@@ -176,7 +176,7 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
                                          facecolor='grey', alpha=0.4, linestyle='--')
 
                 ax1.set_ylabel('Latency (ms)')
-                ax1.legend()
+                ax1.legend(loc='lower right')
 
                 # second subplot with tp per item
                 ax2.plot(frame1[xvar], frame1[ycomparison.format(measure)], marker='+',
@@ -201,7 +201,7 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
                 ax2.set_ylabel(f'Throughput ({unit})')
                 ax2.grid('on', which='both', axis='x')
                 ax2.grid('on', which='major', axis='y')
-                ax2.legend()
+                ax2.legend(loc='upper right')
 
                 # add some regression lines
                 def rline_throughput():
@@ -229,8 +229,8 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
                     df_latency_model = pd.DataFrame({'vector size': x_lt, 'model values': y_lt})
                     a, b = '{0:.3f}'.format(popt1[0]), '{0:.3f}'.format(popt1[1])
                     ax1.plot(df_latency_model['vector size'], df_latency_model['model values'], marker=',',
-                             color='orange', label=r'Latency model: $y={}+{}x$'.format(a, b))
-                    ax1.legend()
+                             color='orange', linestyle='dashdot', label=r'Latency model: $y={}+{}x$'.format(a, b))
+                    ax1.legend(loc='lower right')
 
                 if hasattr(args, "reglines"):
                     if args.reglines:
