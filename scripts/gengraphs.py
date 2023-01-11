@@ -54,23 +54,25 @@ def create_dataframe(xls, sheetname):
     """create a dataframe from an excel file; are we interested in throughput or transactions?"""
     df = pd.read_excel(xls, sheet_name=sheetname)
     df.sort_values(by=[xvar])
-
-    for testcase in df["test case"].unique():
-        if "signature" in testcase.lower() or "hmac" in testcase.lower():
-            # for signature and HMAC algos, we are interested only in knowing the TPS
-            measure = 'tps'
-            unit = 'TPS'
-            col2, col3 = 'tps global value', col3name.format(measure)
-        else:
-            # for other algos, we want to know the throughput
-            measure = 'throughput'
-            unit = 'Bytes/s'
-            col2, col3 = 'throughput global value', col3name.format(measure)
-
-    return df, measure, unit, col2, col3
+    return df
 
 
-def create_graph_frame(df, testcase, item, col2, col3, measure):
+def determine_measure(testcase):
+    if "signature" in testcase.lower() or "hmac" in testcase.lower():
+        # for signature and HMAC algos, we are interested only in knowing the TPS
+        measure = 'tps'
+        unit = 'TPS'
+        col2, col3 = 'tps global value', col3name.format(measure)
+    else:
+        # for other algos, we want to know the throughput
+        measure = 'throughput'
+        unit = 'Bytes/s'
+        col2, col3 = 'throughput global value', col3name.format(measure)
+    return measure, unit, col2, col3
+
+
+def create_graph_frame(df, testcase, item):
+    measure, unit, col2, col3 = determine_measure(testcase)
     frame = df.loc[(df['test case'] == testcase) & (df[graph_parameter] == item),
                    [xvar, 'latency average value', col2]]
     frame['tp_upper'] = frame[col2] + df[f'{measure} global error']
@@ -81,7 +83,7 @@ def create_graph_frame(df, testcase, item, col2, col3, measure):
     frame[col3] = frame[col2] / frame[xvar]
     frame['tp_xvar_upper'] = frame[col3] + df[f'{measure} global error'] / frame[xvar]
     frame['tp_xvar_lower'] = frame[col3] - df[f'{measure} global error'] / frame[xvar]
-    return frame
+    return frame, measure, unit, col2, col3
 
 
 def comparison_labels(xlsfp, xlsfp2):
@@ -106,21 +108,22 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
 
     with xls_tuple[0], xls_tuple[1]:
         # read from spreadsheet directly
-        df1, measure1, unit, col2, col3 = create_dataframe(xlsfp, sheetname)
-        if args.comparison:
-            df2, measure2, unit, col2, col3 = create_dataframe(xlsfp2, 'Sheet1')
-            if not (measure1 == measure2) and (df1[graph_parameter].unique() == df2[graph_parameter].unique()):
-                raise AssertionError('Please compare similar things.')
-            measure = measure1
-        else:
-            measure = measure1
+        df1  = create_dataframe(xlsfp, sheetname)
+	### could reintroduce this logic below. removed for now...
+        # if args.comparison:
+        #     df2, measure2, unit, col2, col3 = create_dataframe(xlsfp2, 'Sheet1')
+        #     if not (measure1 == measure2) and (df1[graph_parameter].unique() == df2[graph_parameter].unique()):
+        #         raise AssertionError('Please compare similar things.')
+        #     measure = measure1
+        # else:
+        #     measure = measure1
 
         for testcase in df1["test case"].unique():
             for item in sorted(df1[graph_parameter].unique()):
                 print(f"Drawing graph for {testcase} and {graph_parameter} {item}...", end='')
-                frame1 = create_graph_frame(df1, testcase, item, col2, col3, measure)
+                frame1, measure, unit, col2, col3 = create_graph_frame(df1, testcase, item)
                 if args.comparison:
-                    frame2 = create_graph_frame(df2, testcase, item, col2, col3, measure)
+                    frame2, _, _, _, _ = create_graph_frame(df2, testcase, item)
 
                 fig, (ax, ax2) = plt.subplots(2, figsize=(16, 16), height_ratios=(3, 1))
 
