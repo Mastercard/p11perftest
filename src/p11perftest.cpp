@@ -321,7 +321,7 @@ int main(int argc, char **argv)
 	    Executor executor( testvecs, sessions, argnthreads, epsilon, generate_session_keys==true );
 
 	    if(generate_session_keys) {
-		KeyGenerator keygenerator( sessions, argnthreads );
+		KeyGenerator keygenerator( sessions, argnthreads, vendor );
 
 		std::cout << "Generating session keys for " << argnthreads << " thread(s)\n";
 		if(tests.contains("rsa")

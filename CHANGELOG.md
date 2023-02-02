@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 3.11.5 - 2023-02-02
+### Fixed
+- key generation on Marvell skips CKA_PRIVATE attribute
+
 ## 3.11.4 - 2023-01-13
 ### Fixed
 - determine measure,unit per graph not globally

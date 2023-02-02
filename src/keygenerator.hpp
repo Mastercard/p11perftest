@@ -24,6 +24,7 @@
 #include <stdexcept>
 #include <botan/p11_types.h>
 #include "../config.h"
+#include "implementation.hpp"
 
 using namespace Botan::PKCS11;
 
@@ -47,6 +48,7 @@ public:
 private:
     std::vector<std::unique_ptr<Session> > &m_sessions;
     const int m_numthreads;
+    const Implementation::Vendor m_vendor;
 
     bool generate_rsa_keypair(std::string alias, unsigned int bits, std::string unused, Session *session);
     bool generate_aes_key(std::string alias, unsigned int bits, std::string unused, Session *session);
@@ -60,8 +62,9 @@ private:
 public:
 
     KeyGenerator( std::vector<std::unique_ptr<Session> > &sessions,
-		  const int numthreads ):
-	m_sessions(sessions), m_numthreads(numthreads) { }
+		  const int numthreads,
+		  const Implementation::Vendor vendor):
+	m_sessions(sessions), m_numthreads(numthreads), m_vendor(vendor) { }
 
     KeyGenerator( const KeyGenerator &) = delete;
     KeyGenerator& operator=( const KeyGenerator &) = delete;
