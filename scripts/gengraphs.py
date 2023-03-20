@@ -119,7 +119,7 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
         #     measure = measure1
 
         for testcase in df1["test case"].unique():
-            for item in sorted(df1[graph_parameter].unique()):
+            for item in sorted(df1.loc[(df1['test case'] == testcase)][graph_parameter].unique()):
                 print(f"Drawing graph for {testcase} and {graph_parameter} {item}...", end='')
                 frame1, measure, unit, col2, col3 = create_graph_frame(df1, testcase, item)
                 if args.comparison:
