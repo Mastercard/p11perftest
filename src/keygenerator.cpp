@@ -26,6 +26,7 @@
 #include <botan/p11_rsa.h>
 #include <botan/p11_ecdsa.h>
 #include <botan/p11_ecdh.h>
+#include "implementation.hpp"
 #include "keygenerator.hpp"
 #include "errorcodes.hpp"
 
@@ -38,11 +39,11 @@ bool KeyGenerator::generate_rsa_keypair(std::string alias, unsigned int bits, st
     try {
 	Botan::PKCS11::RSA_PrivateKeyGenerationProperties priv_generate_props;
 	priv_generate_props.set_token( false );
-	priv_generate_props.set_private( true );
 	priv_generate_props.set_sign( true );
 	priv_generate_props.set_unwrap( true ); // needed by JWE
 	priv_generate_props.set_decrypt( true ); // needed by PKCS#1 OAEP Decrypt
 	priv_generate_props.set_label( alias );
+	if(m_vendor!=Implementation::Vendor::marvell) { priv_generate_props.set_private( true ); } // not well supported on Marvell
 
 	Botan::PKCS11::RSA_PublicKeyGenerationProperties pub_generate_props( bits );
 	pub_generate_props.set_pub_exponent(65537);
@@ -51,7 +52,7 @@ bool KeyGenerator::generate_rsa_keypair(std::string alias, unsigned int bits, st
 	pub_generate_props.set_verify( true );
 	pub_generate_props.set_wrap( true ); // needed by JWE
 	pub_generate_props.set_encrypt( true ); // needed by PKCS#11 OAEP Decrypt
-	pub_generate_props.set_private( false );
+	if(m_vendor!=Implementation::Vendor::marvell) { pub_generate_props.set_private( false ); } // not well supported on Marvell
 
 	Botan::PKCS11::PKCS11_RSA_KeyPair rsa_keypair = Botan::PKCS11::generate_rsa_keypair( *session, pub_generate_props, priv_generate_props );
 
@@ -100,14 +101,18 @@ bool KeyGenerator::generate_des_key(std::string alias, unsigned int bits, std::s
 	{
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Label), const_cast< char* >(alias.c_str()), alias.size() },
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Token), &bfalse, sizeof(Byte) },
-	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Private), &btrue, sizeof(Byte) },
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Encrypt), &btrue, sizeof(Byte) },
-	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Decrypt), &btrue, sizeof(Byte) }
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Decrypt), &btrue, sizeof(Byte) },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Private), &btrue, sizeof(Byte) }  // not well supported on Marvell
 	}
     };
 
     try {
-	session->module()->C_GenerateKey(session->handle(), &mechanism, keytemplate.data(), keytemplate.size(), &handle );
+	session->module()->C_GenerateKey( session->handle(), 
+					  &mechanism, 
+					  keytemplate.data(), 
+					  m_vendor==Implementation::Vendor::marvell ? keytemplate.size()-1 : keytemplate.size(), 
+					  &handle );
 	rv = true;
 
     } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
@@ -142,15 +147,19 @@ bool KeyGenerator::generate_aes_key(std::string alias, unsigned int bits, std::s
 	{
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Label), const_cast< char* >(alias.c_str()), alias.size() },
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Token), &bfalse, sizeof(Byte) },
-	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Private), &btrue, sizeof(Byte) },
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Encrypt), &btrue, sizeof(Byte) },
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Decrypt), &btrue, sizeof(Byte) },
-	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::ValueLen), &len, sizeof(Ulong) }
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::ValueLen), &len, sizeof(Ulong) },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Private), &btrue, sizeof(Byte) } // not well supported on Marvell
 	}
     };
 
     try {
-	session->module()->C_GenerateKey(session->handle(), &mech_aes_key_gen, keytemplate.data(), keytemplate.size(), &handle );
+	session->module()->C_GenerateKey( session->handle(), 
+					  &mech_aes_key_gen, 
+					  keytemplate.data(), 
+					  m_vendor==Implementation::Vendor::marvell ? keytemplate.size()-1 : keytemplate.size(),
+					  &handle );
 	rv = true;
 
     } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
@@ -180,16 +189,20 @@ bool KeyGenerator::generate_generic_key(std::string alias, unsigned int bits, st
 	{
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Label), const_cast< char* >(alias.c_str()), alias.size() },
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Token), &bfalse, sizeof(Byte) },
-	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Private), &btrue, sizeof(Byte) },
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Sign), &btrue, sizeof(Byte) },
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Verify), &btrue, sizeof(Byte) },
 	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Derive), &btrue, sizeof(Byte) }, // needed for CKM_XOR_BASE_AND_DATA
-	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::ValueLen), &len, sizeof(Ulong) }
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::ValueLen), &len, sizeof(Ulong) },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Private), &btrue, sizeof(Byte) } // not well supported on Marvell
 	}
     };
 
     try {
-	session->module()->C_GenerateKey(session->handle(), &mech_generic_secret_key_gen, keytemplate.data(), keytemplate.size(), &handle );
+	session->module()->C_GenerateKey( session->handle(), 
+					  &mech_generic_secret_key_gen, 
+					  keytemplate.data(), 
+					  m_vendor==Implementation::Vendor::marvell ? keytemplate.size()-1 : keytemplate.size(), 
+					  &handle );
 	rv = true;
 
     } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
@@ -212,9 +225,9 @@ bool KeyGenerator::generate_ecdsa_keypair(std::string alias, unsigned int unused
     try {
 	Botan::PKCS11::EC_PrivateKeyGenerationProperties priv_generate_props;
 	priv_generate_props.set_token( false );
-	priv_generate_props.set_private( true );
 	priv_generate_props.set_sign( true );
 	priv_generate_props.set_label( alias );
+	if(m_vendor!=Implementation::Vendor::marvell) { priv_generate_props.set_private( true ); } // not well supported on Marvell
 
 	Botan::PKCS11::EC_PublicKeyGenerationProperties pub_generate_props(
 	    Botan::EC_Group( curve ).DER_encode(Botan::EC_Group_Encoding::EC_DOMPAR_ENC_OID ) );
@@ -222,7 +235,7 @@ bool KeyGenerator::generate_ecdsa_keypair(std::string alias, unsigned int unused
 	pub_generate_props.set_label( alias );
 	pub_generate_props.set_token( false );
 	pub_generate_props.set_verify( true );
-	pub_generate_props.set_private( false );
+	if(m_vendor!=Implementation::Vendor::marvell) { pub_generate_props.set_private( false ); } // not well supported on Marvell
 
 	Botan::PKCS11::PKCS11_ECDSA_KeyPair key_pair = Botan::PKCS11::generate_ecdsa_keypair(*session, pub_generate_props, priv_generate_props);
 
@@ -247,9 +260,9 @@ bool KeyGenerator::generate_ecdh_keypair(std::string alias, unsigned int unused,
     try {
 	Botan::PKCS11::EC_PrivateKeyGenerationProperties priv_generate_props;
 	priv_generate_props.set_token( false );
-	priv_generate_props.set_private( true );
 	priv_generate_props.set_derive( true );
 	priv_generate_props.set_label( alias );
+	if(m_vendor!=Implementation::Vendor::marvell) { priv_generate_props.set_private( true ); } // not well supported on Marvell
 
 	Botan::PKCS11::EC_PublicKeyGenerationProperties pub_generate_props(
 	    Botan::EC_Group( curve ).DER_encode(Botan::EC_Group_Encoding::EC_DOMPAR_ENC_OID ) );
@@ -257,7 +270,7 @@ bool KeyGenerator::generate_ecdh_keypair(std::string alias, unsigned int unused,
 	pub_generate_props.set_label( alias );
 	pub_generate_props.set_token( false );
 	pub_generate_props.set_derive( true );
-	pub_generate_props.set_private( false );
+	if(m_vendor!=Implementation::Vendor::marvell) { pub_generate_props.set_private( false ); } // not well supported on Marvell
 
 	Botan::PKCS11::PKCS11_ECDH_KeyPair key_pair = Botan::PKCS11::generate_ecdh_keypair(*session, pub_generate_props, priv_generate_props);
 
@@ -351,3 +364,5 @@ void KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias
 
     return generate_key_generic(keytype, alias, 0, curve);
 }
+
+// EOF
