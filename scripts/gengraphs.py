@@ -242,8 +242,10 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
 
                 plt.tight_layout()
                 filename = testcase.lower().replace(' ', '_')
-                plt.savefig(f'{filename}-{fnsub}{item}.svg', format='svg', orientation='landscape')
-                plt.savefig(f'{filename}-{fnsub}{item}.png', format='png', orientation='landscape')
+                if 'svg' in args.output or 'all' in args.output:
+                    plt.savefig(f'{filename}-{fnsub}{item}.svg', format='svg', orientation='landscape')
+                if 'png' in args.output or 'all' in args.output:
+                    plt.savefig(f'{filename}-{fnsub}{item}.png', format='png', orientation='landscape')
                 plt.cla()
                 plt.close(fig)
                 print('OK', flush=True)
@@ -252,8 +254,10 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate graphs from spreadsheet of p11perftest results')
     parser.add_argument('xls', metavar='FILE', type=argparse.FileType('rb'), help='Path to Excel spreadsheet')
-    parser.add_argument('-t', '--table', help='Table name', default='Sheet1')
-    parser.add_argument('-e', '--error', help='Remove error regions from plot', action='store_true')
+    parser.add_argument('-t', '--table', help='Table name.', default='Sheet1')
+    parser.add_argument('-o', '--output', help='Output format. Defaults to all (png and svg).', choices=['png', 'svg', 'all'], default='all')
+
+    parser.add_argument('-e', '--error', help='Remove error regions from plot.', action='store_true')
 
     parser.add_argument('-c', '--comparison',
                         help='Compare two datasets. Provide the path to a second Excel spreadsheet.', metavar='FILE',
@@ -263,10 +267,10 @@ if __name__ == '__main__':
     size = subparsers.add_parser('size',
                                  help='''Set vector size as independent variable.''')
     size.add_argument('--reglines',
-                      help='add lines of best fit for latency and throughput using predefined mathematical model',
+                      help='Add lines of best fit for latency and throughput using predefined mathematical model.',
                       action='store_true')
-    threads = subparsers.add_parser('threads', help='''Set number of threads as independent variable.''')
-    parser.add_argument('-l', '--labels', help='Dataset labels (defaults to "data set 1" and "data set 2")', nargs=2)
+    threads = subparsers.add_parser('threads', help='Set number of threads as independent variable.')
+    parser.add_argument('-l', '--labels', help='Dataset labels. Defaults to "data set 1" and "data set 2".', nargs=2)
 
     args = parser.parse_args()
 
@@ -282,4 +286,5 @@ if __name__ == '__main__':
 
     if not hasattr(args, 'comparison'):
         args.comparison = False
+
     generate_graphs(args.xls, args.table, args.comparison)
