@@ -66,6 +66,26 @@ There is also a python script, at `scripts/generatekeys.py`. It requires Python 
 $ pip install -r requirements.txt
 ```
 
+## implemented tests
+
+| name      | measured operation                                   | allowed vectors                                              | involved mechanisms                    |
+|-----------|------------------------------------------------------|--------------------------------------------------------------|----------------------------------------|
+| `aescbc`  | AES encryption, in CBC mode                          | 16*n, n>1                                                    | `CKM_AES_CBC`                          |
+| `aesecb`  | AES encryption, in ECB mode                          | 16*n, n>1                                                    | `CKM_AES_ECB`                          |
+| `aesgcm`  | AES encryption, in GCM mode, IV=12 bytes, no AAD     | 1+                                                           | `CKM_AES_GCM`                          |
+| `descbc`  | 3DES encryption, in CBC mode                         | 8*n, n>1                                                     | `CKM_DES3_CBC`                         |
+| `desecb`  | AES encryption, in ECB mode                          | 8*n, n>1                                                     | `CKM_DES3_ECB`                         |
+| `ecdh`    | Elliptic curve based Diffie Hellman key derivation   | keysize dependent                                            | `CKM_ECDH1_DERIVE`                     |
+| `ecdsa`   | ECDSA digital signature (hashing in software)        | 1+                                                           | `CKM_ECDSA`                            |
+| `hmac`    | HMAC generation                                      | 1+                  `CKM_SHA_1_HMAC`, `CKM_SHA256_HMAC`, ... |                                        |
+| `jwe`     | JWE decryption (RFC7516), using RSA OAEP and AES GCM | 1+                                                           | `CKM_RSA_PKCS_OAEP` and `CKM_AES_GCM`  |
+| `oaep`    | RSA OAEP decryption                                  | keysize dependent                                            | `CKM_RSA_PKCS_OAEP` with `C_Decrypt()` |
+| `oaepunw` | RSA OAEP unwrapping ( a generic secret key)          | keysize dependent                                            | `CKM_RSA_PKCS_OAEP` with `C_Unwrap()`  |
+| `rand`    | Generate random numbers                              | 1+                                                           | `C_GenerateRandom()`                   |
+| `xorder`  | Key derivation based on exclusive OR                 | 1+                                                           | `CKM_XOR_BASE_AND_DATA`                |
+
+
+
 ## Invocation
 `p11perftest` can be invoked with only three arguments:
  - a path to a PKCS\#11 library
@@ -83,7 +103,7 @@ Here is the full list of supported arguments:
   - `--skip arg (=0)`, number of iterations to skip before recording for statistics (in addition to iterations)
   - `-j [ --json ]`, output results as JSON
   - `-o [ --jsonfile ] arg`, JSON output file name
-  - `-c [ --coverage ] arg (=rsa,ecdsa,ecdh,hmac,des,aes,xorder,rand,jwe,oaep)`, coverage of test cases
+  - `-c [ --coverage ] arg (=rsa,ecdsa,ecdh,hmac,des,aes,xorder,rand,jwe,oaep,oaepunw)`, coverage of test cases
   - `-v [ --vectors ] arg (=8,16,64,256,1024,4096)`, test vectors to use
   - `-k [ --keysizes ] arg (=rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256)`, key sizes or curves to use
   - `-f [ --flavour ] arg (=generic)`, PKCS#11 implementation flavour. Possible values: `generic`, `luna` , `utimaco`, `entrust`, `marvell`
@@ -94,12 +114,13 @@ Some arguments allow to specify more than one value. To do so, just separate val
 ### Skipping iterations
 Some tokens tend to show a different performance for the first call of an API, compared to the subsequent ones. The parameter `--skip` allows to skip any number of iterations, i.e. these are executed but not accounted for in statistics.
 
-### Specific algorithms
-By default, coverage for `des` includes ECB and CBC mode; coverage for `aes` includes ECB, CBC and GCM modes; coverage for `jwe` includes RSA-OAEP and RSA-OAEP-SHA256; coverage for `oaep` includes OAEP with SHA1 and OAEP with SHA256. It is possible to narrow down to specific modes:
+### algorithms descriptors
+By default, coverage for `des` includes ECB and CBC mode; coverage for `aes` includes ECB, CBC and GCM modes; coverage for `jwe` includes RSA-OAEP and RSA-OAEP-SHA256; coverage for `oaep` includes OAEP decryption with SHA1 and OAEP with SHA256, and `oaepunw` includes OAEP key unwrapping with SHA1 and with SHA256. It is possible to narrow down to specific modes:
  - for AES, `aesecb`, `aescbc`, or `aesgcm` instead of `aes`
  - for DES, `desecb` or `descbc` for `des`
  - for JWE, `jweoaepsha1` for RSA-OAEP or `jweoaepsha256` for RSA-OAEP-SHA256
- - for OAEP, `oaepsha1` for OAEP with SHA1 or `oaepsha256` for OAEP with SHA25
+ - for OAEP decryption, `oaepsha1` for OAEP with SHA1 or `oaepsha256` for OAEP with SHA256
+ - for OAEP unwrapping, `oaepunwsha1` for OAEP with SHA1 or `oaepunwsha256` for OAEP with SHA256
 
 ### algorithms and key sizes
 Some tests need more than one key type to operate. If specific key sizes are chosen, it is important to include all keys needed by the algorithms. Forgetting to give one of the key sizes lead to skip the test case, even if specified on the command line.
@@ -127,7 +148,7 @@ There are two possibilities for the graphs that are generated:
   1. The effect of number of threads on latency and throughput, for fixed vector sizes (this is the default). Usage: `gengraphs.py FILE [threads]` where the optional switch `threads` is redundant.
   2. The effect of vector size on latency and throughput, for fixed numbers of threads. Usage `gengraphs.py FILE size [--reglines]`, where the optional switch --reglines will draw lines of best fit for latency and throughput.
 
-There is a further option to compare two data sets using the `--comparison` switch. Run `python gengraphs.py -h` for usage. 
+There is a further option to compare two data sets using the `--comparison` switch. Run `python gengraphs.py -h` for usage.
 
 # Author, copyright and licensing
 `p11perftest` originally created by Eric Devolder.

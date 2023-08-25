@@ -54,6 +54,7 @@
 #include "executor.hpp"
 #include "p11rsasig.hpp"
 #include "p11oaepdec.hpp"
+#include "p11oaepunw.hpp"
 #include "p11jwe.hpp"
 #include "p11ecdsasig.hpp"
 #include "p11ecdh1derive.hpp"
@@ -108,7 +109,7 @@ int main(int argc, char **argv)
     po::options_description envvars("environment variables");
 
     // default coverage: RSA, ECDSA, HMAC, DES and AES
-    const auto default_tests {"rsa,ecdsa,ecdh,hmac,des,aes,xorder,rand,jwe,oaep"};
+    const auto default_tests {"rsa,ecdsa,ecdh,hmac,des,aes,xorder,rand,jwe,oaep,oaepunw"};
     const auto default_vectors {"8,16,64,256,1024,4096"};
     const auto default_keysizes{"rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256"};
     const auto default_flavour{"generic"};
@@ -141,6 +142,7 @@ int main(int argc, char **argv)
 	 " - aes  = aesecb + aescbc + aesgcm\n"
 	 " - des  = desecb + descbc\n"
 	 " - oaep = oaepsha1 + oaepsha256\n"
+	 " - oaepuwn = oaepunwsha1 + oaepunwsha256\n"
 	 " - jwe  = jweoaepsha1 + jweoaepsha256")
 	("vectors,v", po::value< std::string >()->default_value(default_vectors), "test vectors to use")
 	("keysizes,k", po::value< std::string >()->default_value(default_keysizes), "key sizes or curves to use")
@@ -330,7 +332,11 @@ int main(int argc, char **argv)
 		   || tests.contains("jweoaepsha256")
 		   || tests.contains("oaep")
 		   || tests.contains("oaepsha1")
-		   || tests.contains("oaepsha256") ) {
+		   || tests.contains("oaepsha256")
+		   || tests.contains("oaepunw")
+		   || tests.contains("oaepunwsha1")
+		   || tests.contains("oaepunwsha256")
+		    ) {
 		    if(keysizes.contains("rsa2048")) keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-2048", 2048);
 		    if(keysizes.contains("rsa3072")) keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-3072", 3072);
 		    if(keysizes.contains("rsa4096")) keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-4096", 4096);
@@ -400,6 +406,19 @@ int main(int argc, char **argv)
 		if(keysizes.contains("rsa2048")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-2048", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA256) );
 		if(keysizes.contains("rsa3072")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-3072", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA256) );
 		if(keysizes.contains("rsa4096")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-4096", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA256) );
+	    }
+
+	    // RSA PKCS#1 OAEP unwrapping
+	    if(tests.contains("oaepunw") || tests.contains("oaepunwsha1")) {
+		if(keysizes.contains("rsa2048")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-2048", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA1) );
+		if(keysizes.contains("rsa3072")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-3072", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA1) );
+		if(keysizes.contains("rsa4096")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-4096", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA1) );
+	    }
+
+	    if(tests.contains("oaepunw") || tests.contains("oaepunwsha256")) {
+		if(keysizes.contains("rsa2048")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-2048", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA256) );
+		if(keysizes.contains("rsa3072")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-3072", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA256) );
+		if(keysizes.contains("rsa4096")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-4096", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA256) );
 	    }
 
 	    // JWE ( RSA OAEP + AES GCM )
