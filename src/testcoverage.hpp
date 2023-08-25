@@ -43,7 +43,11 @@ struct TestCoverage
 	jweoaepsha256,		// subset with OAEP(SHA256)
 	oaep,			// PKCS#1 OAEP decryption (all hashing algorithms)
 	oaepsha1,		// PKCS#1 OAEP decryption (SHA1)
-	oaepsha256		// PKCS#1 OAEP decryption (SHA256)
+	oaepsha256,		// PKCS#1 OAEP decryption (SHA256)
+	oaepunw,		// PKCS#1 OAEP unwrapping (all hashing algorithms)
+	oaepunwsha1,		// PKCS#1 OAEP unwrapping (SHA1)
+	oaepunwsha256		// PKCS#1 OAEP unwrapping (SHA256)
+
     };
 
     TestCoverage(std::string tocover);

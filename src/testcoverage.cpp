@@ -108,7 +108,19 @@ TestCoverage::TestCoverage(std::string tocover)
 	    m_algo_coverage.insert(AlgoCoverage::oaepsha256);
 	    break;
 
-	default:
+	case "oaepunw"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::oaepunw);
+	    break;
+
+	case "oaepunwsha1"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::oaepunwsha1);
+	    break;
+
+	case "oaepunwsha256"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::oaepunwsha256);
+	    break;
+
+default:
 	    std::cerr << "Unknow coverage class: " << token << ", skipping." << std::endl;
 	}
     }
@@ -206,6 +218,17 @@ bool TestCoverage::contains(std::string algo)
 	return contains(AlgoCoverage::oaepsha256);
 	break;
 
+    case "oaepunw"_hash:
+	return contains(AlgoCoverage::oaepunw);
+	break;
+
+    case "oaepunwsha1"_hash:
+	return contains(AlgoCoverage::oaepunwsha1);
+	break;
+
+    case "oaepunwsha256"_hash:
+	return contains(AlgoCoverage::oaepunwsha256);
+	break;
 
     }
     return false;
