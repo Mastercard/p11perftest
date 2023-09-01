@@ -58,16 +58,20 @@ def create_dataframe(xls, sheetname):
 
 
 def determine_measure(testcase):
-    if "signature" in testcase.lower() or "hmac" in testcase.lower():
-        # for signature and HMAC algos, we are interested only in knowing the TPS
-        measure = 'tps'
-        unit = 'TPS'
-        col2, col3 = 'tps global value', col3name.format(measure)
-    else:
-        # for other algos, we want to know the throughput
+    """
+    determine what unit should be used for representing data.
+
+    encryption/decryption schemes are represented in throughput, i.e. Bytes/S
+    All other cases are represented in TPS (Transactions per second)
+    """
+    if "encryption" in testcase.lower() or "decryption" in testcase.lower():
         measure = 'throughput'
         unit = 'Bytes/s'
         col2, col3 = 'throughput global value', col3name.format(measure)
+    else:
+        measure = 'tps'
+        unit = 'TPS'
+        col2, col3 = 'tps global value', col3name.format(measure)
     return measure, unit, col2, col3
 
 

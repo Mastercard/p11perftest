@@ -15,6 +15,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+# json2xlsx.py will create an excel spreadsheet based on results coming from JSON files.
+#
+# JSON files can have two formats:
+#
+# 1. a group of test cases
+# {
+#     "testcase" : {
+#         "key" : {
+#             "vector" : {
+#                 "data1" : "blah"
+#                 "data2" : 10
+#                 ...
+#
+# 2. a group of group of test cases, identified by a key ending with "thread-s"
+# {
+#     "1 thread-s": {
+#         "testcase" : {
+#             "key" : {
+#                 "vector" : {
+#                     "data1" : "blah"
+#                     "data2" : 10
+#                      ...
+#     "2 thread-s": {
+#         ....
+# the utility looks at the label ending in "thread-s" to identify the format
+# and decode accordingly.
+#
 
 import json
 import xlsxwriter
@@ -40,10 +67,22 @@ def retrieve_rows(listofjsons):
         try:
             testcases = json.loads( f.read() );
 
-            for testcase,keys in testcases.items():
-                for key, vectors in keys.items():
-                    for vectorname, vector in vectors.items():
-                        yield f.name,testcase,key,vectorname,vector
+            # if the file consists of a dictionnary of entries which keys are labelled '* thread-s',
+            # we assume the file concatenate several testcase groups per number of threads.
+            # treat it differently.
+            if list(testcases.keys())[0].endswith('thread-s'):
+                for threadgroupname, threadgroup in testcases.items():
+                    for testcase,keys in threadgroup.items():
+                        for key, vectors in keys.items():
+                            for vectorname, vector in vectors.items():
+                                yield f.name,testcase,key,vectorname,vector
+            # else, legacy case:
+            # the file is a concatenation of use cases, for one given number of threads.
+            else:
+                for testcase,keys in testcases.items():
+                    for key, vectors in keys.items():
+                        for vectorname, vector in vectors.items():
+                            yield f.name,testcase,key,vectorname,vector
 
         except Exception as e:
             print(f"*** got an error while processing {f.name}: \"{e}\", skipping that file")
