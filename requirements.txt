@@ -9,7 +9,7 @@ numpy==1.23.2
 openpyxl==3.0.10
 packaging==21.3
 pandas==1.4.4
-Pillow==9.2.0
+Pillow==10.0.1
 pyparsing==3.0.9
 python-dateutil==2.8.2
 python-pkcs11==0.7.0
