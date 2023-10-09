@@ -197,7 +197,7 @@ void P11JWEBenchmark::prepare(Session &session, Object &obj, std::optional<size_
 
     case Implementation::Vendor::utimaco:
     case Implementation::Vendor::entrust:
-    case Implementation::Vendor::marvell:	
+    case Implementation::Vendor::marvell:
     {
 	// IV is 12 bytes wide
 	// and MUST be filled with 0x00
@@ -263,6 +263,12 @@ void P11JWEBenchmark::prepare(Session &session, Object &obj, std::optional<size_
     }
 }
 
+// for measuring latency, we suspend and resume the timer at some points:
+// - we account for the time to execute C_UnwrapKey
+// - we suspend right after, as there is some housekeeping to execute at the client level
+// - we start again for C_DecryptInit() and C_Decrypt()
+// - we exclude C_DestroyObject(), as this task can be deferred to a later stage
+//
 void P11JWEBenchmark::crashtestdummy(Session &session)
 {
     // step 1: unwrap AES key
@@ -285,14 +291,18 @@ void P11JWEBenchmark::crashtestdummy(Session &session)
     ObjectHandle symkey_handle;	// the handle for the temporary AES key
 
     session.module()->C_UnwrapKey(session.handle(), &mech_rsa_pkcs_oaep, m_objhandle, m_wrapped.data(), m_wrapped.size(), aeskeytemplate.data(), aeskeytemplate.size(), &symkey_handle);
+    suspend_timer();
 
     // step 2: decrypt data
 
     std::vector<Byte> m_decrypted(m_encrypted.size());
     Ulong returned_len=m_decrypted.size();
 
+    resume_timer();
     session.module()->C_DecryptInit(session.handle(), &m_mech_aes_gcm, symkey_handle);
     session.module()->C_Decrypt(session.handle(), m_encrypted.data(), m_encrypted.size(), m_decrypted.data(), &returned_len);
+    suspend_timer();
+
     m_decrypted.resize(returned_len);
     session.module()->C_DestroyObject(session.handle(), symkey_handle);
 }
