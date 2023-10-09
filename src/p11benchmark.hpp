@@ -43,6 +43,7 @@ class P11Benchmark
     std::string m_label;
     ObjectClass m_objectclass;
     Implementation m_implementation;
+    boost::timer::cpu_timer m_t; // the timer can be stopped and resumed by crash test dummy
 
 protected:
     std::vector<uint8_t> m_payload;
@@ -64,6 +65,10 @@ protected:
 
     // flavour(): returns which PKCS#11 flavour is selected
     inline Implementation::Vendor flavour() {return m_implementation.vendor(); };
+
+    // timer primitives for the use of derived class
+    inline void suspend_timer() { m_t.stop(); }
+    inline void resume_timer()  { m_t.resume(); }
 
 public:
     P11Benchmark(const std::string &name,

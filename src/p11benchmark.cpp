@@ -108,7 +108,6 @@ benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uin
 
 		prepare(*session, obj, threadindex);
 
-		boost::timer::cpu_timer t;
 		boost::timer::cpu_times started;
 
 		started.clear();
@@ -127,12 +126,12 @@ benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uin
 		    cleanup(*session); // cleanup any created object (e.g. unwrapped or derived keys)
 		}
 		for (size_t i=0; i<iterations; i++) {
-		    t.start(); // start it
-		    started.wall = t.elapsed().wall; // remember wall clock
+		    m_t.start(); // start timer
+		    started.wall = m_t.elapsed().wall; // remember wall clock
 		    crashtestdummy(*session);
-		    t.stop(); // stop it
+		    m_t.stop(); // stop timer
 		    cleanup(*session); // cleanup any created object (e.g. unwrapped or derived keys)
-		    records.at(i) = t.elapsed().wall - started.wall;
+		    records.at(i) = m_t.elapsed().wall - started.wall;
 		}
 	    }
 	}
