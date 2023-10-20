@@ -128,7 +128,7 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
                 fig, (ax, ax2) = plt.subplots(2, figsize=(16, 16), height_ratios=(3, 1))
 
                 ax.plot(frame1[xvar], frame1[f'{measure} global value'], marker='v', color='tab:blue')
-                if not args.error:
+                if not args.no_error_region:
                     ax.plot(frame1[xvar], frame1['tp_upper'], color='tab:blue', alpha=0.4)
                     ax.plot(frame1[xvar], frame1['tp_lower'], color='tab:blue', alpha=0.4)
                     ax.fill_between(frame1[xvar], frame1['tp_upper'], frame1['tp_lower'], facecolor='tab:blue',
@@ -136,7 +136,7 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
                 if args.comparison:
                     ax.plot(frame2[xvar], frame2[f'{measure} global value'], marker='^', color='tab:blue',
                             linestyle='--')
-                    if not args.error:
+                    if not args.no_error_region:
                         ax.plot(frame2[xvar], frame2['tp_upper'], color='tab:blue', alpha=0.4, linestyle='--')
                         ax.plot(frame2[xvar], frame2['tp_lower'], color='tab:blue', alpha=0.4, linestyle='--')
                         ax.fill_between(frame2[xvar], frame2['tp_upper'], frame2['tp_lower'],
@@ -161,7 +161,7 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
 
                 ax1.plot(frame1[xvar], frame1['latency average value'], label=f'latency {xlsfp.label[1]}',
                          color='black', marker='p')
-                if not args.error:
+                if not args.no_error_region:
                     ax1.plot(np.nan, label=f'{measure} error', color='tab:blue', alpha=0.4)  # Make an agent in ax
                     ax1.plot(frame1[xvar], frame1['latency_upper'], label='latency error region', color='grey',
                              alpha=0.4)
@@ -172,7 +172,7 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
                 if args.comparison:
                     ax1.plot(frame2[xvar], frame2['latency average value'], label=f'latency {xlsfp2.label[1]}',
                              color='black', marker='*', linestyle='--')
-                    if not args.error:
+                    if not args.no_error_region:
                         ax1.plot(frame2[xvar], frame2['latency_upper'], color='grey', alpha=0.4, linestyle='--')
                         ax1.plot(frame2[xvar], frame2['latency_lower'], color='grey', alpha=0.4, linestyle='--')
                         ax1.fill_between(frame2[xvar], frame2['latency_upper'], frame2['latency_lower'],
@@ -184,7 +184,7 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
                 # second subplot with tp per item
                 ax2.plot(frame1[xvar], frame1[ycomparison.format(measure)], marker='+',
                          label=f'{measure}/{xvar} {xlsfp.label[1]}', color='tab:red')
-                if not args.error:
+                if not args.no_error_region:
                     ax2.plot(frame1[xvar], frame1['tp_xvar_upper'], color='tab:red',
                              label=f'{measure}/{xvar} error region', alpha=0.4)
                     ax2.plot(frame1[xvar], frame1['tp_xvar_lower'], color='tab:red', alpha=0.4)
@@ -194,7 +194,7 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
                     ax2.plot(frame2[xvar], frame2[ycomparison.format(measure)], marker='x',
                              label=f'{measure}/{xvar} {xlsfp2.label[1]}',
                              color='tab:red', linestyle='--')
-                    if not args.error:
+                    if not args.no_error_region:
                         ax2.plot(frame2[xvar], frame2['tp_xvar_upper'], color='tab:red', alpha=0.4, linestyle='--')
                         ax2.plot(frame2[xvar], frame2['tp_xvar_lower'], color='tab:red', alpha=0.4, linestyle='--')
                         ax2.fill_between(frame2[xvar], frame2['tp_xvar_upper'], frame2['tp_xvar_lower'],
@@ -242,9 +242,9 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
 
                 plt.tight_layout()
                 filename = testcase.lower().replace(' ', '_')
-                if 'svg' in args.output or 'all' in args.output:
+                if 'svg' in args.format or 'all' in args.format:
                     plt.savefig(f'{filename}-{fnsub}{item}.svg', format='svg', orientation='landscape')
-                if 'png' in args.output or 'all' in args.output:
+                if 'png' in args.format or 'all' in args.format:
                     plt.savefig(f'{filename}-{fnsub}{item}.png', format='png', orientation='landscape')
                 plt.cla()
                 plt.close(fig)
@@ -255,9 +255,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate graphs from spreadsheet of p11perftest results')
     parser.add_argument('xls', metavar='FILE', type=argparse.FileType('rb'), help='Path to Excel spreadsheet')
     parser.add_argument('-t', '--table', help='Table name.', default='Sheet1')
-    parser.add_argument('-o', '--output', help='Output format. Defaults to all (png and svg).', choices=['png', 'svg', 'all'], default='all')
+    parser.add_argument('-f', '--format', help='Output format. Defaults to all (png and svg).', choices=['png', 'svg', 'all'], default='all')
 
-    parser.add_argument('-e', '--error', help='Remove error regions from plot.', action='store_true')
+    parser.add_argument('--no-error-region', help='Remove error regions from plot.', action='store_true')
 
     parser.add_argument('-c', '--comparison',
                         help='Compare two datasets. Provide the path to a second Excel spreadsheet.', metavar='FILE',
