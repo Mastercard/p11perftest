@@ -182,11 +182,21 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
                 ax1.legend(loc='lower right')
 
                 # second subplot with tp per item
+                if args.indvar == 'threads':
+                    label = f'{measure}/{xvar} {xlsfp.label[1]}'
+                if args.indvar == 'size':
+                    label = 'transactions'
+
                 ax2.plot(frame1[xvar], frame1[ycomparison.format(measure)], marker='+',
-                         label=f'{measure}/{xvar} {xlsfp.label[1]}', color='tab:red')
+                         label=label, color='tab:red')
+
                 if not args.no_error_region:
+                    if args.indvar == 'threads':
+                        label = f'{measure}/{xvar} error region'
+                    if args.indvar == 'size':
+                        label = 'transactions error region'
                     ax2.plot(frame1[xvar], frame1['tp_xvar_upper'], color='tab:red',
-                             label=f'{measure}/{xvar} error region', alpha=0.4)
+                             label=label, alpha=0.4)
                     ax2.plot(frame1[xvar], frame1['tp_xvar_lower'], color='tab:red', alpha=0.4)
                     ax2.fill_between(frame1[xvar], frame1['tp_xvar_upper'], frame1['tp_xvar_lower'],
                                      facecolor='tab:red', alpha=0.4)
@@ -201,7 +211,10 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
                                          facecolor='tab:red', alpha=0.4)
 
                 ax2.set_xlabel(xlabel)
-                ax2.set_ylabel(f'Throughput ({unit})')
+                if args.indvar == 'threads':
+                    ax2.set_ylabel(f'Throughput ({unit})')
+                if args.indvar == 'size':
+                    ax2.set_ylabel('Transactions/s')
                 ax2.grid('on', which='both', axis='x')
                 ax2.grid('on', which='major', axis='y')
                 ax2.legend(loc='upper right')
