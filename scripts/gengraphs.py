@@ -83,6 +83,16 @@ def create_graph_frame(df, testcase, item):
     frame[col3] = frame[col2] / frame[xvar]
     frame['tp_xvar_upper'] = frame[col3] + df[f'{measure} global error'] / frame[xvar]
     frame['tp_xvar_lower'] = frame[col3] - df[f'{measure} global error'] / frame[xvar]
+
+    if args.percentiles:
+        try:
+            frame['p95'] = df['latency p95 value']
+            frame['p98'] = df['latency p98 value']
+            frame['p99'] = df['latency p99 value']
+        except KeyError:
+            print("\n\nPercentiles not present in the spreadsheet, ignoring the percentiles flag.\n\n")
+            args.percentiles = False
+
     return frame, measure, unit, col2, col3
 
 
@@ -133,6 +143,7 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
                     ax.plot(frame1[xvar], frame1['tp_lower'], color='tab:blue', alpha=0.4)
                     ax.fill_between(frame1[xvar], frame1['tp_upper'], frame1['tp_lower'], facecolor='tab:blue',
                                     alpha=0.4)
+                                        
                 if args.comparison:
                     ax.plot(frame2[xvar], frame2[f'{measure} global value'], marker='^', color='tab:blue',
                             linestyle='--')
@@ -159,8 +170,20 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
                     ax1.plot(np.nan, marker='^', label=f'{measure}, global {xlsfp2.label[1]}', color='tab:blue',
                              linestyle='--')  # Make an agent in ax
 
-                ax1.plot(frame1[xvar], frame1['latency average value'], label=f'latency {xlsfp.label[1]}',
+                ax1.plot(frame1[xvar], frame1['latency average value'], label=f'latency average {xlsfp.label[1]}',
                          color='black', marker='p')
+                
+                if args.percentiles:
+                    if '95' in args.percentiles:
+                        ax1.plot(frame1[xvar], frame1['p95'], color='tab:green', alpha=1.0, label=f'latency p95 {xlsfp.label[1]}', marker='1')
+                        ax1.fill_between(frame1[xvar], frame1['p95'], facecolor='tab:green', alpha=0.2)
+                    if '98' in args.percentiles:
+                        ax1.plot(frame1[xvar], frame1['p98'], color='tab:green', alpha=1.0, label=f'latency p98 {xlsfp.label[1]}', marker='2')
+                        ax1.fill_between(frame1[xvar], frame1['p98'], facecolor='tab:green', alpha=0.2)
+                    if '99' in args.percentiles:
+                        ax1.plot(frame1[xvar], frame1['p99'], color='tab:green', alpha=1.0, label=f'latency p99 {xlsfp.label[1]}', marker='3')
+                        ax1.fill_between(frame1[xvar], frame1['p99'], facecolor='tab:green', alpha=0.2)            
+
                 if not args.no_error_region:
                     ax1.plot(np.nan, label=f'{measure} error', color='tab:blue', alpha=0.4)  # Make an agent in ax
                     ax1.plot(frame1[xvar], frame1['latency_upper'], label='latency error region', color='grey',
@@ -270,6 +293,8 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--table', help='Table name.', default='Sheet1')
     parser.add_argument('-f', '--format', help='Output format. Defaults to all (png and svg).', choices=['png', 'svg', 'all'], default='all')
 
+    parser.add_argument('-p', '--percentiles', help='Display percentile plots on graph.', choices=['95', '98', '99', '95,98', '95,99', '98,99', '95,98,99'])
+
     parser.add_argument('--no-error-region', help='Remove error regions from plot.', action='store_true')
 
     parser.add_argument('-c', '--comparison',
@@ -284,7 +309,7 @@ if __name__ == '__main__':
                       action='store_true')
     threads = subparsers.add_parser('threads', help='Set number of threads as independent variable.')
     parser.add_argument('-l', '--labels', help='Dataset labels. Defaults to "data set 1" and "data set 2".', nargs=2)
-
+    
     args = parser.parse_args()
 
     if args.indvar is None:
