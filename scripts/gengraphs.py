@@ -84,14 +84,14 @@ def create_graph_frame(df, testcase, item):
     frame['tp_xvar_upper'] = frame[col3] + df[f'{measure} global error'] / frame[xvar]
     frame['tp_xvar_lower'] = frame[col3] - df[f'{measure} global error'] / frame[xvar]
 
-    if args.percentiles:
+    if args.p95 or args.p98 or args.p99:
         try:
             frame['p95'] = df['latency p95 value']
             frame['p98'] = df['latency p98 value']
             frame['p99'] = df['latency p99 value']
         except KeyError:
             print("\n\nPercentiles not present in the spreadsheet, ignoring the percentiles flag.\n\n")
-            args.percentiles = False
+            args.p95, args.p98, args.p99 = False, False, False
 
     return frame, measure, unit, col2, col3
 
@@ -120,8 +120,8 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
         # read from spreadsheet directly
         df1  = create_dataframe(xlsfp, sheetname)
 	### could reintroduce this logic below. removed for now...
-        # if args.comparison:
-        #     df2, measure2, unit, col2, col3 = create_dataframe(xlsfp2, 'Sheet1')
+        if args.comparison:
+            df2 = create_dataframe(xlsfp2, 'Sheet1')
         #     if not (measure1 == measure2) and (df1[graph_parameter].unique() == df2[graph_parameter].unique()):
         #         raise AssertionError('Please compare similar things.')
         #     measure = measure1
@@ -173,17 +173,16 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
                 ax1.plot(frame1[xvar], frame1['latency average value'], label=f'latency average {xlsfp.label[1]}',
                          color='black', marker='p')
                 
-                if args.percentiles:
-                    ax1.fill_between(frame1[xvar], frame1['latency average value'], facecolor='grey', alpha=0.2)
-                    if '95' in args.percentiles:
-                        ax1.plot(frame1[xvar], frame1['p95'], color='green', alpha=1.0, label=f'latency p95 {xlsfp.label[1]}', marker='1')
-                        ax1.fill_between(frame1[xvar], frame1['p95'], facecolor='grey', alpha=0.2)
-                    if '98' in args.percentiles:
-                        ax1.plot(frame1[xvar], frame1['p98'], color='red', alpha=1.0, label=f'latency p98 {xlsfp.label[1]}', marker='2')
-                        ax1.fill_between(frame1[xvar], frame1['p98'], facecolor='grey', alpha=0.2)
-                    if '99' in args.percentiles:
-                        ax1.plot(frame1[xvar], frame1['p99'], color='blue', alpha=1.0, label=f'latency p99 {xlsfp.label[1]}', marker='3')
-                        ax1.fill_between(frame1[xvar], frame1['p99'], facecolor='grey', alpha=0.2)            
+                
+                if args.p95:
+                    ax1.plot(frame1[xvar], frame1['p95'], color='green', alpha=1.0, label=f'latency p95 {xlsfp.label[1]}', marker='1')
+                    ax1.fill_between(frame1[xvar], frame1['p95'], facecolor='grey', alpha=0.2)
+                if args.p98:
+                    ax1.plot(frame1[xvar], frame1['p98'], color='red', alpha=1.0, label=f'latency p98 {xlsfp.label[1]}', marker='2')
+                    ax1.fill_between(frame1[xvar], frame1['p98'], facecolor='grey', alpha=0.2)
+                if args.p99:
+                    ax1.plot(frame1[xvar], frame1['p99'], color='blue', alpha=1.0, label=f'latency p99 {xlsfp.label[1]}', marker='3')
+                    ax1.fill_between(frame1[xvar], frame1['p99'], facecolor='grey', alpha=0.2)            
 
                 if not args.no_error_region:
                     ax1.plot(np.nan, label=f'{measure} error', color='tab:blue', alpha=0.4)  # Make an agent in ax
@@ -294,7 +293,10 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--table', help='Table name.', default='Sheet1')
     parser.add_argument('-f', '--format', help='Output format. Defaults to all (png and svg).', choices=['png', 'svg', 'all'], default='all')
 
-    parser.add_argument('-p', '--percentiles', help='Display percentile plots on graph.', choices=['95', '98', '99', '95,98', '95,99', '98,99', '95,98,99'])
+    parser.add_argument('-p', '--percentiles', help='Display percentile plots on graph. Equivalent to -p95 -p98 -p99.', action='store_true')
+    parser.add_argument('-p95', help='Display 95th percentile plot on graph.', action='store_true')
+    parser.add_argument('-p98', help='Display 98th percentile plot on graph.', action='store_true')
+    parser.add_argument('-p99', help='Display 99th percentile plot on graph.', action='store_true')
 
     parser.add_argument('--no-error-region', help='Remove error regions from plot.', action='store_true')
 
@@ -325,5 +327,8 @@ if __name__ == '__main__':
 
     if not hasattr(args, 'comparison'):
         args.comparison = False
+
+    if args.percentiles:
+        args.p95, args.p98, args.p99 = True, True, True
 
     generate_graphs(args.xls, args.table, args.comparison)
