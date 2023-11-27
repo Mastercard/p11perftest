@@ -174,15 +174,16 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
                          color='black', marker='p')
                 
                 if args.percentiles:
+                    ax1.fill_between(frame1[xvar], frame1['latency average value'], facecolor='grey', alpha=0.2)
                     if '95' in args.percentiles:
-                        ax1.plot(frame1[xvar], frame1['p95'], color='tab:green', alpha=1.0, label=f'latency p95 {xlsfp.label[1]}', marker='1')
-                        ax1.fill_between(frame1[xvar], frame1['p95'], facecolor='tab:green', alpha=0.2)
+                        ax1.plot(frame1[xvar], frame1['p95'], color='green', alpha=1.0, label=f'latency p95 {xlsfp.label[1]}', marker='1')
+                        ax1.fill_between(frame1[xvar], frame1['p95'], facecolor='grey', alpha=0.2)
                     if '98' in args.percentiles:
-                        ax1.plot(frame1[xvar], frame1['p98'], color='tab:green', alpha=1.0, label=f'latency p98 {xlsfp.label[1]}', marker='2')
-                        ax1.fill_between(frame1[xvar], frame1['p98'], facecolor='tab:green', alpha=0.2)
+                        ax1.plot(frame1[xvar], frame1['p98'], color='red', alpha=1.0, label=f'latency p98 {xlsfp.label[1]}', marker='2')
+                        ax1.fill_between(frame1[xvar], frame1['p98'], facecolor='grey', alpha=0.2)
                     if '99' in args.percentiles:
-                        ax1.plot(frame1[xvar], frame1['p99'], color='tab:green', alpha=1.0, label=f'latency p99 {xlsfp.label[1]}', marker='3')
-                        ax1.fill_between(frame1[xvar], frame1['p99'], facecolor='tab:green', alpha=0.2)            
+                        ax1.plot(frame1[xvar], frame1['p99'], color='blue', alpha=1.0, label=f'latency p99 {xlsfp.label[1]}', marker='3')
+                        ax1.fill_between(frame1[xvar], frame1['p99'], facecolor='grey', alpha=0.2)            
 
                 if not args.no_error_region:
                     ax1.plot(np.nan, label=f'{measure} error', color='tab:blue', alpha=0.4)  # Make an agent in ax
