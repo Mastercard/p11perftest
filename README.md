@@ -1,6 +1,9 @@
 # p11perftest
 An utility to benchmark speed of operations of a PKCS#11 implementation.
 
+# Warning
+On Nov 30th 2023, This repo has been rebased for quality reasons. Pay attention when you are fetching or pulling from it. We apologize for the inconvenience.
+
 # Installing
 ## Pre-requisites
 You will need the following:
