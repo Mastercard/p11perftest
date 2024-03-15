@@ -49,7 +49,7 @@ def format_title2(s1, s2):
     else:
         return f"{s1} on {s2} Threads".format(s1, s2)
 
-
+ 
 def create_dataframe(xls, sheetname):
     """create a dataframe from an excel file; are we interested in throughput or transactions?"""
     df = pd.read_excel(xls, sheet_name=sheetname)
@@ -77,12 +77,15 @@ def create_graph_frame(df, testcase, item):
                    [xvar, 'latency average value', col2]]
     frame['tp_upper'] = frame[col2] + df[f'{measure} global error']
     frame['tp_lower'] = frame[col2] - df[f'{measure} global error']
+    frame['tp_lower'] = frame['tp_lower'].map(lambda x: max(x, 0))
     frame['latency_upper'] = frame['latency average value'] + df['latency average error']
     frame['latency_lower'] = frame['latency average value'] - df['latency average error']
+    frame['latency_lower'] = frame['latency_lower'].map(lambda x: max(x, 0))
 
     frame[col3] = frame[col2] / frame[xvar]
     frame['tp_xvar_upper'] = frame[col3] + df[f'{measure} global error'] / frame[xvar]
     frame['tp_xvar_lower'] = frame[col3] - df[f'{measure} global error'] / frame[xvar]
+    frame['tp_xvar_lower'] = frame['tp_xvar_lower'].map(lambda x: max(x, 0))
 
     if args.p95 or args.p98 or args.p99:
         try:
@@ -119,9 +122,10 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
     with xls_tuple[0], xls_tuple[1]:
         # read from spreadsheet directly
         df1  = create_dataframe(xlsfp, sheetname)
-	### could reintroduce this logic below. removed for now...
+	
         if args.comparison:
             df2 = create_dataframe(xlsfp2, 'Sheet1')
+        ### could reintroduce this logic below. removed for now...
         #     if not (measure1 == measure2) and (df1[graph_parameter].unique() == df2[graph_parameter].unique()):
         #         raise AssertionError('Please compare similar things.')
         #     measure = measure1
@@ -133,7 +137,7 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
                 print(f"Drawing graph for {testcase} and {graph_parameter} {item}...", end='')
                 frame1, measure, unit, col2, col3 = create_graph_frame(df1, testcase, item)
                 if args.comparison:
-                    frame2, _, _, _, _ = create_graph_frame(df2, testcase, item)
+                    frame2, measure2, _, _, _ = create_graph_frame(df2, testcase, item)
 
                 fig, (ax, ax2) = plt.subplots(2, figsize=(16, 16), height_ratios=(3, 1))
 
@@ -290,9 +294,9 @@ def generate_graphs(xlsfp, sheetname, xlsfp2):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate graphs from spreadsheet of p11perftest results')
     parser.add_argument('xls', metavar='FILE', type=argparse.FileType('rb'), help='Path to Excel spreadsheet')
-    parser.add_argument('-t', '--table', help='Table name.', default='Sheet1')
+    parser.add_argument('-t', '--table', help='Table name.', default=0)
     parser.add_argument('-f', '--format', help='Output format. Defaults to all (png and svg).', choices=['png', 'svg', 'all'], default='all')
-
+    
     parser.add_argument('-p', '--percentiles', help='Display percentile plots on graph. Equivalent to -p95 -p98 -p99.', action='store_true')
     parser.add_argument('-p95', help='Display 95th percentile plot on graph.', action='store_true')
     parser.add_argument('-p98', help='Display 98th percentile plot on graph.', action='store_true')
@@ -330,5 +334,6 @@ if __name__ == '__main__':
 
     if args.percentiles:
         args.p95, args.p98, args.p99 = True, True, True
+
 
     generate_graphs(args.xls, args.table, args.comparison)
