@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 3.15.0 - 2024-03-15
+### Added
+- test case for OAEP Encryption with public key (`oaepenc`, `oaepencsha1` and `oaepencsha256`)
+
+### Fixed
+- error region no longer drawn in negative domain, for latency and throughput.
+- python dependencies vulnerabilities fixed
+
 ## 3.14.0 - 2023-10-06
 ### Changed
 - for JWE unwrap & decrypt, finer-grained elapsed time accounting. `C_DestroyObject()` not accounted for anymore.
