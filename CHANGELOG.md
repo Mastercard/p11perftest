@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 3.15.1 - 2025-11_26
+### Fixed
+- precision of timers was not right on some virtual environments, that may lead to improper rounding of results
+
 ## 3.15.0 - 2024-03-15
 ### Added
 - test case for OAEP Encryption with public key (`oaepenc`, `oaepencsha1` and `oaepencsha256`)
