@@ -240,7 +240,7 @@ int main(int argc, char **argv)
     // print chosen slot index
     std::cout << "Slot index: " << vm["slot"].as<int>() << '\n';
     // print chosen slot index
-    std::cout << "Slot number: " << slotids.at(argslot) << " (0x" << std::hex << slotids.at(argslot) << ")\n";
+    std::cout << "Slot number: " << slotids.at(argslot) << " (0x" << std::hex << slotids.at(argslot) << std::dec << ")\n";
     // print firmware version of the slot
     p11::SlotInfo slot_info = slot.get_slot_info();
 
