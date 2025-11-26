@@ -54,7 +54,7 @@ pair<double, double> measure_clock_precision(int iter)
     for (int i = 0; i < iter; ++i) {
         auto start = clock::now();
         auto current = start;
-        while (current <= start) {
+        while (current == start) {
             current = clock::now();
         }
         const auto delta = std::chrono::duration_cast<std::chrono::nanoseconds>(current - start).count();
