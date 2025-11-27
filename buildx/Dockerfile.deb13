@@ -66,11 +66,11 @@ RUN mkdir -p /meta
 # Set the git configuration right
 RUN if [ "$REPO_SSLVERIFY" != "true" ]; then git config --global http.sslVerify false; fi
 
-# We need to deploy Botan
+# We need to deploy Botan, as the debian version does not have p11 support compiled in
 WORKDIR /deps/botan
 RUN git clone https://github.com/randombit/botan.git .
 RUN git checkout 2.19.3
-RUN uvx python3 configure.py --cc=clang --with-boost --disable-shared-library && make -j $(nproc) && make install
+RUN uv run python3 configure.py --cc=clang --with-boost --disable-shared-library && make -j $(nproc) && make install
 
 # Clone the repository
 WORKDIR /src
@@ -127,8 +127,8 @@ RUN ./bootstrap.sh \
 # Build the python executables using pyinstaller
 RUN uv venv
 RUN uv pip install -r requirements.txt \
-    && uvx pyinstaller scripts/json2xlsx.spec \
-    && uvx pyinstaller scripts/gengraphs.spec \
+    && uv run pyinstaller scripts/json2xlsx.spec \
+    && uv run pyinstaller scripts/gengraphs.spec \
     && install -s -m 755 -t /tar_build/usr/local/bin dist/json2xlsx dist/gengraphs 
 
 # Install documentation
@@ -137,7 +137,7 @@ RUN mkdir -p /tar_build/usr/local/share/doc/p11perftest \
 
 # Build again the project for deb package (/usr)
 RUN make distclean \
-    && ./configure --prefix=/usr CXX=clang++ CXXFLAGS='-include cstdint'  \
+    && ./configure --prefix=/usr CXX=clang++ CXXFLAGS='-include cstdint' \
     && make -j $(nproc) \
     && make install-strip DESTDIR=/deb_build
 

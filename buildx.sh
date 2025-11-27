@@ -29,7 +29,7 @@ PACKAGE="p11perftest"
 GITHUB_REPO="https://github.com/Mastercard/$PACKAGE"
 GITHUB_REPO_COMMIT="HEAD"
 SUPPORTED_ARCHS="amd64 arm64"
-SUPPORTED_DISTROS="ol7 ol8 ol9 deb12 ubuntu2204 ubuntu2404 amzn2023 alpine321"
+SUPPORTED_DISTROS="ol8 ol9 deb12 ubuntu2204 ubuntu2404 amzn2023 alpine321"
 
 # Declare an associative array, needed by docker buildx --platform option
 declare -A rev_arch_map

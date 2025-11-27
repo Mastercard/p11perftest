@@ -70,7 +70,7 @@ RUN if [ "$REPO_SSLVERIFY" != "true" ]; then git config --global http.sslVerify 
 WORKDIR /deps/botan
 RUN git clone https://github.com/randombit/botan.git .
 RUN git checkout 2.19.3
-RUN uvx python3 configure.py --cc=clang --with-boost --disable-shared-library && make -j $(nproc) && make install
+RUN uv run python3 configure.py --cc=clang --with-boost --disable-shared-library && make -j $(nproc) && make install
 
 # Clone the repository
 WORKDIR /src
@@ -128,8 +128,8 @@ RUN ./bootstrap.sh \
 # Build the python executables using pyinstaller
 RUN uv venv
 RUN uv pip install -r requirements.txt \
-    && uvx pyinstaller scripts/json2xlsx.spec \
-    && uvx pyinstaller scripts/gengraphs.spec \
+    && uv run pyinstaller scripts/json2xlsx.spec \
+    && uv run pyinstaller scripts/gengraphs.spec \
     && install -s -m 755 -t /tar_build/usr/local/bin dist/json2xlsx dist/gengraphs 
 
 # Install documentation
