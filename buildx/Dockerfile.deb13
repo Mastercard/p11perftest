@@ -129,7 +129,7 @@ RUN uv venv
 RUN uv pip install -r requirements.txt \
     && uv run pyinstaller scripts/json2xlsx.spec \
     && uv run pyinstaller scripts/gengraphs.spec \
-    && install -s -m 755 -t /tar_build/usr/local/bin dist/json2xlsx dist/gengraphs 
+    && install -s -m 755 -t /tar_build/usr/local/bin dist/json2xlsx dist/gengraphs
 
 # Install documentation
 RUN mkdir -p /tar_build/usr/local/share/doc/p11perftest \

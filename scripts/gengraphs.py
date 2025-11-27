@@ -26,8 +26,6 @@ import numpy as np
 from scipy.optimize import curve_fit
 
 
-
-
 def splithalf(string):
     """split a sentence in two halves"""
     midpos = len(string) // 2

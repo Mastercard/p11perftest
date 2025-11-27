@@ -222,9 +222,9 @@ function parse_and_build() {
                 done
             done
         elif [[ "$arg" == "all" ]]; then
-            local host_arch=$(uname -m)
+            local current_arch=$(uname -m)
             for distro in $SUPPORTED_DISTROS; do
-                build_args+=("$distro $host_arch $verbose $repo_url $repo_commit $repo_sslverify $cloneagain")
+                build_args+=("$distro $current_arch $verbose $repo_url $repo_commit $repo_sslverify $cloneagain")
             done
         elif [[ "$arg" == */* ]]; then
             IFS='/' read -r distro arch_list <<< "$arg"
