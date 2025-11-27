@@ -21,34 +21,41 @@
 ARG REPO_URL="https://github.com/Mastercard/p11perftest"
 ARG REPO_COMMIT_OR_TAG="HEAD"
 ARG REPO_SSLVERIFY="true"
-ARG DISTRO_NAME="ubuntu"
-ARG DISTRO_VERSION="22.04"
-ARG DISTRO_SHORT_NAME="ubuntu2204"
+ARG DISTRO_NAME="oraclelinux"
+ARG DISTRO_VERSION="7"
+ARG DISTRO_SHORT_NAME="ol7"
 ARG NOCACHE_CLONEAGAIN="1"
 
-FROM ${DISTRO_NAME}:${DISTRO_VERSION} AS base
+FROM ${DISTRO_NAME}:${DISTRO_VERSION}-slim AS base
 
-# Install required packages for building the project
-RUN apt-get update && apt-get install -y \
-    build-essential \
+# Enable software collection for OL7 and deploy GCC 10 and other packages
+RUN EL=$(rpm --eval "%{dist}" | sed s/.//) \
+    && yum install -y oracle-softwarecollection-release-${EL}
+
+# Install the necessary packages
+RUN yum install -y \
     autoconf \
     autoconf-archive \
     automake \
-    clang \
     libtool \
-    pkg-config \
-    gawk \
     git \
     tar \
     gzip \
-    dpkg-dev \
-    pandoc \
-    libboost-dev \
-    libboost-program-options-dev \
-    libboost-system-dev \
-    libboost-timer-dev \
-    libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
+    devtoolset-10-gcc \
+    devtoolset-10-gcc-c++ \
+    wget \
+    which \
+    rpm-build \
+    wget \
+    openssl-devel \
+    && yum clean all
+
+# Deploy pandoc from github
+WORKDIR /tmp
+RUN DISTROARCH=$(arch | sed 's/aarch64/arm64/;s/x86_64/amd64/') \
+    && wget -q https://github.com/jgm/pandoc/releases/download/3.6/pandoc-3.6-linux-$DISTROARCH.tar.gz \
+    && tar -xf pandoc-3.6-linux-$DISTROARCH.tar.gz -C /usr/local --strip-components 1 \
+    && rm pandoc-3.6-linux-$DISTROARCH.tar.gz
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/bin/
@@ -60,17 +67,24 @@ ARG REPO_COMMIT_OR_TAG
 ARG REPO_SSLVERIFY
 
 # The meta directory is used to store the version and maintainer information
-# for the DEB package
+# for the RPM package
 RUN mkdir -p /meta
 
 # Set the git configuration right
 RUN if [ "$REPO_SSLVERIFY" != "true" ]; then git config --global http.sslVerify false; fi
 
+# On OL7, we need to deploy Boost
+WORKDIR /deps/boost
+# We fetch from a a tarball. Cloning the git repo is too big and unnecessary
+RUN wget https://github.com/boostorg/boost/releases/download/boost-1.81.0/boost-1.81.0.tar.gz
+RUN tar -xzf boost-1.81.0.tar.gz --strip-components=1
+RUN scl enable devtoolset-10 './bootstrap.sh && ./b2 --without-python variant=release link=static threading=multi runtime-link=static install'
+
 # We need to deploy Botan
 WORKDIR /deps/botan
 RUN git clone https://github.com/randombit/botan.git .
 RUN git checkout 2.19.3
-RUN uvx python3 configure.py --cc=clang --with-boost --disable-shared-library && make -j $(nproc) && make install
+RUN scl enable devtoolset-10 'uvx python3 configure.py --cc=gcc --with-boost --disable-shared-library && make -j $(nproc) && make install'
 
 # Clone the repository
 WORKDIR /src
@@ -79,10 +93,10 @@ RUN if [ "$NOCACHE_CLONEAGAIN" = "1" ]; then rm -rf .git; fi
 RUN git clone $REPO_URL .
 RUN git checkout $REPO_COMMIT_OR_TAG
 
-# Retrieve information for building DEB package later
+# Retrieve information for building RPM package later
 
 # Retrieve the architecture
-RUN PKG_ARCH=$(dpkg --print-architecture) \
+RUN PKG_ARCH=$(rpm --eval '%{_arch}') \
     && echo "PKG_ARCH=\"$PKG_ARCH\"" >> /meta/env
 
 # Retrieve version information from git
@@ -110,7 +124,7 @@ RUN PKG_DESCRIPTION=$(cat README.md \
     | sed '/^##.*/d' \
     | pandoc -f markdown -t plain \
     | sed '/^[[:space:]]*$/d' \
-    | sed '1!s/^/ /')\
+    | sed '1!s/^/ /') \
     && echo "PKG_DESCRIPTION=\"$PKG_DESCRIPTION\"" >> /meta/env
 
 
@@ -120,34 +134,42 @@ RUN echo "export PKG_GITSUFFIX PKG_VERSION PKG_RELEASE PKG_GITCOMMIT PKG_MAINTAI
 FROM gitcloned AS builder
 
 # Build the project for tar package (/usr/local)
-RUN ./bootstrap.sh \
-    && ./configure CXX=clang++ CXXFLAGS='-include cstdint'\
-    && make -j $(nproc)\
-    && make install-strip DESTDIR=/tar_build
+RUN scl enable devtoolset-10 \
+    './bootstrap.sh \
+    && ./configure CXX=g++ CXXFLAGS="-include cstdint" PKG_CONFIG_PATH=/usr/local/lib/pkgconfig \
+    && make -j $(nproc) \
+    && make install-strip DESTDIR=/tar_build'
 
 # Build the python executables using pyinstaller
 RUN uv venv
-RUN uv pip install -r requirements.txt \
+RUN scl enable devtoolset-10 \
+    'uv pip install -r requirements.txt \
     && uvx pyinstaller scripts/json2xlsx.spec \
     && uvx pyinstaller scripts/gengraphs.spec \
-    && install -s -m 755 -t /tar_build/usr/local/bin dist/json2xlsx dist/gengraphs 
+    && install -s -m 755 -t /tar_build/usr/local/bin dist/json2xlsx dist/gengraphs'
 
 # Install documentation
 RUN mkdir -p /tar_build/usr/local/share/doc/p11perftest \
     && install -m 644 -t /tar_build/usr/local/share/doc/p11perftest README.md CHANGELOG.md COPYRIGHT.md
 
-# Build again the project for deb package (/usr)
-RUN make distclean \
-    && ./configure --prefix=/usr CXX=clang++ CXXFLAGS='-include cstdint'  \
-    && make -j $(nproc) \
-    && make install-strip DESTDIR=/deb_build
+# Build again the project for rpm package (/usr)
+# Note: oraclelinux:7-slim is strict on the library path. We need extra logic
+#       to handle the 64-bit library path (lib64) on 64-bit systems.
+#       This is not needed with oraclelinux:8-slim and above.
+RUN scl enable devtoolset-10 \
+    "make distclean \
+    && ./configure --prefix=/usr --libdir=/usr/lib$(getconf LONG_BIT | sed s/32//) CXX=g++ CXXFLAGS='-include cstdint' PKG_CONFIG_PATH=/usr/local/lib/pkgconfig"
+
+RUN scl enable devtoolset-10 \
+    "make -j $(nproc) \
+    && make install-strip DESTDIR=/rpm_build"
 
 # Build the python executables using pyinstaller
-RUN install -s -m 755 -t /deb_build/usr/bin dist/json2xlsx dist/gengraphs
+RUN install -s -m 755 -t /rpm_build/usr/bin dist/json2xlsx dist/gengraphs
 
 # Install documentation
-RUN mkdir -p /deb_build/usr/share/doc/p11perftest \
-    && install -m 644 -t /deb_build/usr/share/doc/p11perftest README.md CHANGELOG.md COPYRIGHT.md
+RUN mkdir -p /rpm_build/usr/share/doc/p11perftest \
+    && install -m 644 -t /rpm_build/usr/share/doc/p11perftest README.md CHANGELOG.md COPYRIGHT.md
 
 
 # Final stage
@@ -160,32 +182,49 @@ RUN mkdir -p /artifacts
 WORKDIR /tar_build
 RUN . /meta/env && tar -czf /artifacts/p11perftest-${DISTRO_SHORT_NAME}-${PKG_ARCH}-${PKG_VERSION}${PKG_GITSUFFIX}.tar.gz usr
 
-# build the deb package
-WORKDIR /deb_build
-RUN mkdir -p DEBIAN /artifacts
+# build the RPM package
+WORKDIR /root
 
-# Create control file for the package
-RUN . /meta/env \
-    && echo "Package: p11perftest" > DEBIAN/control \
-    && echo "Homepage: $REPO_URL" >> DEBIAN/control \
-    && echo "License: Apache-2.0" >> DEBIAN/control \
-    && echo "Version: $PKG_VERSION$PKG_GITSUFFIX" >> DEBIAN/control \
-    && echo "X-Vcs-Git: $REPO_URL" >> DEBIAN/control \
-    && echo "X-Git-Commit: $PKG_GITCOMMIT" >> DEBIAN/control \
-    && echo "Section: misc" >> DEBIAN/control \
-    && echo "Priority: optional" >> DEBIAN/control \
-    && echo "Architecture: $PKG_ARCH" >> DEBIAN/control \
-    && echo "Depends: libc6,libboost-chrono1.74.0,libboost-timer1.74.0,libboost-program-options1.74.0" >> DEBIAN/control \
-    && echo "Maintainer: $PKG_MAINTAINER" >> DEBIAN/control \
-    && echo "Description: A utility for testing PKCS#11 implementations" >> DEBIAN/control
+# Create the RPM spec file
+RUN mkdir -p /root/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 
+# Copy the build artifacts to the SOURCES directory
+COPY --from=builder /rpm_build /root/rpmbuild/SOURCES/prebuilt
+
+# Create the RPM spec file
+RUN . /meta/env && cat <<EOF > /root/rpmbuild/SPECS/p11perftest.spec
+Name:           p11perftest
+Version:        $PKG_VERSION
+Release:        1$PKG_GITSUFFIX%{?dist}
+Summary:        A utility for testing PKCS#11 implementations
+License:        LGPLv2.1
+URL:            $REPO_URL
+BuildRequires:  make, automake, autoconf, libtool, autoconf-archive, openssl-devel
+%description
+$PKG_DESCRIPTION
+
+%install
+mkdir -p %{buildroot}
+cp -r %{_sourcedir}/prebuilt/usr %{buildroot}
+
+%files
+%{_bindir}/*
+
+%doc
+%{_docdir}/p11perftest
+
+%changelog
+EOF
 
 RUN  cat /meta/env && echo "cache-buster-$(date +%s)"
 
-# Build the .deb package
+# Build the RPM package
 RUN . /meta/env \
-    && dpkg-deb --build /deb_build /artifacts/p11perftest-${DISTRO_SHORT_NAME}-${PKG_ARCH}-${PKG_VERSION}${PKG_GITSUFFIX}.deb
+    && rpmbuild -ba /root/rpmbuild/SPECS/p11perftest.spec
+
+# Copy the RPM package to the artifacts directory
+RUN . /meta/env \
+    && cp /root/rpmbuild/RPMS/$PKG_ARCH/p11perftest-${PKG_VERSION}-1${PKG_GITSUFFIX}$(rpm --eval "%{dist}").${PKG_ARCH}.rpm /artifacts
 #
 # Final command to list the artifacts
 CMD [ "find", "/artifacts", "-type", "f" ]
-

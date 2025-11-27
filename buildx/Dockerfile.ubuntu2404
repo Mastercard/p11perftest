@@ -18,12 +18,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+
 ARG REPO_URL="https://github.com/Mastercard/p11perftest"
 ARG REPO_COMMIT_OR_TAG="HEAD"
 ARG REPO_SSLVERIFY="true"
 ARG DISTRO_NAME="ubuntu"
-ARG DISTRO_VERSION="22.04"
-ARG DISTRO_SHORT_NAME="ubuntu2204"
+ARG DISTRO_VERSION="24.04"
+ARG DISTRO_SHORT_NAME="ubuntu2404"
 ARG NOCACHE_CLONEAGAIN="1"
 
 FROM ${DISTRO_NAME}:${DISTRO_VERSION} AS base
@@ -78,6 +79,7 @@ ARG NOCACHE_CLONEAGAIN
 RUN if [ "$NOCACHE_CLONEAGAIN" = "1" ]; then rm -rf .git; fi
 RUN git clone $REPO_URL .
 RUN git checkout $REPO_COMMIT_OR_TAG
+
 
 # Retrieve information for building DEB package later
 
@@ -175,7 +177,7 @@ RUN . /meta/env \
     && echo "Section: misc" >> DEBIAN/control \
     && echo "Priority: optional" >> DEBIAN/control \
     && echo "Architecture: $PKG_ARCH" >> DEBIAN/control \
-    && echo "Depends: libc6,libboost-chrono1.74.0,libboost-timer1.74.0,libboost-program-options1.74.0" >> DEBIAN/control \
+    && echo "Depends: libc6,libboost-chrono1.83.0,libboost-timer1.83.0,libboost-program-options1.83.0" >> DEBIAN/control \
     && echo "Maintainer: $PKG_MAINTAINER" >> DEBIAN/control \
     && echo "Description: A utility for testing PKCS#11 implementations" >> DEBIAN/control
 

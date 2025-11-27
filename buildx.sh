@@ -17,6 +17,7 @@
 #
 set -e
 
+
 cleanup() {
   echo "Caught SIGINT. Exiting..."
   exit 1
@@ -49,6 +50,8 @@ function usage() {
     echo "  --skip-git-sslverify, -k   Skip SSL verification for git clone"
     echo "  --verbose, -v              Increase verbosity (can be specified multiple times)"
     echo "  --max-procs N, -j N        Specify the maximum number of processes"
+    echo "  --cloneagain               Clone again target repository to avoid cache"
+
     exit 1
 }
 
@@ -103,13 +106,19 @@ function create_build() {
     local repo_url="$4"
     local repo_commit="$5"
     local repo_sslverify="$6"
+    local cloneagain="$7"
 
     local verbosearg="--quiet"
-
+    
     if [ "$verbose" -eq 1 ]; then
         verbosearg="--progress=auto"
     elif [ "$verbose" -eq 2 ]; then
         verbosearg="--progress=plain"
+    fi
+
+    local cloneagainarg=""
+    if [ "$cloneagain" -eq 1 ]; then
+        cloneagainarg="--build-arg NOCACHE_CLONEAGAIN=$(date +%s)"
     fi
 
     # TODO: keep this outside of this function, should be a global variable
@@ -122,12 +131,12 @@ function create_build() {
     echo "Building artifacts for $distro on arch $arch (platform: $platformarch)..."
     
     local containername=$(gen_random_container_name)
-    docker buildx build $verbosearg \
+    docker buildx build $verbosearg $gitclonedarg \
         --platform linux/$arch \
         --build-arg REPO_URL=$repo_url \
         --build-arg REPO_COMMIT_OR_TAG=$repo_commit \
         --build-arg REPO_SSLVERIFY=$repo_sslverify \
-        -t p11perftest-build-$distro-$arch \
+        -t p11perftest-build-$distro-$arch $cloneagainarg \
         -f $(get_script_dir)/buildx/Dockerfile.$distro \
         $(get_script_dir)/buildx
     
@@ -154,6 +163,7 @@ function parse_and_build() {
     local verbose=0
     local args=()
     local numprocs=$(nproc)
+    local cloneagain=0
 
     # Parse optional -repo and -verbose arguments
     while [[ "$1" == --* || "$1" == -* ]]; do
@@ -188,6 +198,9 @@ function parse_and_build() {
                     usage
                 fi
                 ;;
+            --cloneagain)
+                cloneagain=1
+                ;;
             *)
                 echo "Unknown option: $1"
                 usage
@@ -205,31 +218,31 @@ function parse_and_build() {
         if [[ "$arg" == "all/all" ]]; then
             for distro in $SUPPORTED_DISTROS; do
                 for arch in $SUPPORTED_ARCHS; do
-                    build_args+=("$distro $arch $verbose $repo_url $repo_commit $repo_sslverify")
+                    build_args+=("$distro $arch $verbose $repo_url $repo_commit $repo_sslverify $cloneagain")
                 done
             done
         elif [[ "$arg" == "all" ]]; then
             local host_arch=$(uname -m)
             for distro in $SUPPORTED_DISTROS; do
-                build_args+=("$distro $host_arch $verbose $repo_url $repo_commit $repo_sslverify")
+                build_args+=("$distro $host_arch $verbose $repo_url $repo_commit $repo_sslverify $cloneagain")
             done
         elif [[ "$arg" == */* ]]; then
             IFS='/' read -r distro arch_list <<< "$arg"
             if [[ "$arch_list" == "all" ]]; then
                 for arch in $SUPPORTED_ARCHS; do
-                    build_args+=("$distro $arch $verbose $repo_url $repo_commit $repo_sslverify")
+                    build_args+=("$distro $arch $verbose $repo_url $repo_commit $repo_sslverify $cloneagain")
                 done
             else
                 IFS=',' read -ra archs <<< "$arch_list"
                 for arch in "${archs[@]}"; do
-                    build_args+=("$distro $arch $verbose $repo_url $repo_commit $repo_sslverify")
+                    build_args+=("$distro $arch $verbose $repo_url $repo_commit $repo_sslverify $cloneagain")
                 done
             fi
         else
             IFS=',' read -ra distros <<< "$arg"
             local host_arch=${rev_arch_map[$(uname -m)]:-$(uname -m)}
             for distro in "${distros[@]}"; do
-                build_args+=("$distro $host_arch $verbose $repo_url $repo_commit $repo_sslverify")
+                build_args+=("$distro $host_arch $verbose $repo_url $repo_commit $repo_sslverify $cloneagain")
             done
         fi
     done

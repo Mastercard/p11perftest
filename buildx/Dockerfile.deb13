@@ -21,12 +21,12 @@
 ARG REPO_URL="https://github.com/Mastercard/p11perftest"
 ARG REPO_COMMIT_OR_TAG="HEAD"
 ARG REPO_SSLVERIFY="true"
-ARG DISTRO_NAME="ubuntu"
-ARG DISTRO_VERSION="22.04"
-ARG DISTRO_SHORT_NAME="ubuntu2204"
+ARG DISTRO_NAME="debian"
+ARG DISTRO_VERSION="13"
+ARG DISTRO_SHORT_NAME="deb13"
 ARG NOCACHE_CLONEAGAIN="1"
 
-FROM ${DISTRO_NAME}:${DISTRO_VERSION} AS base
+FROM ${DISTRO_NAME}:${DISTRO_VERSION}-slim AS base
 
 # Install required packages for building the project
 RUN apt-get update && apt-get install -y \
@@ -36,7 +36,7 @@ RUN apt-get update && apt-get install -y \
     automake \
     clang \
     libtool \
-    pkg-config \
+    pkgconf \
     gawk \
     git \
     tar \
@@ -116,7 +116,6 @@ RUN PKG_DESCRIPTION=$(cat README.md \
 
 RUN echo "export PKG_GITSUFFIX PKG_VERSION PKG_RELEASE PKG_GITCOMMIT PKG_MAINTAINER PKG_ARCH" >> /meta/env
 
-
 FROM gitcloned AS builder
 
 # Build the project for tar package (/usr/local)
@@ -175,7 +174,7 @@ RUN . /meta/env \
     && echo "Section: misc" >> DEBIAN/control \
     && echo "Priority: optional" >> DEBIAN/control \
     && echo "Architecture: $PKG_ARCH" >> DEBIAN/control \
-    && echo "Depends: libc6,libboost-chrono1.74.0,libboost-timer1.74.0,libboost-program-options1.74.0" >> DEBIAN/control \
+    && echo "Depends: libc6,libboost-chrono1.83.0,libboost-timer1.83.0,libboost-program-options1.83.0" >> DEBIAN/control \
     && echo "Maintainer: $PKG_MAINTAINER" >> DEBIAN/control \
     && echo "Description: A utility for testing PKCS#11 implementations" >> DEBIAN/control
 
