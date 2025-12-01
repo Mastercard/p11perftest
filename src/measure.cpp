@@ -29,11 +29,15 @@ std::ostream & operator<<(std::ostream &os, const Measure<T,S>& measure)
 	os << std::defaultfloat;
     }
 
-    os << ' ' << measure.m_unit
-       << " +/- "
-       << std::setprecision(measure.m_error_precision)
-       << measure.rounder(measure.m_error, measure.m_error_precision)
-       << std::setprecision(saved);
+    os << ' ' << measure.m_unit;
+    
+    if(measure.m_error > 0) {
+       os << " +/- "
+          << std::setprecision(measure.m_error_precision)
+          << measure.rounder(measure.m_error, measure.m_error_precision);
+    }
+    
+    os << std::setprecision(saved);
 
     return os;
 }

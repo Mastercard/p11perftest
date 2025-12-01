@@ -129,7 +129,8 @@ RUN uv venv
 RUN uv pip install -r requirements.txt \
     && uv run pyinstaller scripts/json2xlsx.spec \
     && uv run pyinstaller scripts/gengraphs.spec \
-    && install -s -m 755 -t /tar_build/usr/local/bin dist/json2xlsx dist/gengraphs
+    && uv run pyinstaller scripts/datapoints2xlsx.spec \
+    && install -s -m 755 -t /tar_build/usr/local/bin dist/json2xlsx dist/gengraphs dist/datapoints2xlsx
 
 # Install documentation
 RUN mkdir -p /tar_build/usr/local/share/doc/p11perftest \
@@ -142,7 +143,7 @@ RUN make distclean \
     && make install-strip DESTDIR=/deb_build
 
 # Build the python executables using pyinstaller
-RUN install -s -m 755 -t /deb_build/usr/bin dist/json2xlsx dist/gengraphs
+RUN install -s -m 755 -t /deb_build/usr/bin dist/json2xlsx dist/gengraphs dist/datapoints2xlsx
 
 # Install documentation
 RUN mkdir -p /deb_build/usr/share/doc/p11perftest \

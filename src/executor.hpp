@@ -39,6 +39,7 @@ class Executor
     nanoseconds_double_t m_timer_res;
     nanoseconds_double_t m_timer_res_err;
     bool m_generate_session_keys;
+    bool m_include_datapoints;
 
 public:
     Executor( const std::map<const std::string,
@@ -46,14 +47,16 @@ public:
 	      std::vector<std::unique_ptr<Session> > &sessions,
 	      const int numthreads,
 	      std::pair<nanoseconds_double_t, nanoseconds_double_t> precision,
-	      bool generate_session_keys)
+	      bool generate_session_keys,
+	      bool include_datapoints = false)
 	:
 	m_vectors(vectors),
 	m_sessions(sessions),
 	m_numthreads(numthreads),
 	m_timer_res(precision.first),
 	m_timer_res_err(precision.second),
-	m_generate_session_keys(generate_session_keys)
+	m_generate_session_keys(generate_session_keys),
+	m_include_datapoints(include_datapoints)
     { }
 
     Executor( const Executor &) = delete;

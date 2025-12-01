@@ -104,6 +104,7 @@ int main(int argc, char **argv)
     int argiter, argskipiter;
     int argnthreads;
     bool json = false;
+    bool datapoints = false;
     std::fstream jsonout;
     bool generate_session_keys = true;
     po::options_description cliopts("command line options");
@@ -137,6 +138,7 @@ int main(int argc, char **argv)
 	 "(in addition to iterations)")
 	("json,j", "output results as JSON")
 	("jsonfile,o", po::value< std::string >(), "JSON output file name")
+	("datapoints,d", "add array of measured points to JSON output (requires -j/--json)")
 	("coverage,c", po::value< std::string >()->default_value(default_tests),
 	 "coverage of test cases\n"
 	 "Note: the following test cases are compound:\n"
@@ -200,6 +202,16 @@ int main(int argc, char **argv)
     } else if(vm.count("jsonfile")) {
 	std::cerr << "When jsonfile option is used, -j or -jsonfile is mandatory\n";
 	std::cerr << cliopts << '\n';
+    }
+
+    if(vm.count("datapoints")) {
+	if(vm.count("json")) {
+	    datapoints = true;
+	} else {
+	    std::cerr << "When datapoints option is used, -j or --json is mandatory\n";
+	    std::cerr << cliopts << '\n';
+	    std::exit(EX_USAGE);
+	}
     }
 
     if (vm.count("nogenerate")) {
@@ -319,12 +331,10 @@ int main(int argc, char **argv)
 		testvecs.emplace( std::make_pair( ss.str(), std::vector<uint8_t>(vecsize,0)) );
 	    }
 
-	    auto epsilon = measure_clock_precision();
-	    std::cout << std::endl << "timer granularity (ns): " << epsilon.first.count() << " +/- " << epsilon.second.count() << "\n\n";
+    auto epsilon = measure_clock_precision();
+    std::cout << std::endl << "timer granularity (ns): " << epsilon.first.count() << " +/- " << epsilon.second.count() << "\n\n";
 
-	    Executor executor( testvecs, sessions, argnthreads, epsilon, generate_session_keys==true );
-
-	    if(generate_session_keys) {
+    Executor executor( testvecs, sessions, argnthreads, epsilon, generate_session_keys==true, datapoints );	    if(generate_session_keys) {
 		KeyGenerator keygenerator( sessions, argnthreads, vendor );
 
 		std::cout << "Generating session keys for " << argnthreads << " thread(s)\n";
