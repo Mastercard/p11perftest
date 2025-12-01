@@ -53,6 +53,7 @@
 #include "keygenerator.hpp"
 #include "executor.hpp"
 #include "p11rsasig.hpp"
+#include "p11rsapss.hpp"
 #include "p11oaepdec.hpp"
 #include "p11oaepenc.hpp"
 #include "p11oaepunw.hpp"
@@ -111,7 +112,7 @@ int main(int argc, char **argv)
     po::options_description envvars("environment variables");
 
     // default coverage: RSA, ECDSA, HMAC, DES and AES
-    const auto default_tests {"rsa,ecdsa,ecdh,hmac,des,aes,xorder,rand,jwe,oaep,oaepenc,oaepunw"};
+    const auto default_tests {"rsa,rsapss,ecdsa,ecdh,hmac,des,aes,xorder,rand,jwe,oaep,oaepenc,oaepunw"};
     const auto default_vectors {"8,16,64,256,1024,4096"};
     const auto default_keysizes{"rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256"};
     const auto default_flavour{"generic"};
@@ -339,6 +340,7 @@ int main(int argc, char **argv)
 
 		std::cout << "Generating session keys for " << argnthreads << " thread(s)\n";
 		if(tests.contains("rsa")
+		   || tests.contains("rsapss")
 		   || tests.contains("jwe")
 		   || tests.contains("jweoaepsha1")
 		   || tests.contains("jweoaepsha256")
@@ -408,6 +410,13 @@ int main(int argc, char **argv)
 		if(keysizes.contains("rsa2048")) benchmarks.emplace_front( new P11RSASigBenchmark("rsa-2048") );
 		if(keysizes.contains("rsa3072")) benchmarks.emplace_front( new P11RSASigBenchmark("rsa-3072") );
 		if(keysizes.contains("rsa4096")) benchmarks.emplace_front( new P11RSASigBenchmark("rsa-4096") );
+	    }
+
+	    // RSA-PSS signature
+	    if(tests.contains("rsapss")) {
+		if(keysizes.contains("rsa2048")) benchmarks.emplace_front( new P11RSAPssBenchmark("rsa-2048") );
+		if(keysizes.contains("rsa3072")) benchmarks.emplace_front( new P11RSAPssBenchmark("rsa-3072") );
+		if(keysizes.contains("rsa4096")) benchmarks.emplace_front( new P11RSAPssBenchmark("rsa-4096") );
 	    }
 
 	    // RSA PKCS#1 OAEP decryption

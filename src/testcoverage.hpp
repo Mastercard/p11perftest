@@ -26,6 +26,7 @@ struct TestCoverage
 {
     enum class AlgoCoverage {
 	rsa,			// RSA
+	rsapss,			// RSA-PSS
 	ecdsa,			// ECDSA
 	ecdh,			// ECDH
 	hmac,			// HMAC

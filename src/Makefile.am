@@ -38,6 +38,7 @@ bin_PROGRAMS = p11perftest
 
 p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			p11rsasig.cpp p11rsasig.hpp \
+			p11rsapss.cpp p11rsapss.hpp \
 			p11oaepunw.cpp p11oaepunw.hpp \
 			p11oaepdec.cpp p11oaepdec.hpp \
 			p11oaepenc.cpp p11oaepenc.hpp \
