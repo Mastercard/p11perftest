@@ -19,6 +19,7 @@
 #include <iostream>
 #include <botan/asn1_obj.h>
 #include <botan/ec_group.h>
+#include <botan/auto_rng.h>
 #include "p11seedrandom.hpp"
 
 
@@ -37,7 +38,8 @@ inline P11SeedRandomBenchmark *P11SeedRandomBenchmark::clone() const {
 void P11SeedRandomBenchmark::prepare(Session &session, Object &obj, std::optional<size_t> threadindex)
 {
     m_seed.resize( m_payload.size() );
-}
+    Botan::AutoSeeded_RNG rng;
+    rng.randomize(m_seed.data(), m_seed.size());}
 
 void P11SeedRandomBenchmark::crashtestdummy(Session &session)
 {
