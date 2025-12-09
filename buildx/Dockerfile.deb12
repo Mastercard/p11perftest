@@ -1,0 +1,190 @@
+#
+# p11perftest - A utility for testing PKCS#11 implementations
+#
+# Copyright (C) 2020  Mastercard
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
+ARG REPO_URL="https://github.com/Mastercard/p11perftest"
+ARG REPO_COMMIT_OR_TAG="HEAD"
+ARG REPO_SSLVERIFY="true"
+ARG DISTRO_NAME="debian"
+ARG DISTRO_VERSION="12"
+ARG DISTRO_SHORT_NAME="deb12"
+ARG NOCACHE_CLONEAGAIN="1"
+
+FROM ${DISTRO_NAME}:${DISTRO_VERSION}-slim AS base
+
+# Install required packages for building the project
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    autoconf \
+    autoconf-archive \
+    automake \
+    clang \
+    libtool \
+    pkgconf \
+    gawk \
+    git \
+    tar \
+    gzip \
+    dpkg-dev \
+    pandoc \
+    libboost-dev \
+    libboost-program-options-dev \
+    libboost-system-dev \
+    libboost-timer-dev \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/bin/
+RUN uv python install 3.11
+
+FROM base AS gitcloned
+ARG REPO_URL
+ARG REPO_COMMIT_OR_TAG
+ARG REPO_SSLVERIFY
+
+# The meta directory is used to store the version and maintainer information
+# for the DEB package
+RUN mkdir -p /meta
+
+# Set the git configuration right
+RUN if [ "$REPO_SSLVERIFY" != "true" ]; then git config --global http.sslVerify false; fi
+
+# We need to deploy Botan, as the debian version does not have p11 support compiled in
+WORKDIR /deps/botan
+RUN git clone https://github.com/randombit/botan.git .
+RUN git checkout 2.19.3
+RUN uv run python3 configure.py --cc=clang --with-boost --disable-shared-library && make -j $(nproc) && make install
+
+# Clone the repository
+WORKDIR /src
+ARG NOCACHE_CLONEAGAIN
+RUN if [ "$NOCACHE_CLONEAGAIN" = "1" ]; then rm -rf .git; fi
+RUN git clone $REPO_URL .
+RUN git checkout $REPO_COMMIT_OR_TAG
+
+# Retrieve information for building DEB package later
+
+# Retrieve the architecture
+RUN PKG_ARCH=$(dpkg --print-architecture) \
+    && echo "PKG_ARCH=\"$PKG_ARCH\"" >> /meta/env
+
+# Retrieve version information from git
+# If the version is a tag, set PKG_GITSUFFIX to the tag, or to '~<commit>' if the tag is not the last commit
+RUN PKG_VERSION=$(git describe --tags | sed -E 's/^([^\-]+)(-.*)?$/\1/' ) \
+    PKG_RELEASE=$(git describe --tags | sed -E 's/^([^\-]+)(-.*)?$/\2/; s/^-//; s/^$/0/; s/-(.*)//' ) \
+    PKG_GITCOMMIT=$(git rev-parse --short HEAD) \
+    PKG_GITSUFFIX=$(git describe --tags | sed -E 's/^([^\-]+)(-.*)?$/\2/;s/-([0-9]*)-g(.*)/~\2/') \
+    && echo "PKG_GITSUFFIX=\"$PKG_GITSUFFIX\"" >> /meta/env \
+    && echo "PKG_VERSION=\"$PKG_VERSION\"" >> /meta/env \
+    && echo "PKG_RELEASE=\"$PKG_RELEASE\"" >> /meta/env \
+    && echo "PKG_GITCOMMIT=\"$PKG_GITCOMMIT\"" >> /meta/env
+
+# Retrieve the maintainer from git
+RUN PKG_MAINTAINER=$(git log -1 --pretty=format:'%an <%ae>') \
+    && echo "PKG_MAINTAINER=\"$PKG_MAINTAINER\"" >> /meta/env
+
+# Retrieve description from README.md
+# This is a bit more complex as we need to strip out the first heading
+# and the first line of the second heading
+# moreover, any occurrence of '`' should be removed to avoid issues with
+# the shell
+RUN PKG_DESCRIPTION=$(cat README.md \
+    | awk '/# p11perftest/{flag=1} /# Warning/{flag=0} flag' \
+    | sed '/^##.*/d' \
+    | pandoc -f markdown -t plain \
+    | sed '/^[[:space:]]*$/d' \
+    | sed '1!s/^/ /')\
+    && echo "PKG_DESCRIPTION=\"$PKG_DESCRIPTION\"" >> /meta/env
+
+
+RUN echo "export PKG_GITSUFFIX PKG_VERSION PKG_RELEASE PKG_GITCOMMIT PKG_MAINTAINER PKG_ARCH" >> /meta/env
+
+FROM gitcloned AS builder
+
+# Build the project for tar package (/usr/local)
+RUN ./bootstrap.sh \
+    && ./configure CXX=clang++ CXXFLAGS='-include cstdint'\
+    && make -j $(nproc)\
+    && make install-strip DESTDIR=/tar_build
+
+# Build the python executables using pyinstaller
+RUN uv venv
+RUN uv pip install -r requirements.txt \
+    && uv run pyinstaller scripts/json2xlsx.spec \
+    && uv run pyinstaller scripts/gengraphs.spec \
+    && install -s -m 755 -t /tar_build/usr/local/bin dist/json2xlsx dist/gengraphs
+
+# Install documentation
+RUN mkdir -p /tar_build/usr/local/share/doc/p11perftest \
+    && install -m 644 -t /tar_build/usr/local/share/doc/p11perftest README.md CHANGELOG.md COPYRIGHT.md
+
+# Build again the project for deb package (/usr)
+RUN make distclean \
+    && ./configure --prefix=/usr CXX=clang++ CXXFLAGS='-include cstdint' \
+    && make -j $(nproc) \
+    && make install-strip DESTDIR=/deb_build
+
+# Build the python executables using pyinstaller
+RUN install -s -m 755 -t /deb_build/usr/bin dist/json2xlsx dist/gengraphs
+
+# Install documentation
+RUN mkdir -p /deb_build/usr/share/doc/p11perftest \
+    && install -m 644 -t /deb_build/usr/share/doc/p11perftest README.md CHANGELOG.md COPYRIGHT.md
+
+
+# Final stage
+FROM builder AS final
+ARG DISTRO_SHORT_NAME
+
+RUN mkdir -p /artifacts
+
+# build the .tar.gz file
+WORKDIR /tar_build
+RUN . /meta/env && tar -czf /artifacts/p11perftest-${DISTRO_SHORT_NAME}-${PKG_ARCH}-${PKG_VERSION}${PKG_GITSUFFIX}.tar.gz usr
+
+# build the deb package
+WORKDIR /deb_build
+RUN mkdir -p DEBIAN /artifacts
+
+# Create control file for the package
+RUN . /meta/env \
+    && echo "Package: p11perftest" > DEBIAN/control \
+    && echo "Homepage: $REPO_URL" >> DEBIAN/control \
+    && echo "License: Apache-2.0" >> DEBIAN/control \
+    && echo "Version: $PKG_VERSION$PKG_GITSUFFIX" >> DEBIAN/control \
+    && echo "X-Vcs-Git: $REPO_URL" >> DEBIAN/control \
+    && echo "X-Git-Commit: $PKG_GITCOMMIT" >> DEBIAN/control \
+    && echo "Section: misc" >> DEBIAN/control \
+    && echo "Priority: optional" >> DEBIAN/control \
+    && echo "Architecture: $PKG_ARCH" >> DEBIAN/control \
+    && echo "Depends: libc6,libboost-chrono1.74.0,libboost-timer1.74.0,libboost-program-options1.74.0" >> DEBIAN/control \
+    && echo "Maintainer: $PKG_MAINTAINER" >> DEBIAN/control \
+    && echo "Description: A utility for testing PKCS#11 implementations" >> DEBIAN/control
+
+
+RUN  cat /meta/env && echo "cache-buster-$(date +%s)"
+
+# Build the .deb package
+RUN . /meta/env \
+    && dpkg-deb --build /deb_build /artifacts/p11perftest-${DISTRO_SHORT_NAME}-${PKG_ARCH}-${PKG_VERSION}${PKG_GITSUFFIX}.deb
+#
+# Final command to list the artifacts
+CMD [ "find", "/artifacts", "-type", "f" ]
+
