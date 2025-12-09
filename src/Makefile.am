@@ -56,6 +56,7 @@ p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			p11xorkeydataderive.cpp	p11xorkeydataderive.hpp \
 			p11seedrandom.cpp p11seedrandom.hpp \
 			p11genrandom.cpp p11genrandom.hpp \
+			p11findobjects.cpp p11findobjects.hpp \
 			stringhash.hpp \
 			errorcodes.cpp errorcodes.hpp \
 			keygenerator.cpp keygenerator.hpp \

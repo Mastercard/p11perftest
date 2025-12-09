@@ -39,6 +39,7 @@ struct TestCoverage
 	aesgcm,			// AES GCM
 	xorder,			// XOR derivation
 	rand,			// Random number generation
+	find,			// Find objects
 	jwe,			// JWE decryption (RFC7516)
 	jweoaepsha1,		// subset with OAEP(SHA1)
 	jweoaepsha256,		// subset with OAEP(SHA256)
@@ -47,10 +48,10 @@ struct TestCoverage
 	oaepsha256,		// PKCS#1 OAEP decryption (SHA256)
 	oaepunw,		// PKCS#1 OAEP unwrapping (all hashing algorithms)
 	oaepunwsha1,		// PKCS#1 OAEP unwrapping (SHA1)
-        oaepunwsha256,		// PKCS#1 OAEP unwrapping (SHA256)
+    oaepunwsha256,		// PKCS#1 OAEP unwrapping (SHA256)
 	oaepenc,		// PKCS#1 OAEP encryption (all hashing algorithms)
 	oaepencsha1,		// PKCS#1 OAEP encryption (SHA1)
-        oaepencsha256,		// PKCS#1 OAEP encryption (SHA256)
+    oaepencsha256,		// PKCS#1 OAEP encryption (SHA256)
     };
 
     TestCoverage(std::string tocover);

@@ -21,7 +21,9 @@
 
 #include <string>
 #include "../config.h"
+#include "p11benchmark.hpp"
 
-const std::string errorcode(int rc);
+const std::string errorcode(benchmark_result::operation_outcome_t outcome);
+
 
 #endif // ERRORCODES_H

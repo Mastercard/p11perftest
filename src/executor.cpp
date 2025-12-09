@@ -27,6 +27,7 @@
 #include <condition_variable>
 #include <future>
 #include <functional>
+#include <variant>
 #include <utility>
 #include <sstream>
 #include <tuple>
@@ -64,10 +65,10 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 
     for(auto testcase: shortlist) {
 	size_t th;
-	std::vector<benchmark_result_t> elapsed_time_array(m_numthreads);
-	std::vector<std::future<benchmark_result_t> > future_array(m_numthreads);
+	std::vector<benchmark_result::benchmark_result_t> elapsed_time_array(m_numthreads);
+	std::vector<std::future<benchmark_result::benchmark_result_t> > future_array(m_numthreads);
 	std::vector<P11Benchmark *> benchmark_array(m_numthreads);
-	int last_errcode = CKR_OK;
+	benchmark_result::operation_outcome_t last_errcode = benchmark_result::Ok{};
 
 	
 	milliseconds_double_t wallclock_elapsed { 0 }; // used to measure how much time in total was spent in executing the test
@@ -178,13 +179,14 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 	bool use_log1p = false;
 
 	// Kolmogorov-Smirnov goodness-of-fit test function
-	auto kolmogorov_smirnov_gof = [](const std::vector<benchmark_result_t>& elapsed_array, 
+	auto kolmogorov_smirnov_gof = [](const std::vector<benchmark_result::benchmark_result_t>& elapsed_array, 
 	                                 bool use_log) -> double {
 		// First, calculate the mean to decide log vs log1p
 		double sum_raw = 0.0;
 		size_t count = 0;
 		for(const auto& elapsed : elapsed_array) {
-			if(elapsed.second == CKR_OK) {
+			// Only consider successful measurements
+			if(std::holds_alternative<benchmark_result::Ok>(elapsed.second)) {
 				for(const auto& it : elapsed.first) {
 					sum_raw += it.count();
 					count++;
@@ -196,7 +198,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 		// Collect data
 		std::vector<double> data;
 		for(const auto& elapsed : elapsed_array) {
-			if(elapsed.second == CKR_OK) {
+			if(std::holds_alternative<benchmark_result::Ok>(elapsed.second)) {
 				for(const auto& it : elapsed.first) {
 					double val = it.count();
 					if (use_log) {
@@ -298,7 +300,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 	// compute statistics
 	// First pass: compute regular statistics to determine if we need log1p
 	for(auto elapsed: elapsed_time_array) {
-	    if(elapsed.second != CKR_OK) {
+	    if(!std::holds_alternative<benchmark_result::Ok>(elapsed.second)) {
 		last_errcode = elapsed.second;
 		wallclock_elapsed = milliseconds_double_t { 0 };
 		break;		// something wrong happened, no need to carry on
@@ -315,7 +317,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 
 	// Second pass: compute log statistics with appropriate transformation
 	for(auto elapsed: elapsed_time_array) {
-	    if(elapsed.second != CKR_OK) {
+	    if(!std::holds_alternative<benchmark_result::Ok>(elapsed.second)) {
 		break;		// something wrong happened, no need to carry on
 	    }
 
@@ -474,7 +476,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 	if(m_include_datapoints) {
 	    ptree datapoints_array;
 	    for(auto elapsed: elapsed_time_array) {
-		if(elapsed.second == CKR_OK) {
+		if(std::holds_alternative<benchmark_result::Ok>(elapsed.second)) {
 		    for(auto &it: elapsed.first) {
 			ptree datapoint;
 			datapoint.put("", it.count());

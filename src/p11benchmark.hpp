@@ -23,6 +23,8 @@
 #include <optional>
 #include <utility>
 #include <chrono>
+#include <variant>
+#include <exception>
 #include <botan/auto_rng.h>
 #include <botan/p11_types.h>
 #include <botan/p11_object.h>
@@ -35,7 +37,27 @@
 
 
 using namespace Botan::PKCS11;
-using benchmark_result_t = std::pair<std::vector<milliseconds_double_t>,int>;
+
+
+namespace benchmark_result {
+
+    // an exception to signal that an object was not found
+    class NotFound : public std::exception
+    {
+    public:
+        virtual const char* what() const noexcept override
+        {
+            return "Requested object not found";
+        }
+    };
+
+    using Ok = std::monostate;      // the default: all went well
+    // ApiErr is the type returned by Botan::PKCS11::PKCS11_Error::error_code()
+    using ApiErr = decltype(std::declval<Botan::PKCS11::PKCS11_ReturnError>().error_code());
+
+    using operation_outcome_t = std::variant<Ok, ApiErr, NotFound>;
+    using benchmark_result_t = std::pair<std::vector<milliseconds_double_t>,operation_outcome_t>;
+}
 
 class P11Benchmark
 {
@@ -60,6 +82,9 @@ protected:
 
     // cleanup(): perform cleanup after each call of crashtestdummy(), if needed
     virtual void cleanup(Session &session) { };
+
+    // teardown(): perform teardown after all iterations are done, if needed
+    virtual void teardown(Session &session, Object &obj, std::optional<size_t> threadindex) { };
 
     // rename(): change the name of the class after creation
     inline void rename(std::string newname) { m_name = newname; };
@@ -96,7 +121,7 @@ public:
 
     virtual std::string features() const;
 
-    benchmark_result_t execute(Session* session, const std::vector<uint8_t> &payload, size_t iterations, size_t skipiterations, std::optional<size_t> threadindex);
+    benchmark_result::benchmark_result_t execute(Session* session, const std::vector<uint8_t> &payload, size_t iterations, size_t skipiterations, std::optional<size_t> threadindex);
 
 };
 

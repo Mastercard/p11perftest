@@ -86,6 +86,10 @@ TestCoverage::TestCoverage(std::string tocover)
 	    m_algo_coverage.insert(AlgoCoverage::rand);
 	    break;
 
+	case "find"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::find);
+	    break;
+
 	case "jwe"_hash:
 	    m_algo_coverage.insert(AlgoCoverage::jwe);
 	    break;
@@ -210,6 +214,10 @@ bool TestCoverage::contains(std::string algo)
 
     case "rand"_hash:
 	return contains(AlgoCoverage::rand);
+	break;
+
+    case "find"_hash:
+	return contains(AlgoCoverage::find);
 	break;
 
     case "jwe"_hash:

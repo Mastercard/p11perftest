@@ -63,6 +63,7 @@
 #include "p11xorkeydataderive.hpp"
 #include "p11genrandom.hpp"
 #include "p11seedrandom.hpp"
+#include "p11findobjects.hpp"
 #include "p11hmacsha1.hpp"
 #include "p11hmacsha256.hpp"
 #include "p11hmacsha512.hpp"
@@ -112,7 +113,7 @@ int main(int argc, char **argv)
     po::options_description envvars("environment variables");
 
     // default coverage: RSA, ECDSA, HMAC, DES and AES
-    const auto default_tests {"rsa,rsapss,ecdsa,ecdh,hmac,des,aes,xorder,rand,jwe,oaep,oaepenc,oaepunw"};
+    const auto default_tests {"rsa,rsapss,ecdsa,ecdh,hmac,des,aes,xorder,rand,find,jwe,oaep,oaepenc,oaepunw"};
     const auto default_vectors {"8,16,64,256,1024,4096"};
     const auto default_keysizes{"rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256"};
     const auto default_flavour{"generic"};
@@ -513,6 +514,11 @@ int main(int argc, char **argv)
 		    generated_keys.insert("rand-128"); // always insert, tests don't really need this key
 		}
 
+		if(tests.contains("find")) {
+		    keygenerator.generate_key(KeyGenerator::KeyType::AES, "find-128", 128); // not really used, ignore result
+		    generated_keys.insert("find-128"); // always insert, tests don't really need this key
+		}
+
 	    } else {
 		
 		std::cout << "Using existing token keys (no generation)\n";
@@ -542,8 +548,8 @@ int main(int argc, char **argv)
 		if(keysizes.contains("aes256")) generated_keys.insert("aes-256");
 		generated_keys.insert("xorder-128");
 		generated_keys.insert("rand-128");
+		generated_keys.insert("find-128");
 	    }
-
 
 	    // Helper lambda to check if key was generated (C++11 compatible)
 	    auto has_key = [&generated_keys](const std::string& key) {
@@ -717,6 +723,11 @@ int main(int argc, char **argv)
 		}
 	    }
 
+	    if(tests.contains("find")) {
+		if(has_key("find-128")) {
+		    benchmarks.emplace_front( new P11FindObjectsBenchmark("find-128") );
+		}
+	    }
 	    benchmarks.reverse();
 
 

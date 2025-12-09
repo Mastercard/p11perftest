@@ -46,13 +46,10 @@ P11Benchmark::P11Benchmark(const std::string &name, const std::string &label, Ob
 
 P11Benchmark::P11Benchmark(const P11Benchmark& other)
     : m_name(other.m_name), m_label(other.m_label), m_objectclass(other.m_objectclass), m_implementation(other.m_implementation)
-{
-    // std::cout << "copy constructor invoked for " << m_name << std::endl;
-}
+{ }
 
 P11Benchmark& P11Benchmark::operator=(const P11Benchmark& other)
 {
-    // std::cout << "copy assignment invoked for " << m_name << std::endl;
     m_name = other.m_name;
     m_label = other.m_label;
     m_objectclass = other.m_objectclass;
@@ -104,9 +101,9 @@ void P11Benchmark::resume_timer()
     m_last_clock = std::chrono::high_resolution_clock::now();
 }
 
-benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uint8_t> &payload, size_t iterations, size_t skipiterations, std::optional<size_t> threadindex)
+benchmark_result::benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uint8_t> &payload, size_t iterations, size_t skipiterations, std::optional<size_t> threadindex)
 {
-    int return_code = CKR_OK;
+    benchmark_result::operation_outcome_t return_code = benchmark_result::Ok{};
     std::vector<milliseconds_double_t> records(iterations);
 
     try {
@@ -149,22 +146,25 @@ benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uin
 		    cleanup(*session); // cleanup any created object (e.g. unwrapped or derived keys)
 		    records.at(i) = elapsed();
 		}
+		teardown(*session, obj, threadindex); // perform any needed teardown
 	    }
 	}
-    } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
-	{
-	    std::lock_guard<std::mutex> lg{display_mtx};
-	    std::cerr << "ERROR:: " << bexc.what()
-		      << " (" << errorcode(bexc.error_code()) << ")" << std::endl;
-	}
-	return_code = bexc.error_code();
+    } catch (benchmark_result::NotFound &nfe) {
 	// we print the exception, and move on
-    } catch (...) {
-	{
-	    std::lock_guard<std::mutex> lg{display_mtx};
-	    std::cerr << "ERROR: caught an unmanaged exception" << std::endl;
-	}
-	// bailing out
+	std::lock_guard<std::mutex> lg{display_mtx};
+	std::cerr << "ERROR: " << nfe.what() << std::endl;
+	return_code = benchmark_result::NotFound();		
+    } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
+	// we print the exception, and move on
+	std::lock_guard<std::mutex> lg{display_mtx};
+	std::cerr << "ERROR:: " << bexc.what()
+		<< " (" << errorcode(bexc.error_code()) << ")" 
+		<< std::endl;
+	return_code = benchmark_result::ApiErr{bexc.error_code()};
+    } catch (...) {	
+	std::lock_guard<std::mutex> lg{display_mtx};
+	std::cerr << "ERROR: caught an unmanaged exception" << std::endl;
+	// rethrow
 	throw;
     }
 
