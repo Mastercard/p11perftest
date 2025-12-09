@@ -8,7 +8,7 @@ cycler==0.12.1
     # via matplotlib
 et-xmlfile==2.0.0
     # via openpyxl
-fonttools==4.60.1
+fonttools==4.60.2
     # via matplotlib
 kiwisolver==1.4.9
     # via matplotlib
