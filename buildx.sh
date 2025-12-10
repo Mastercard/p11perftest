@@ -1,0 +1,268 @@
+#!/usr/bin/env bash
+
+#
+# Copyright (c) 2025 Mastercard
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+set -e
+
+
+cleanup() {
+  echo "Caught SIGINT. Exiting..."
+  exit 1
+}
+
+trap cleanup SIGINT  # Handle SIGINT (CTRL-C)
+
+PACKAGE="p11perftest"
+GITHUB_REPO="https://github.com/Mastercard/$PACKAGE"
+GITHUB_REPO_COMMIT="HEAD"
+SUPPORTED_ARCHS="amd64 arm64"
+SUPPORTED_DISTROS="ol8 ol9 deb12 ubuntu2204 ubuntu2404 amzn2023 alpine321"
+
+# Declare an associative array, needed by docker buildx --platform option
+declare -A rev_arch_map
+rev_arch_map["x86_64"]="amd64"
+rev_arch_map["aarch64"]="arm64"
+
+#
+# Usage information
+#
+function usage() {
+    echo "Usage: $0 [-r URL] [-v] [-j N] [-c COMMIT] [distro[/arch]|all[/all]] [...]"
+    echo "Supported distros: $SUPPORTED_DISTROS"
+    echo "Supported archs: $SUPPORTED_ARCHS"
+    echo ""
+    echo "Options:"
+    echo "  --repo URL, -r URL         Specify the repository URL (default: $GITHUB_REPO)"
+    echo "  --commit COMMIT, -c COMMIT Specify the commit hash, tag or branch to build (default: $GITHUB_REPO_COMMIT)"
+    echo "  --skip-git-sslverify, -k   Skip SSL verification for git clone"
+    echo "  --verbose, -v              Increase verbosity (can be specified multiple times)"
+    echo "  --max-procs N, -j N        Specify the maximum number of processes"
+    echo "  --cloneagain               Clone again target repository to avoid cache"
+
+    exit 1
+}
+
+#
+# Get the current directory
+#
+function get_current_dir() {
+    current_dir="$(pwd)"
+    echo "${current_dir}"
+}
+
+#
+# Get the directory of the script
+#
+function get_script_dir() {
+    script_dir="$(cd "$(dirname "$0")" && pwd)"
+    echo "${script_dir}"
+}
+
+#
+# Generate a random container name
+#
+function gen_random_container_name() {
+    random_docker_name=$(head -c 16 /dev/urandom | base64 | tr -dc 'a-z0-9' | head -c 12)
+    echo -n "container-$PACKAGE-$random_docker_name"
+}
+
+#
+# Get the current git tag or commit hash if current commit is not tagged
+#
+function get_git_tag_or_hash() {
+    # Get the current tag if it exists, otherwise get the short commit hash
+    git describe --tags --abbrev=0 2>/dev/null || git rev-parse --short HEAD
+}
+
+#
+# Build the tarball for the given distro and arch
+#
+# $1 - distro
+# $2 - arch
+# $3 - verbose: 0 or 1
+# $4 - repo_url (default: $GITHUB_REPO)
+# $5 - repo_branch (default: "main")
+# $6 - repo_commit (default: "HEAD")
+
+function create_build() {
+    set -e                      # Exit on error, repeated here to ensure it's set in the subshell
+
+    local distro="$1"
+    local arch="$2"
+    local verbose="$3"
+    local repo_url="$4"
+    local repo_commit="$5"
+    local repo_sslverify="$6"
+    local cloneagain="$7"
+
+    local verbosearg="--quiet"
+    
+    if [ "$verbose" -eq 1 ]; then
+        verbosearg="--progress=auto"
+    elif [ "$verbose" -eq 2 ]; then
+        verbosearg="--progress=plain"
+    fi
+
+    local cloneagainarg=""
+    if [ "$cloneagain" -eq 1 ]; then
+        cloneagainarg="--build-arg NOCACHE_CLONEAGAIN=$(date +%s)"
+    fi
+
+    # TODO: keep this outside of this function, should be a global variable
+    declare -A arch_map
+    arch_map["amd64"]="x86_64"
+    arch_map["arm64"]="aarch64"
+
+    local platformarch="${arch_map[$arch]:-$arch}"
+
+    echo "Building artifacts for $distro on arch $arch (platform: $platformarch)..."
+    
+    local containername=$(gen_random_container_name)
+    docker buildx build $verbosearg $gitclonedarg \
+        --platform linux/$arch \
+        --build-arg REPO_URL=$repo_url \
+        --build-arg REPO_COMMIT_OR_TAG=$repo_commit \
+        --build-arg REPO_SSLVERIFY=$repo_sslverify \
+        -t p11perftest-build-$distro-$arch $cloneagainarg \
+        -f $(get_script_dir)/buildx/Dockerfile.$distro \
+        $(get_script_dir)/buildx
+    
+    local artifacts=$(docker run --platform linux/$arch --name $containername p11perftest-build-$distro-$arch)
+    for artifact in $artifacts; do
+        docker cp --quiet $containername:$artifact $(get_current_dir)/
+    done
+    docker rm -f $containername > /dev/null 2>&1
+    echo "Done with for $distro on $arch, produced artifacts:"
+    for artifact in $artifacts; do
+        echo "  $(get_current_dir)/$(basename $artifact)"
+    done
+}
+
+# main function.
+
+#
+# Parse the arguments and execute the builds
+#
+function parse_and_build() {
+    local repo_url="$GITHUB_REPO"
+    local repo_commit="HEAD"
+    local repo_sslverify="true"
+    local verbose=0
+    local args=()
+    local numprocs=$(nproc)
+    local cloneagain=0
+
+    # Parse optional -repo and -verbose arguments
+    while [[ "$1" == --* || "$1" == -* ]]; do
+        case "$1" in
+            --repo|-r)
+                shift
+                repo_url="$1"
+                ;;
+            --commit|-c)
+                shift
+                repo_commit="$1"
+                ;;
+            --skip-git-sslverify|-k)
+                repo_sslverify="false"
+                ;;
+            --verbose|-v)
+                if [ "$verbose" -lt 2 ]; then
+                    verbose=$(($verbose + 1))
+                fi
+                ;;
+            -vv)
+                verbose=2
+                ;;
+            --max-procs|-j)
+                shift
+                numprocs="$1"
+                # Validate the number of processes:
+                # - Must be a positive integer
+                # - Must be less than or equal to the number of CPUs
+                if ! [[ "$numprocs" =~ ^[0-9]+$ ]] || [ "$numprocs" -le 0 ] || [ "$numprocs" -gt "$(nproc)" ]; then
+                    echo "Invalid number of processes: $numprocs"
+                    usage
+                fi
+                ;;
+            --cloneagain)
+                cloneagain=1
+                ;;
+            *)
+                echo "Unknown option: $1"
+                usage
+                ;;
+        esac
+        shift
+    done
+    
+    # Collect remaining arguments
+    local args=("$@")
+
+    local build_args=()
+
+    for arg in "${args[@]}"; do
+        if [[ "$arg" == "all/all" ]]; then
+            for distro in $SUPPORTED_DISTROS; do
+                for arch in $SUPPORTED_ARCHS; do
+                    build_args+=("$distro $arch $verbose $repo_url $repo_commit $repo_sslverify $cloneagain")
+                done
+            done
+        elif [[ "$arg" == "all" ]]; then
+            local current_arch=$(uname -m)
+            for distro in $SUPPORTED_DISTROS; do
+                build_args+=("$distro $current_arch $verbose $repo_url $repo_commit $repo_sslverify $cloneagain")
+            done
+        elif [[ "$arg" == */* ]]; then
+            IFS='/' read -r distro arch_list <<< "$arg"
+            if [[ "$arch_list" == "all" ]]; then
+                for arch in $SUPPORTED_ARCHS; do
+                    build_args+=("$distro $arch $verbose $repo_url $repo_commit $repo_sslverify $cloneagain")
+                done
+            else
+                IFS=',' read -ra archs <<< "$arch_list"
+                for arch in "${archs[@]}"; do
+                    build_args+=("$distro $arch $verbose $repo_url $repo_commit $repo_sslverify $cloneagain")
+                done
+            fi
+        else
+            IFS=',' read -ra distros <<< "$arg"
+            local host_arch=${rev_arch_map[$(uname -m)]:-$(uname -m)}
+            for distro in "${distros[@]}"; do
+                build_args+=("$distro $host_arch $verbose $repo_url $repo_commit $repo_sslverify $cloneagain")
+            done
+        fi
+    done
+
+    export -f create_build
+    export -f get_current_dir
+    export -f get_script_dir
+    export -f gen_random_container_name
+    
+    # Run builds in parallel, limiting to the number of jobs specified by the user
+    printf "%s\n" "${build_args[@]}" | xargs -P $numprocs -I {} bash -c 'create_build {}'
+}
+
+#
+# Main logic
+#
+if [[ "$#" -lt 1 ]]; then
+    usage
+fi
+
+parse_and_build "$@"
+
+# EOF

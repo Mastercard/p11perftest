@@ -22,14 +22,20 @@ libtool
 # PyInstaller
 /bin/
 /build/
-/scripts/build
-/scripts/dist
+/scripts/build/
+/scripts/dist/
+/dist/
 
 # emacs
 *~
 *.json
 *.xlsx
 *.ign/
+
+# packages
+*.deb
+*.rpm
+*.apk
 
 # others
 *.tar

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 
 #
@@ -19,6 +19,8 @@
 
 import argparse
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')  # use a non-interactive backend
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import curve_fit
