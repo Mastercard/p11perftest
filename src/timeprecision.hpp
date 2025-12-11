@@ -21,6 +21,6 @@
 
 #include <utility>
 
-std::pair<double, double> measure_clock_precision(int iter=100);
+std::pair<double, double> measure_clock_precision(int iter=1000);
 
 #endif // TIMEPRECISION_H
