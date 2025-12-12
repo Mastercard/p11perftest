@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## 3.15.2 - 2025-12-12
 ### Updated
-- removed boost dependency for Welford variance calculation (using standard lib)
+- removed Welford variance calculation boost dependency for timer precision (using standard lib)
 - guarantee monotonic clock
 - updated confidence interval calculation for sample variance
 - increased sample size
