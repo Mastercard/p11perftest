@@ -28,46 +28,68 @@
 
 #include "timeprecision.hpp"
 
+#include <iostream>
 #include <chrono>
 #include <cmath>
-#include <boost/accumulators/accumulators.hpp>
-#include <boost/accumulators/statistics/stats.hpp>
-#include <boost/accumulators/statistics/mean.hpp>
-#include <boost/accumulators/statistics/count.hpp>
-#include <boost/accumulators/statistics/variance.hpp>
-
-
+#include <cstdlib>
 
 using namespace std;
-using namespace boost::accumulators;
 
-
-// reference: https://www.statsdirect.com/help/basic_descriptive_statistics/standard_deviation.htm
-// returned time is in ns
-// TODO: using litterals for setting units
+// Returned time is in nanoseconds (ns).
+// Reference: https://www.statsdirect.com/help/basic_descriptive_statistics/standard_deviation.htm
+// TODO: use chrono literals for units if/when interface becomes typed
 
 pair<double, double> measure_clock_precision(int iter)
 {
-    using clock = std::chrono::high_resolution_clock;
-    accumulator_set<double, stats<tag::mean, tag::variance, tag::count> > te;
+    // Guard against non-monotonic high_resolution_clock (may alias system_clock) at compile-time
+    using clock = std::conditional_t<
+        std::chrono::high_resolution_clock::is_steady,
+        std::chrono::high_resolution_clock,
+        std::chrono::steady_clock>;
+
+    // Welford's online algorithm for stable mean/variance
+    double mean = 0.0;
+    double M2   = 0.0;
+    int    n    = 0;
 
     for (int i = 0; i < iter; ++i) {
-        auto start = clock::now();
+        auto start   = clock::now();
         auto current = start;
+
+        // Probe until the time point changes
         while (current == start) {
             current = clock::now();
         }
-        const auto delta = std::chrono::duration_cast<std::chrono::nanoseconds>(current - start).count();
-        te(static_cast<double>(delta));
+
+        const auto delta_ns =
+            std::chrono::duration_cast<std::chrono::nanoseconds>(current - start).count();
+        const double x = static_cast<double>(delta_ns);
+
+        // Filter out unrealistic values (likely measurement errors)
+        // Timer granularity should be < 1ms on modern systems
+        if (x > 0.0 && x < 1'000'000.0) { // between 0 and 1 ms (in nanoseconds)
+            ++n;
+            const double delta  = x - mean;
+            mean += delta / static_cast<double>(n);
+            const double delta2 = x - mean;
+            M2 += delta * delta2;
+        } else {
+            std::cerr << "Warning: Filtered out unrealistic timer value: " << delta_ns << " ns\n";
+        }
     }
 
+    // Kill the app if insufficient number of valid samples
+    if (n < 100) {
+        std::cerr << "Fatal error: Insufficient valid samples (" << n << "). Exiting.\n";
+        std::exit(EXIT_FAILURE); // terminate the program with failure status
+    }
 
-    auto n = boost::accumulators::count(te);
-    // compute estimator for variance: (n)/(n-1)*variance
-    auto est_variance = (variance(te) * n ) / (n-1);
+    // Unbiased sample variance (requires n >= 2, which is implied at this point)
+    double sample_variance = M2 / static_cast<double>(n - 1);
 
-    // compute standard error
-    double std_err = sqrt( est_variance/n ) * 2; // we take k=2, so 95% of measures are within interval
+    // Standard Error of the Mean (SEM) with 95% CI via normal approx: z = 1.96
+    // ci_halfwidth_95 = sqrt( sample_variance / n ) * 1.96
+    double ci_halfwidth_95 = std::sqrt(sample_variance / static_cast<double>(n)) * 1.96;
 
-    return make_pair(mean(te), std_err);
+    return make_pair(mean, ci_halfwidth_95);
 }
