@@ -24,7 +24,7 @@
 // Returns (mean_ns, 95% CI half-width in ns).
 // Behavior:
 //   - Filters out unrealistic timer values (> 1 ms).
-//   - Terminates the program (std::exit) if fewer than 10 valid samples remain.
+//   - Terminates the program (std::exit) if fewer than 100 valid samples remain.
 std::pair<double, double> measure_clock_precision(int iter=1000);
 
 #endif // TIMEPRECISION_H

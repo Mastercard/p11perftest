@@ -42,10 +42,6 @@ using namespace std;
 
 pair<double, double> measure_clock_precision(int iter)
 {
-    if (iter < 2) {
-        iter = 2; // need at least 2 valid samples for variance
-    }
-
     // Guard against non-monotonic high_resolution_clock (may alias system_clock) at compile-time
     using clock = std::conditional_t<
         std::chrono::high_resolution_clock::is_steady,
@@ -70,11 +66,10 @@ pair<double, double> measure_clock_precision(int iter)
             std::chrono::duration_cast<std::chrono::nanoseconds>(current - start).count();
         const double x = static_cast<double>(delta_ns);
 
-        
         // Filter out unrealistic values (likely measurement errors)
         // Timer granularity should be < 1ms on modern systems
         if (x > 0.0 && x < 1'000'000.0) { // between 0 and 1 ms (in nanoseconds)
-	    ++n;
+            ++n;
             const double delta  = x - mean;
             mean += delta / static_cast<double>(n);
             const double delta2 = x - mean;
@@ -84,24 +79,18 @@ pair<double, double> measure_clock_precision(int iter)
         }
     }
 
-    // Kill the app if insufficient valid samples
+    // Kill the app if insufficient number of valid samples
     if (n < 100) {
         std::cerr << "Fatal error: Insufficient valid samples (" << n << "). Exiting.\n";
         std::exit(EXIT_FAILURE); // terminate the program with failure status
     }
 
-    // Unbiased sample variance (requires n >= 2)
-    double sample_variance = 0.0;
-    if (n > 1) {
-        sample_variance = M2 / static_cast<double>(n - 1);
-    }
+    // Unbiased sample variance (requires n >= 2, which is implied at this point)
+    double sample_variance = M2 / static_cast<double>(n - 1);
 
     // Standard Error of the Mean (SEM) with 95% CI via normal approx: z = 1.96
-    // ci_halfwidth_95 = 1.96 * sqrt( sample_variance / n )
-    double ci_halfwidth_95 = 0.0;
-    if (n > 0) {
-        ci_halfwidth_95 = std::sqrt(sample_variance / static_cast<double>(n)) * 1.96;
-    }
+    // ci_halfwidth_95 = sqrt( sample_variance / n ) * 1.96
+    double ci_halfwidth_95 = std::sqrt(sample_variance / static_cast<double>(n)) * 1.96;
 
     return make_pair(mean, ci_halfwidth_95);
 }
