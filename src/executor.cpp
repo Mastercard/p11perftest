@@ -40,6 +40,7 @@
 #include <boost/accumulators/statistics/max.hpp>
 #include <boost/accumulators/statistics/count.hpp>
 #include <boost/accumulators/statistics/variance.hpp>
+#include <boost/accumulators/statistics/tail_quantile.hpp>
 #include "ConsoleTable.h"
 #include "errorcodes.hpp"
 #include "p11benchmark.hpp"
@@ -72,17 +73,17 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 
 	// helper functions for ConsoleTable conversion of items to string
 	auto d2s = [] (double arg, int precision=-1) -> std::string {
-		       std::ostringstream stream;
-		       if(precision>=0) stream << std::setprecision(precision);
-		       stream << arg;
-		       return stream.str();
-		   };
+	    std::ostringstream stream;
+	    if(precision>=0) stream << std::setprecision(precision);
+	    stream << arg;
+	    return stream.str();
+	};
 
 	auto i2s = [] (long arg) -> std::string {
-		       std::ostringstream stream;
-		       stream << arg;
-		       return stream.str();
-		   };
+	    std::ostringstream stream;
+	    stream << arg;
+	    return stream.str();
+	};
 
 	std::vector<std::tuple<std::string, std::string, std::string>> fact_rows {
 	    { "algorithm", "algorithm", benchmark.name() },
@@ -161,7 +162,9 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 	    bacc::tag::min,
 	    bacc::tag::max,
 	    bacc::tag::count,
-	    bacc::tag::variance > > acc;
+	    bacc::tag::variance,
+	    bacc::tag::tail_quantile< bacc::right >
+	    > > acc( bacc::tag::tail<bacc::right>::cache_size = 1000 );
 
 	// helper map table for statistics
 	std::map<std::string, std::function<double()> > stats {
@@ -170,25 +173,28 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 	    { "max",   [&acc] () { return bacc::max(acc);  }},
 	    { "range", [&acc] () { return (bacc::max(acc) - bacc::min(acc)); }},
 	    { "svar",   [&acc] () {
-			   auto n = bacc::count(acc);
-			   double f = static_cast<double>(n) / (n - 1);
-			   return f * bacc::variance(acc); }},
+		auto n = bacc::count(acc);
+		double f = static_cast<double>(n) / (n - 1);
+		return f * bacc::variance(acc); }},
 	    { "sstddev", [&stats] () { return std::sqrt(stats["svar"]()); }},
 	    // note: for error, we take k=2 so 95% of measures are within interval
 	    { "error", [&stats] () { return std::sqrt(stats["svar"]()/static_cast<double>( stats["count"]() ))*2; }},
 	    { "count", [&acc] () { return bacc::count(acc); }},
+	    { "p95", [&acc] () { return bacc::quantile(acc, bacc::quantile_probability = 0.95); }},
+	    { "p98", [&acc] () { return bacc::quantile(acc, bacc::quantile_probability = 0.98); }},
+	    { "p99", [&acc] () { return bacc::quantile(acc, bacc::quantile_probability = 0.99); }}
 	};
 
 	// compute statistics
 	for(auto elapsed: elapsed_time_array) {
 	    if(elapsed.second != CKR_OK) {
-			last_errcode = elapsed.second;
-			wallclock_elapsed = milliseconds_double_t { 0 };
+		last_errcode = elapsed.second;
+		wallclock_elapsed = milliseconds_double_t { 0 };
 		break;		// something wrong happened, no need to carry on
 	    }
 
 	    for(auto &it: elapsed.first) {
-			acc(it.count());
+		acc(it.count());
 	    }
 	}
 
@@ -225,6 +231,21 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 	auto latency_max_err =  epsilon;
 	Measure<> latency_max(latency_max_val, latency_max_err, "ms");
 	result_rows.emplace_back(std::forward_as_tuple("latency, maximum", "latency.maximum", std::move(latency_max)));
+
+	// p95, p98, p99 quantiles
+	auto latency_p95_val = stats["p95"]();
+	auto latency_p95_err = epsilon;
+	Measure<> latency_p95(latency_p95_val, latency_p95_err, "ms");
+	result_rows.emplace_back(std::forward_as_tuple("latency, 95th percentile", "latency.p95", std::move(latency_p95)));
+	auto latency_p98_val = stats["p98"]();
+	auto latency_p98_err = epsilon;
+	Measure<> latency_p98(latency_p98_val, latency_p98_err, "ms");
+	result_rows.emplace_back(std::forward_as_tuple("latency, 98th percentile", "latency.p98", std::move(latency_p98)));
+	auto latency_p99_val = stats["p99"]();
+	auto latency_p99_err = epsilon;
+	Measure<> latency_p99(latency_p99_val, latency_p99_err, "ms");
+	result_rows.emplace_back(std::forward_as_tuple("latency, 99th percentile", "latency.p99", std::move(latency_p99)));
+
 	// TPS is the number of "transactions" per second.
 	// the meaning of "transaction" depends upon the tested API/algorithm
 
@@ -262,8 +283,8 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 		std::get<0>(row),
 		    d2s(std::get<2>(row).value(),12),
 		    d2s(std::get<2>(row).error(),12),
-		std::get<2>(row).unit(),
-		d2s(std::get<2>(row).relerr()*100,3)+'%'  };
+		    std::get<2>(row).unit(),
+		    d2s(std::get<2>(row).relerr()*100,3)+'%'  };
 	}
 
 	std::cout << "Test case results:\n" << results << std::endl;
