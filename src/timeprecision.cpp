@@ -57,7 +57,7 @@ pair<nanoseconds_double_t, nanoseconds_double_t> measure_clock_precision(int ite
 
     // compute standard error
     // we take k=2, so 95% of measures are within interval
-    auto std_err = nanoseconds_double_t( ( est_variance/n ) * 2); 
+    auto std_err = nanoseconds_double_t( sqrt( est_variance/n ) * 2);
     auto avg = nanoseconds_double_t(mean(acc));
     
     return {avg, std_err};
