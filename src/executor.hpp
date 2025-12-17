@@ -25,6 +25,7 @@
 #include <botan/p11_types.h>
 #include <boost/property_tree/ptree.hpp>
 #include "p11benchmark.hpp"
+#include "units.hpp"
 #include "../config.h"
 
 using namespace Botan::PKCS11;
@@ -35,8 +36,8 @@ class Executor
     const std::map<const std::string, const std::vector<uint8_t> > &m_vectors;
     std::vector<std::unique_ptr<Session> > &m_sessions;
     const int m_numthreads;
-    double m_timer_res;
-    double m_timer_res_err;
+    nanoseconds_double_t m_timer_res;
+    nanoseconds_double_t m_timer_res_err;
     bool m_generate_session_keys;
 
 public:
@@ -44,7 +45,7 @@ public:
 	      const std::vector<uint8_t> > &vectors,
 	      std::vector<std::unique_ptr<Session> > &sessions,
 	      const int numthreads,
-	      std::pair<double, double> precision,
+	      std::pair<nanoseconds_double_t, nanoseconds_double_t> precision,
 	      bool generate_session_keys)
 	:
 	m_vectors(vectors),
@@ -61,7 +62,7 @@ public:
     Executor( Executor &&) = delete;
     Executor& operator=( Executor &&) = delete;
 
-    double precision() { return m_timer_res + m_timer_res_err; }
+    double precision() { return (m_timer_res + m_timer_res_err).count(); }
 
     ptree benchmark( P11Benchmark &benchmark, const size_t iter, const size_t skipiter, const std::forward_list<std::string> shortlist );
 

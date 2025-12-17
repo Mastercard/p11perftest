@@ -16,16 +16,6 @@
 // limitations under the License.
 //
 
-// this code is inspired from Boost library test sample
-// https://www.boost.org/doc/libs/1_72_0/libs/timer/test/cpu_timer_info.cpp
-
-//  Original copyright notice:
-//
-//  Copyright Beman Dawes 2006
-//  Distributed under the Boost Software License, Version 1.0.
-//  See http://www.boost.org/LICENSE_1_0.txt
-
-
 #include "timeprecision.hpp"
 
 #include <chrono>
@@ -44,12 +34,11 @@ using namespace boost::accumulators;
 
 // reference: https://www.statsdirect.com/help/basic_descriptive_statistics/standard_deviation.htm
 // returned time is in ns
-// TODO: using litterals for setting units
 
-pair<double, double> measure_clock_precision(int iter)
+pair<nanoseconds_double_t, nanoseconds_double_t> measure_clock_precision(int iter)
 {
     using clock = std::chrono::high_resolution_clock;
-    accumulator_set<double, stats<tag::mean, tag::variance, tag::count> > te;
+    accumulator_set<double, stats<tag::mean, tag::variance, tag::count> > acc;
 
     for (int i = 0; i < iter; ++i) {
         auto start = clock::now();
@@ -57,17 +46,19 @@ pair<double, double> measure_clock_precision(int iter)
         while (current == start) {
             current = clock::now();
         }
-        const auto delta = std::chrono::duration_cast<std::chrono::nanoseconds>(current - start).count();
-        te(static_cast<double>(delta));
+        const auto delta = std::chrono::duration_cast<nanoseconds_double_t>(current - start);
+        acc(delta.count());
     }
 
 
-    auto n = boost::accumulators::count(te);
+    auto n = boost::accumulators::count(acc);
     // compute estimator for variance: (n)/(n-1)*variance
-    auto est_variance = (variance(te) * n ) / (n-1);
+    auto est_variance = (variance(acc) * n ) / (n-1);
 
     // compute standard error
-    double std_err = sqrt( est_variance/n ) * 2; // we take k=2, so 95% of measures are within interval
-
-    return make_pair(mean(te), std_err);
+    // we take k=2, so 95% of measures are within interval
+    auto std_err = nanoseconds_double_t( ( est_variance/n ) * 2); 
+    auto avg = nanoseconds_double_t(mean(acc));
+    
+    return {avg, std_err};
 }

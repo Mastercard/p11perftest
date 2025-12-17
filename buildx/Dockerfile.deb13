@@ -46,7 +46,6 @@ RUN apt-get update && apt-get install -y \
     libboost-dev \
     libboost-program-options-dev \
     libboost-system-dev \
-    libboost-timer-dev \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
@@ -174,7 +173,7 @@ RUN . /meta/env \
     && echo "Section: misc" >> DEBIAN/control \
     && echo "Priority: optional" >> DEBIAN/control \
     && echo "Architecture: $PKG_ARCH" >> DEBIAN/control \
-    && echo "Depends: libc6,libboost-chrono1.83.0,libboost-timer1.83.0,libboost-program-options1.83.0" >> DEBIAN/control \
+    && echo "Depends: libc6,libboost-program-options1.83.0" >> DEBIAN/control \
     && echo "Maintainer: $PKG_MAINTAINER" >> DEBIAN/control \
     && echo "Description: A utility for testing PKCS#11 implementations" >> DEBIAN/control
 

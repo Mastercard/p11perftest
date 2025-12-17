@@ -83,10 +83,31 @@ std::string P11Benchmark::build_threaded_label(std::optional<size_t> threadindex
 }
 
 
+// reset_timer(): initialize timer to zero and set starting point
+void P11Benchmark::reset_timer()
+{
+    m_timer = milliseconds_double_t{0};
+    m_last_clock = std::chrono::high_resolution_clock::now();
+}
+
+// suspend_timer(): pause timer accumulation by adding elapsed time since last resume
+void P11Benchmark::suspend_timer()
+{
+    auto now =  std::chrono::high_resolution_clock::now();
+    m_timer += std::chrono::duration_cast<milliseconds_double_t>(now - m_last_clock);
+    m_last_clock = now;		// not really needed
+}
+
+// resume_timer(): resume timer accumulation from current time
+void P11Benchmark::resume_timer()
+{
+    m_last_clock = std::chrono::high_resolution_clock::now();
+}
+
 benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uint8_t> &payload, size_t iterations, size_t skipiterations, std::optional<size_t> threadindex)
 {
     int return_code = CKR_OK;
-    std::vector<nanosecond_type> records(iterations);
+    std::vector<milliseconds_double_t> records(iterations);
 
     try {
 	auto label = build_threaded_label(threadindex); // build threaded label (if needed)
@@ -108,10 +129,6 @@ benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uin
 
 		prepare(*session, obj, threadindex);
 
-		boost::timer::cpu_times started;
-
-		started.clear();
-
 		// wait for green light - all threads are starting together
 		{
 		    std::unique_lock<std::mutex> greenlight_lck(greenlight_mtx);
@@ -126,12 +143,11 @@ benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uin
 		    cleanup(*session); // cleanup any created object (e.g. unwrapped or derived keys)
 		}
 		for (size_t i=0; i<iterations; i++) {
-		    m_t.start(); // start timer
-		    started.wall = m_t.elapsed().wall; // remember wall clock
+		    reset_timer();
 		    crashtestdummy(*session);
-		    m_t.stop(); // stop timer
+		    suspend_timer();
 		    cleanup(*session); // cleanup any created object (e.g. unwrapped or derived keys)
-		    records.at(i) = m_t.elapsed().wall - started.wall;
+		    records.at(i) = elapsed();
 		}
 	    }
 	}

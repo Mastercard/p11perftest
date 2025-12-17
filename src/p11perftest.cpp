@@ -320,7 +320,7 @@ int main(int argc, char **argv)
 	    }
 
 	    auto epsilon = measure_clock_precision();
-	    std::cout << std::endl << "timer granularity (ns): " << epsilon.first << " +/- " << epsilon.second << "\n\n";
+	    std::cout << std::endl << "timer granularity (ns): " << epsilon.first.count() << " +/- " << epsilon.second.count() << "\n\n";
 
 	    Executor executor( testvecs, sessions, argnthreads, epsilon, generate_session_keys==true );
 

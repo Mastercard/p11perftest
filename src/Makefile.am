@@ -68,6 +68,6 @@ p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			implementation.cpp implementation.hpp \
 			p11perftest.cpp
 
-p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_TIMER_LIB) $(BOOST_PROGRAM_OPTIONS_LIB) $(BOOST_CHRONO_LIB) $(LIBCRYPTO_LIBS) $(PTHREAD_LIBS)
+p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_PROGRAM_OPTIONS_LIB) $(LIBCRYPTO_LIBS) $(PTHREAD_LIBS)
 
 

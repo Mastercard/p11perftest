@@ -1,7 +1,7 @@
 // -*- mode: c++; c-file-style:"stroustrup"; -*-
 
 //
-// Copyright (c) 2018 Mastercard
+// Copyright (c) 2025 Mastercard
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,12 +16,17 @@
 // limitations under the License.
 //
 
-#if !defined(TIMEPRECISION_H)
-#define TIMEPRECISION_H
+// units.hpp: Definitions of time units with double precision
 
-#include <utility>
-#include "units.hpp"
+#if !defined(UNITS_H)
+#define UNITS_H
 
-std::pair<nanoseconds_double_t, nanoseconds_double_t> measure_clock_precision(int iter=100);
+#include <chrono>
+#include <ratio>
 
-#endif // TIMEPRECISION_H
+using nanoseconds_double_t = std::chrono::duration<double, std::nano>;
+using microseconds_double_t = std::chrono::duration<double, std::micro>;
+using milliseconds_double_t = std::chrono::duration<double, std::milli>;
+
+
+#endif // UNITS_H

@@ -22,20 +22,20 @@
 #include <forward_list>
 #include <optional>
 #include <utility>
+#include <chrono>
 #include <botan/auto_rng.h>
 #include <botan/p11_types.h>
 #include <botan/p11_object.h>
 #include <botan/p11_rsa.h>
 #include <botan/p11_ecdsa.h>
 #include <botan/pubkey.h>
-#include <boost/timer/timer.hpp>
+#include "units.hpp"
 #include "implementation.hpp"
 #include "../config.h"
 
 
 using namespace Botan::PKCS11;
-using namespace boost::timer;
-using benchmark_result_t = std::pair<std::vector<nanosecond_type>,int>;
+using benchmark_result_t = std::pair<std::vector<milliseconds_double_t>,int>;
 
 class P11Benchmark
 {
@@ -43,7 +43,11 @@ class P11Benchmark
     std::string m_label;
     ObjectClass m_objectclass;
     Implementation m_implementation;
-    boost::timer::cpu_timer m_t; // the timer can be stopped and resumed by crash test dummy
+    milliseconds_double_t m_timer {0};
+    std::chrono::high_resolution_clock::time_point m_last_clock {};
+
+    inline milliseconds_double_t elapsed() const { return m_timer; };
+    void reset_timer();
 
 protected:
     std::vector<uint8_t> m_payload;
@@ -67,8 +71,10 @@ protected:
     inline Implementation::Vendor flavour() {return m_implementation.vendor(); };
 
     // timer primitives for the use of derived class
-    inline void suspend_timer() { m_t.stop(); }
-    inline void resume_timer()  { m_t.resume(); }
+    // suspend_timer(): pause timer accumulation
+    void suspend_timer();
+    // resume_timer(): resume timer accumulation
+    void resume_timer();
 
 public:
     P11Benchmark(const std::string &name,
