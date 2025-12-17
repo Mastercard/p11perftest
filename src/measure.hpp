@@ -6,7 +6,7 @@
 #define MEASURE_HPP
 
 #include <iostream>
-#include <ctgmath>
+#include <cmath>
 #include <limits>
 #include <ios>
 #include <iomanip>
@@ -41,7 +41,7 @@ public:
 	m_value_order(ceil(log10(val))),
 	m_error_order(err > 0 ? ceil(log10(err)) : 0) {
 
-	auto digits = [](T n) -> int { return ceil(abs(log10(n))) * copysign(1,log10(n)); };
+	auto digits = [](T n) -> int { return ceil(std::abs(log10(n))) * copysign(1,log10(n)); };
 
 	if (err > 0) {
 	    m_precision = digits(val) - digits(err) + 1;
@@ -57,7 +57,7 @@ public:
 	m_error(0),
 	m_unit(unit),
 	m_error_precision(0),
-	m_value_order(ceil(log10(fabs(val) > 0 ? fabs(val) : 1))),
+	m_value_order(ceil(log10(std::abs(val) > 0 ? std::abs(val) : 1.0))),
 	m_error_order(0),
 	m_precision(v_precision) {
     }
