@@ -3,6 +3,27 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
+## UNRELEASED
+### Added
+ - Docker buildx recipes and scripts
+ - `uv`support in Docker builds to improve reproducibility and speed of building
+ - log-normal distribution
+ - quantiles (p95,p98,p99)
+ - Lilliefors fitness test against both normal and log-normal distributions
+ - data points can now be recorded with new option (`-d`); data points can be extracted to a spreadsheet using the new utility `datapoints2xlsx`
+ - adds support for RSA PSS signature testing
+ - adds support for `C_FindObjects()` testing
+
+### Changed
+ - using high resolution clocks and steady clocks from standard library, to improve precision of measurement in all environments (including VMs)
+ - introduces the use of units for automatic conversion and improved readability
+ - graphs improvements: latency percentiles have now a scale distinct from average, coloured curves and axis, coloured horizontal lines
+ - flow: when a key generation fails, the corresponding test cases are removed from the test cases, and the application no longer terminates
+ - `C_SeedRandom()` test case uses random numbers for the seed
+ 
+### Fixed
+ - compilation warning under CLANG removed (using `std::abs` instead of `abs`)
+ - updated python dependencies to fix reported vulnerabilities
 
 ## 3.15.1 - 2025-11-26
 ### Fixed

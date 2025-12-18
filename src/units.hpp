@@ -1,7 +1,7 @@
 // -*- mode: c++; c-file-style:"stroustrup"; -*-
 
 //
-// Copyright (c) 2018 Mastercard
+// Copyright (c) 2025 Mastercard
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,14 +16,17 @@
 // limitations under the License.
 //
 
-#if !defined(ERRORCODES_H)
-#define ERRORCODES_H
+// units.hpp: Definitions of time units with double precision
 
-#include <string>
-#include "../config.h"
-#include "p11benchmark.hpp"
+#if !defined(UNITS_H)
+#define UNITS_H
 
-const std::string errorcode(benchmark_result::operation_outcome_t outcome);
+#include <chrono>
+#include <ratio>
+
+using nanoseconds_double_t = std::chrono::duration<double, std::nano>;
+using microseconds_double_t = std::chrono::duration<double, std::micro>;
+using milliseconds_double_t = std::chrono::duration<double, std::milli>;
 
 
-#endif // ERRORCODES_H
+#endif // UNITS_H

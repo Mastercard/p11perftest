@@ -22,20 +22,42 @@
 #include <forward_list>
 #include <optional>
 #include <utility>
+#include <chrono>
+#include <variant>
+#include <exception>
 #include <botan/auto_rng.h>
 #include <botan/p11_types.h>
 #include <botan/p11_object.h>
 #include <botan/p11_rsa.h>
 #include <botan/p11_ecdsa.h>
 #include <botan/pubkey.h>
-#include <boost/timer/timer.hpp>
+#include "units.hpp"
 #include "implementation.hpp"
 #include "../config.h"
 
 
 using namespace Botan::PKCS11;
-using namespace boost::timer;
-using benchmark_result_t = std::pair<std::vector<nanosecond_type>,int>;
+
+
+namespace benchmark_result {
+
+    // an exception to signal that an object was not found
+    class NotFound : public std::exception
+    {
+    public:
+        virtual const char* what() const noexcept override
+        {
+            return "Requested object not found";
+        }
+    };
+
+    using Ok = std::monostate;      // the default: all went well
+    // ApiErr is the type returned by Botan::PKCS11::PKCS11_Error::error_code()
+    using ApiErr = decltype(std::declval<Botan::PKCS11::PKCS11_ReturnError>().error_code());
+
+    using operation_outcome_t = std::variant<Ok, ApiErr, NotFound>;
+    using benchmark_result_t = std::pair<std::vector<milliseconds_double_t>,operation_outcome_t>;
+}
 
 class P11Benchmark
 {
@@ -43,7 +65,11 @@ class P11Benchmark
     std::string m_label;
     ObjectClass m_objectclass;
     Implementation m_implementation;
-    boost::timer::cpu_timer m_t; // the timer can be stopped and resumed by crash test dummy
+    milliseconds_double_t m_timer {0};
+    std::chrono::high_resolution_clock::time_point m_last_clock {};
+
+    inline milliseconds_double_t elapsed() const { return m_timer; };
+    void reset_timer();
 
 protected:
     std::vector<uint8_t> m_payload;
@@ -57,6 +83,9 @@ protected:
     // cleanup(): perform cleanup after each call of crashtestdummy(), if needed
     virtual void cleanup(Session &session) { };
 
+    // teardown(): perform teardown after all iterations are done, if needed
+    virtual void teardown(Session &session, Object &obj, std::optional<size_t> threadindex) { };
+
     // rename(): change the name of the class after creation
     inline void rename(std::string newname) { m_name = newname; };
 
@@ -67,8 +96,10 @@ protected:
     inline Implementation::Vendor flavour() {return m_implementation.vendor(); };
 
     // timer primitives for the use of derived class
-    inline void suspend_timer() { m_t.stop(); }
-    inline void resume_timer()  { m_t.resume(); }
+    // suspend_timer(): pause timer accumulation
+    void suspend_timer();
+    // resume_timer(): resume timer accumulation
+    void resume_timer();
 
 public:
     P11Benchmark(const std::string &name,
@@ -90,7 +121,7 @@ public:
 
     virtual std::string features() const;
 
-    benchmark_result_t execute(Session* session, const std::vector<uint8_t> &payload, size_t iterations, size_t skipiterations, std::optional<size_t> threadindex);
+    benchmark_result::benchmark_result_t execute(Session* session, const std::vector<uint8_t> &payload, size_t iterations, size_t skipiterations, std::optional<size_t> threadindex);
 
 };
 
