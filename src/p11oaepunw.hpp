@@ -36,6 +36,7 @@ private:
     std::vector<uint8_t> m_wrapped;   // wrapped key material
     ObjectHandle  m_objhandle;	      // handle to RSA key
     ObjectHandle  m_unwrappedhandle;  // handle to unwrapped key
+    size_t m_modulus_size_bytes = 0;  // RSA modulus size in bytes
 
     // OAEP param structure used to wrap/unwrap symmetric key
     CK_RSA_PKCS_OAEP_PARAMS m_rsa_pkcs_oaep_params {
@@ -51,6 +52,7 @@ private:
     virtual void prepare(Session &session, Object &obj, std::optional<size_t> threadindex) override;
     virtual void crashtestdummy(Session &session) override;
     virtual P11OAEPUnwrapBenchmark *clone() const override;
+    virtual bool is_payload_supported(size_t payload_size) override;
 
 public:
 

@@ -20,6 +20,7 @@
 #include <random>
 #include <sstream>
 #include <iomanip>
+#include <cstdlib>
 #include <botan/auto_rng.h>
 #include "p11findobjects.hpp"
 
@@ -32,6 +33,24 @@ P11FindObjectsBenchmark::P11FindObjectsBenchmark(const P11FindObjectsBenchmark &
 
 inline P11FindObjectsBenchmark *P11FindObjectsBenchmark::clone() const {
     return new P11FindObjectsBenchmark{*this};
+}
+
+bool P11FindObjectsBenchmark::is_payload_supported(size_t payload_size)
+{
+    // Payload size indicates the number of objects to create
+    // Default max is 512, but can be overridden via P11PERFTEST_FIND_MAXOBJS
+    size_t max_objects = 512;
+    
+    const char* env_max = std::getenv("P11PERFTEST_FIND_MAXOBJS");
+    if (env_max != nullptr) {
+        try {
+            max_objects = std::stoul(env_max);
+        } catch (...) {
+            // If parsing fails, use default value
+        }
+    }
+    
+    return payload_size <= max_objects;
 }
 
 void P11FindObjectsBenchmark::prepare(Session &session, Object &obj, std::optional<size_t> threadindex)
@@ -144,7 +163,7 @@ void P11FindObjectsBenchmark::crashtestdummy(Session &session)
     
     // Verify we found exactly one object
     if (found_count != 1) {
-        throw benchmark_result::NotFound();
+        throw benchmark_result::NotFound(label_data);
     }
 }
 

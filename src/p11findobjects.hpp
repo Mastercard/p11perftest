@@ -35,6 +35,7 @@ class P11FindObjectsBenchmark : public P11Benchmark
     virtual void cleanup(Session &session) override;
     virtual void teardown(Session &session, Object &obj, std::optional<size_t> threadindex) override;
     virtual P11FindObjectsBenchmark *clone() const override;
+    virtual bool is_payload_supported(size_t payload_size) override;
 
 public:
 

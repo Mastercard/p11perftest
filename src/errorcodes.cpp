@@ -34,6 +34,8 @@ const std::string errorcode(benchmark_result::operation_outcome_t outcome) {
         overloaded {
             [&](benchmark_result::Ok) -> std::string { return "CKR_OK"; },
             [&](benchmark_result::NotFound const& nf) -> std::string { return nf.what(); },
+            [&](benchmark_result::AmbiguousResult const& ar) -> std::string { return ar.what(); },
+            [&](benchmark_result::PayloadSizeNotSupported const& psns) -> std::string { return psns.what(); },
             [&](benchmark_result::ApiErr const& apiErr) -> std::string { return _errorcode(apiErr); }
         }, outcome );
 }

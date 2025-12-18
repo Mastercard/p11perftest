@@ -31,6 +31,7 @@ class P11AESCBCBenchmark : public P11Benchmark
     virtual void prepare(Session &session, Object &obj, std::optional<size_t> threadindex) override;
     virtual void crashtestdummy( Session &session) override;
     virtual P11AESCBCBenchmark *clone() const override;
+    virtual bool is_payload_supported(size_t payload_size) override;
 
 public:
 

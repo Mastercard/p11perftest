@@ -30,6 +30,7 @@ class P11DES3ECBBenchmark : public P11Benchmark
   virtual void prepare(Session &session, Object &obj, std::optional<size_t> threadindex) override;
     virtual void crashtestdummy(Session &session) override;
     virtual P11DES3ECBBenchmark *clone() const override;
+    virtual bool is_payload_supported(size_t payload_size) override;
 
 public:
 

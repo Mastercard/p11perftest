@@ -69,11 +69,11 @@ std::string P11Benchmark::build_threaded_label(std::optional<size_t> threadindex
     // if threadindex has a value, it means we have generated session keys (one per thread)
     // in which case we need to recreate the thread-specific key label
     if(threadindex) {
-	std::stringstream thread_specific_label;
-	thread_specific_label << this->label() << "-th-" << std::setw(5) << std::setfill('0') << threadindex.value();
-	label = thread_specific_label.str();
+        std::stringstream thread_specific_label;
+        thread_specific_label << this->label() << "-th-" << std::setw(5) << std::setfill('0') << threadindex.value();
+        label = thread_specific_label.str();
     } else {		// else we have std::nullopt, and no session key has been generated, we don't need to transform the name
-	label = this->label();
+        label = this->label();
     }
 
     return label;
@@ -106,66 +106,79 @@ benchmark_result::benchmark_result_t P11Benchmark::execute(Session *session, con
     benchmark_result::operation_outcome_t return_code = benchmark_result::Ok{};
     std::vector<milliseconds_double_t> records(iterations);
 
+    // a small lambda to handle exceptions in a uniform way
+    auto handle_benchmark_exception = [&](auto const& exc) {
+        std::lock_guard<std::mutex> lg{display_mtx};
+        std::cerr << "ERROR: " << exc.what() << std::endl;
+        return_code = decltype(exc){exc}; 
+    };
+
     try {
-	auto label = build_threaded_label(threadindex); // build threaded label (if needed)
+        auto label = build_threaded_label(threadindex); // build threaded label (if needed)
 
-	m_payload = payload;	// remember the payload
+        m_payload = payload;	// remember the payload
 
-	AttributeContainer search_template;
-	search_template.add_string( AttributeType::Label, label );
-	search_template.add_class( m_objectclass );
+        AttributeContainer search_template;
+        search_template.add_string( AttributeType::Label, label );
+        search_template.add_class( m_objectclass );
 
-	auto found_objs = Object::search<Object>( *session, search_template.attributes() );
+        auto found_objs = Object::search<Object>( *session, search_template.attributes() );
 
-	if( found_objs.size()==0 ) {
-	    std::cerr << "Error: no object found for label '" << label << "'" << std::endl;
-	} else	if( found_objs.size()>1 ) {
-	    std::cerr << "Error: more than one object found for label '" << label << "'" << std::endl;
-	} else {
-	    for (auto &obj: found_objs) {
+        if( found_objs.size()==0 ) {
+            throw benchmark_result::NotFound(label);
+        } else	if( found_objs.size()>1 ) {
+            throw benchmark_result::AmbiguousResult(label);
+        } else {
+            for (auto &obj: found_objs) {
 
-		prepare(*session, obj, threadindex);
+                prepare(*session, obj, threadindex);
 
-		// wait for green light - all threads are starting together
-		{
-		    std::unique_lock<std::mutex> greenlight_lck(greenlight_mtx);
-		    greenlight_cond.wait(greenlight_lck,[]{ return greenlight; });
-		}
+                // check payload size support
+                if( !is_payload_supported( m_payload.size() ) ) {
+                    throw benchmark_result::PayloadSizeNotSupported(m_payload.size());
+                }
 
-		// ok go now!
+                // wait for green light - all threads are starting together
+                {
+                    std::unique_lock<std::mutex> greenlight_lck(greenlight_mtx);
+                    greenlight_cond.wait(greenlight_lck,[]{ return greenlight; });
+                }
 
-		// first run iterations that are skipped, i.e. not taken into account for stats
-		for (size_t i=0; i<skipiterations; i++) {
-		    crashtestdummy(*session);
-		    cleanup(*session); // cleanup any created object (e.g. unwrapped or derived keys)
-		}
-		for (size_t i=0; i<iterations; i++) {
-		    reset_timer();
-		    crashtestdummy(*session);
-		    suspend_timer();
-		    cleanup(*session); // cleanup any created object (e.g. unwrapped or derived keys)
-		    records.at(i) = elapsed();
-		}
-		teardown(*session, obj, threadindex); // perform any needed teardown
-	    }
-	}
+                // ok go now!
+
+                // first run iterations that are skipped, i.e. not taken into account for stats
+                for (size_t i=0; i<skipiterations; i++) {
+                    crashtestdummy(*session);
+                    cleanup(*session); // cleanup any created object (e.g. unwrapped or derived keys)
+                }
+                for (size_t i=0; i<iterations; i++) {
+                    reset_timer();
+                    crashtestdummy(*session);
+                    suspend_timer();
+                    cleanup(*session); // cleanup any created object (e.g. unwrapped or derived keys)
+                    records.at(i) = elapsed();
+                }
+                teardown(*session, obj, threadindex); // perform any needed teardown
+            }
+        }
+    } catch (benchmark_result::PayloadSizeNotSupported &psns) {
+        handle_benchmark_exception(psns);
     } catch (benchmark_result::NotFound &nfe) {
-	// we print the exception, and move on
-	std::lock_guard<std::mutex> lg{display_mtx};
-	std::cerr << "ERROR: " << nfe.what() << std::endl;
-	return_code = benchmark_result::NotFound();		
+        handle_benchmark_exception(nfe);
+    } catch (benchmark_result::AmbiguousResult &are) {
+        handle_benchmark_exception(are);
     } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
-	// we print the exception, and move on
-	std::lock_guard<std::mutex> lg{display_mtx};
-	std::cerr << "ERROR:: " << bexc.what()
-		<< " (" << errorcode(bexc.error_code()) << ")" 
-		<< std::endl;
-	return_code = benchmark_result::ApiErr{bexc.error_code()};
+        // we print the exception, and move on
+        std::lock_guard<std::mutex> lg{display_mtx};
+        std::cerr << "ERROR:: " << bexc.what()
+                << " (" << errorcode(bexc.error_code()) << ")" 
+                << std::endl;
+        return_code = benchmark_result::ApiErr{bexc.error_code()};
     } catch (...) {	
-	std::lock_guard<std::mutex> lg{display_mtx};
-	std::cerr << "ERROR: caught an unmanaged exception" << std::endl;
-	// rethrow
-	throw;
+        std::lock_guard<std::mutex> lg{display_mtx};
+        std::cerr << "ERROR: caught an unmanaged exception" << std::endl;
+        // rethrow
+        throw;
     }
 
     return std::make_pair( std::move(records), return_code );

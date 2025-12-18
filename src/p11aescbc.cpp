@@ -31,6 +31,11 @@ inline P11AESCBCBenchmark *P11AESCBCBenchmark::clone() const {
     return new P11AESCBCBenchmark{*this};
 }
 
+bool P11AESCBCBenchmark::is_payload_supported(size_t payload_size)
+{
+    // AES CBC requires payload to be multiple of block size (16 bytes)
+    return (payload_size % 16) == 0;
+}
 
 void P11AESCBCBenchmark::prepare(Session &session, Object &obj, std::optional<size_t> threadindex)
 {
