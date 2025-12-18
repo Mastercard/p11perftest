@@ -23,6 +23,45 @@
 
 #include "p11benchmark.hpp"
 
+// ============================================================================
+// TEST CASE: RSA-OAEP Unwrap
+// ============================================================================
+//
+// DESCRIPTION:
+//   This test case measures the performance of RSA key unwrapping using the
+//   Optimal Asymmetric Encryption Padding (OAEP) scheme. Unlike decryption,
+//   unwrap imports encrypted key material directly into the token as a new
+//   key object using the CKM_RSA_PKCS_OAEP mechanism.
+//
+// PAYLOAD:
+//   The payload represents the size of the symmetric key being unwrapped
+//   (e.g., 16, 24, or 32 bytes for AES-128/192/256). During preparation,
+//   a temporary key is wrapped using RSA-OAEP encryption. The benchmark
+//   then measures unwrapping this encrypted key material back into the token.
+//
+// KEY REQUIREMENTS:
+//   - Key type: CKK_RSA (RSA private key for unwrapping)
+//   - Key sizes: Common RSA key sizes (2048, 3072, 4096 bits)
+//   - The key must support unwrap operations
+//   - Key attributes: CKA_UNWRAP must be set to CK_TRUE
+//   - The unwrapped key will be of type CKK_AES
+//
+// OPTIONS:
+//   --keysize <bits>    : Specifies the RSA key size (2048, 3072, 4096)
+//   --payload <bytes>   : Size of symmetric key to unwrap (16, 24, or 32)
+//   Hash algorithm is configurable via constructor (SHA1 or SHA256)
+//
+// TESTING APPROACH:
+//   During preparation, a temporary AES key is created and wrapped using
+//   the RSA public key with OAEP padding. The wrapped material is stored
+//   in m_wrapped. The benchmark loop repeatedly unwraps this key material,
+//   creating new key objects in the token, then destroys them in cleanup.
+//   This tests the performance of C_UnwrapKey, which is commonly used in
+//   key transport scenarios. The unwrap operation includes both RSA
+//   decryption and key object creation.
+//
+// ============================================================================
+
 class P11OAEPUnwrapBenchmark : public P11Benchmark
 {
 public:

@@ -21,6 +21,41 @@
 
 #include "p11benchmark.hpp"
 
+// ============================================================================
+// TEST CASE: RSA Signature Generation (PKCS#1 v1.5)
+// ============================================================================
+//
+// DESCRIPTION:
+//   This test case measures the performance of RSA signature generation using
+//   the PKCS#1 v1.5 padding scheme. It signs data using RSA private keys
+//   through the PKCS#11 interface with Botan's PK_Signer framework.
+//
+// PAYLOAD:
+//   The payload is the data to be signed. The Botan PK_Signer handles the
+//   hashing and padding internally according to the signature scheme
+//   (typically RSA with SHA-256 or SHA-512).
+//
+// KEY REQUIREMENTS:
+//   - Key type: CKK_RSA (RSA private key)
+//   - Key sizes: Common RSA key sizes (1024, 2048, 3072, 4096 bits)
+//   - The key must be a private key with signing capabilities
+//   - Key attributes: CKA_SIGN must be set to CK_TRUE
+//   - The key must be accessible via PKCS#11 and usable with Botan's
+//     PKCS11_RSA_PrivateKey wrapper
+//
+// OPTIONS:
+//   --keysize <bits>    : Specifies the RSA key size (1024, 2048, 3072, 4096)
+//
+// TESTING APPROACH:
+//   The test uses Botan's PKCS#11 integration to wrap the RSA private key
+//   and create a PK_Signer object configured with the appropriate hash and
+//   padding scheme. The benchmark loop repeatedly signs the payload data,
+//   measuring the number of signature operations per second. RSA signing
+//   involves modular exponentiation with the private key, which is
+//   computationally intensive, especially for larger key sizes.
+//
+// ============================================================================
+
 class P11RSASigBenchmark : public P11Benchmark
 {
     Botan::AutoSeeded_RNG m_rng;

@@ -23,6 +23,44 @@
 
 #include "p11benchmark.hpp"
 
+// ============================================================================
+// TEST CASE: RSA-OAEP Encryption
+// ============================================================================
+//
+// DESCRIPTION:
+//   This test case measures the performance of RSA encryption using the
+//   Optimal Asymmetric Encryption Padding (OAEP) scheme. It encrypts
+//   variable-size payloads using the CKM_RSA_PKCS_OAEP mechanism with
+//   configurable hash algorithms.
+//
+// PAYLOAD:
+//   The payload is the plaintext data to be encrypted. The maximum payload
+//   size is constrained by the RSA modulus size and OAEP overhead:
+//   max_payload = modulus_size - 2*hash_size - 2
+//   For example, with 2048-bit RSA and SHA-1 (20 bytes), max is ~214 bytes.
+//   The payload size is validated using is_payload_supported().
+//
+// KEY REQUIREMENTS:
+//   - Key type: CKK_RSA (RSA public key)
+//   - Key sizes: Common RSA key sizes (2048, 3072, 4096 bits)
+//   - The key must support encryption operations
+//   - Key attributes: CKA_ENCRYPT must be set to CK_TRUE
+//
+// OPTIONS:
+//   --keysize <bits>    : Specifies the RSA key size (2048, 3072, 4096)
+//   --payload <bytes>   : Size of data to encrypt (limited by modulus size)
+//   Hash algorithm is configurable via constructor (SHA1 or SHA256)
+//
+// TESTING APPROACH:
+//   The test uses the CKM_RSA_PKCS_OAEP mechanism with configurable hash
+//   algorithm and MGF (Mask Generation Function). During preparation, the
+//   RSA public key is loaded and the OAEP parameters are configured with
+//   the chosen hash algorithm. The benchmark loop repeatedly encrypts the
+//   payload, measuring encryption operations per second. OAEP provides
+//   better security than PKCS#1 v1.5 padding.
+//
+// ============================================================================
+
 class P11OAEPEncryptBenchmark : public P11Benchmark
 {
 public:

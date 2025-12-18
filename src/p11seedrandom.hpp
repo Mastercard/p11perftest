@@ -21,6 +21,39 @@
 
 #include "p11benchmark.hpp"
 
+// ============================================================================
+// TEST CASE: Seed Random Number Generator (C_SeedRandom)
+// ============================================================================
+//
+// DESCRIPTION:
+//   This test case measures the performance of seeding the token's random
+//   number generator. It provides entropy to the RNG using the C_SeedRandom
+//   function, which mixes external random data into the generator's state.
+//
+// PAYLOAD:
+//   The payload size represents the number of seed bytes to provide to the
+//   RNG in each operation. The test generates random seed data (using a
+//   standard C++ random generator) and feeds it to the token's RNG. The
+//   payload size is configurable via command-line options.
+//
+// KEY REQUIREMENTS:
+//   - No keys are required for this test case
+//   - The test operates directly with the PKCS#11 session
+//
+// OPTIONS:
+//   --payload <bytes>   : Number of seed bytes to provide per operation
+//
+// TESTING APPROACH:
+//   The test calls C_SeedRandom on the PKCS#11 session, providing external
+//   entropy. During preparation, a buffer is allocated and filled with
+//   random data to use as seed material. The benchmark loop repeatedly
+//   seeds the RNG with this data, measuring the number of seeding operations
+//   per second. This test evaluates how quickly a token can accept and
+//   process entropy, which is important for systems that need to frequently
+//   reseed their RNGs for security reasons. Note that not all tokens support
+//   or require seeding.
+//
+// ============================================================================
 
 class P11SeedRandomBenchmark : public P11Benchmark
 {

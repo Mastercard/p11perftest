@@ -21,12 +21,40 @@
 
 #include "p11benchmark.hpp"
 
-
-// typedef struct CK_KEY_DERIVATION_STRING_DATA {
-//   CK_BYTE_PTR pData;
-//   CK_ULONG    ulLen;
-// } CK_KEY_DERIVATION_STRING_DATA;
-
+// ============================================================================
+// TEST CASE: XOR Base and Data Key Derivation (CKM_XOR_BASE_AND_DATA)
+// ============================================================================
+//
+// DESCRIPTION:
+//   This test case measures the performance of key derivation using the
+//   XOR_BASE_AND_DATA mechanism. It derives new symmetric keys by XORing
+//   a base key with provided data, creating a derived key with the result.
+//
+// PAYLOAD:
+//   The payload is the XOR data (16 bytes) that will be XORed with the base
+//   key material. This data is fixed as a pattern (alternating 0x00 and 0xff)
+//   and is provided via the CK_KEY_DERIVATION_STRING_DATA structure.
+//
+// KEY REQUIREMENTS:
+//   - Key type: CKK_AES or CKK_GENERIC_SECRET (base key for derivation)
+//   - Key size: Must be 16 bytes (128 bits) to match the XOR data size
+//   - The base key must support key derivation operations
+//   - Key attributes: CKA_DERIVE must be set to CK_TRUE
+//   - The derived key will be of the same type (CKK_AES, 16 bytes)
+//
+// OPTIONS:
+//   No specific options; key size is fixed at 16 bytes for this test.
+//
+// TESTING APPROACH:
+//   The test uses the CKM_XOR_BASE_AND_DATA mechanism with a fixed 16-byte
+//   XOR pattern. During preparation, the base key handle is obtained and
+//   the derivation parameters are configured. The benchmark loop repeatedly
+//   derives new AES keys by XORing the base key with the data pattern,
+//   measuring derivation operations per second. After each iteration, the
+//   derived key is destroyed in the cleanup phase. This is a simple but
+//   efficient derivation method useful for key diversification.
+//
+// ============================================================================
 
 class P11XorKeyDataDeriveBenchmark : public P11Benchmark
 {

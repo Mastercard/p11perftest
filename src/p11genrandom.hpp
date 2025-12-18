@@ -21,6 +21,39 @@
 
 #include "p11benchmark.hpp"
 
+// ============================================================================
+// TEST CASE: Random Number Generation (C_GenerateRandom)
+// ============================================================================
+//
+// DESCRIPTION:
+//   This test case measures the performance of the token's random number
+//   generator. It generates random bytes using the C_GenerateRandom function,
+//   which is a fundamental PKCS#11 operation for creating cryptographic
+//   random data.
+//
+// PAYLOAD:
+//   The payload size represents the number of random bytes to generate in
+//   each operation. The test generates a buffer of the specified size filled
+//   with cryptographically secure random data. The payload size is
+//   configurable via command-line options.
+//
+// KEY REQUIREMENTS:
+//   - No keys are required for this test case
+//   - The test operates directly with the PKCS#11 session
+//
+// OPTIONS:
+//   --payload <bytes>   : Number of random bytes to generate per operation
+//
+// TESTING APPROACH:
+//   The test calls C_GenerateRandom directly on the PKCS#11 session without
+//   requiring any key material. During preparation, a buffer of the requested
+//   size is allocated. The benchmark loop repeatedly generates random data,
+//   measuring the number of operations per second and the throughput in
+//   bytes/second. This test is useful for evaluating the performance of
+//   hardware random number generators (HRNGs) or the token's RNG implementation.
+//   The quality of randomness is not measured, only the generation speed.
+//
+// ============================================================================
 
 class P11GenerateRandomBenchmark : public P11Benchmark
 {

@@ -21,6 +21,39 @@
 
 #include "p11benchmark.hpp"
 
+// ============================================================================
+// TEST CASE: AES-ECB Encryption
+// ============================================================================
+//
+// DESCRIPTION:
+//   This test case measures the performance of AES encryption using Electronic
+//   Codebook (ECB) mode. It encrypts variable-size payloads using the
+//   CKM_AES_ECB mechanism without an initialization vector.
+//
+// PAYLOAD:
+//   The payload consists of random data of configurable size. The test
+//   supports any payload size that is a multiple of the AES block size
+//   (16 bytes). The payload size is specified via command-line options.
+//
+// KEY REQUIREMENTS:
+//   - Key type: CKK_AES (secret key)
+//   - Key sizes: 128, 192, or 256 bits
+//   - The key must be extractable and support encryption operations
+//   - Key attributes: CKA_ENCRYPT must be set to CK_TRUE
+//
+// OPTIONS:
+//   --keysize <bits>    : Specifies the AES key size (128, 192, or 256)
+//   --payload <bytes>   : Size of data to encrypt (must be multiple of 16)
+//
+// TESTING APPROACH:
+//   The test performs encryption operations in a tight loop, measuring the
+//   throughput. ECB mode processes each block independently, making it
+//   suitable for performance benchmarking but not recommended for production
+//   use due to security considerations. The performance metric is the number
+//   of encryption operations per second and data throughput.
+//
+// ============================================================================
+
 class P11AESECBBenchmark : public P11Benchmark
 {
     Mechanism m_mech_aesecb { CKM_AES_ECB, nullptr, 0 };
