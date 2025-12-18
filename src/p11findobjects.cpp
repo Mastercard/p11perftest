@@ -25,7 +25,7 @@
 
 
 P11FindObjectsBenchmark::P11FindObjectsBenchmark(const std::string &label) :
-    P11Benchmark( "Find objects (C_FindObjectsInit/C_FindObjects/C_FindObjectsFinal)", label, ObjectClass::SecretKey ) { }
+    P11Benchmark( "Find objects (C_FindObjectsInit-C_FindObjects-C_FindObjectsFinal)", label, ObjectClass::SecretKey ) { }
 
 P11FindObjectsBenchmark::P11FindObjectsBenchmark(const P11FindObjectsBenchmark &other) :
     P11Benchmark(other) { }
