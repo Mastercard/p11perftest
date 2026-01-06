@@ -158,6 +158,10 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 	auto wallclock_2 = std::chrono::steady_clock::now();
 	wallclock_elapsed = std::chrono::duration_cast<milliseconds_double_t>(wallclock_2 - wallclock_1);
 
+	// We need to adjust the cache size so it can hold at least 5% of the entire sample
+	// the sample size = # of threads x # of iterations per thread
+	size_t required_cache_size = static_cast<size_t>(std::ceil(0.05 * static_cast<double>(m_numthreads * iter)))+ 10;
+
 	// we create one accumulator for most of the stats
 	bacc::accumulator_set< double, bacc::stats<
 	    bacc::tag::mean,
@@ -166,14 +170,14 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 	    bacc::tag::count,
 	    bacc::tag::variance,
 	    bacc::tag::tail_quantile< bacc::right >
-	    > > acc( bacc::tag::tail<bacc::right>::cache_size = 1000 );
+	    > > acc( bacc::tag::tail<bacc::right>::cache_size = required_cache_size );
 
 	// and one for stats vs log-normal distribution
 	bacc::accumulator_set< double, bacc::stats<
 	    bacc::tag::mean,
-		bacc::tag::variance,
-		bacc::tag::count
-		> > acc_log;
+	    bacc::tag::variance,
+	    bacc::tag::count
+	    > > acc_log;
 
 	// Flag to track if we're using log1p (for small values) or log
 	bool use_log1p = false;
@@ -181,75 +185,75 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 	// Kolmogorov-Smirnov goodness-of-fit test function
 	auto kolmogorov_smirnov_gof = [](const std::vector<benchmark_result::benchmark_result_t>& elapsed_array, 
 	                                 bool use_log) -> double {
-		// First, calculate the mean to decide log vs log1p
-		double sum_raw = 0.0;
-		size_t count = 0;
-		for(const auto& elapsed : elapsed_array) {
-			// Only consider successful measurements
-			if(std::holds_alternative<benchmark_result::Ok>(elapsed.second)) {
-				for(const auto& it : elapsed.first) {
-					sum_raw += it.count();
-					count++;
-				}
-			}
+	    // First, calculate the mean to decide log vs log1p
+	    double sum_raw = 0.0;
+	    size_t count = 0;
+	    for(const auto& elapsed : elapsed_array) {
+		// Only consider successful measurements
+		if(std::holds_alternative<benchmark_result::Ok>(elapsed.second)) {
+		    for(const auto& it : elapsed.first) {
+			sum_raw += it.count();
+			count++;
+		    }
 		}
-		bool use_log1p_local = use_log && (count > 0) && (sum_raw / count < 1.0);
+	    }
+	    bool use_log1p_local = use_log && (count > 0) && (sum_raw / count < 1.0);
 
-		// Collect data
-		std::vector<double> data;
-		for(const auto& elapsed : elapsed_array) {
-			if(std::holds_alternative<benchmark_result::Ok>(elapsed.second)) {
-				for(const auto& it : elapsed.first) {
-					double val = it.count();
-					if (use_log) {
-						data.push_back(use_log1p_local ? std::log1p(val) : std::log(val));
-					} else {
-						data.push_back(val);
-					}
-				}
+	    // Collect data
+	    std::vector<double> data;
+	    for(const auto& elapsed : elapsed_array) {
+		if(std::holds_alternative<benchmark_result::Ok>(elapsed.second)) {
+		    for(const auto& it : elapsed.first) {
+			double val = it.count();
+			if (use_log) {
+			    data.push_back(use_log1p_local ? std::log1p(val) : std::log(val));
+			} else {
+			    data.push_back(val);
 			}
+		    }
 		}
+	    }
 		
-		if (data.empty()) return 0.0;
+	    if (data.empty()) return 0.0;
 		
-		size_t n = data.size();
+	    size_t n = data.size();
 		
-		// Calculate mean and stddev directly from data
-		double sum = 0.0;
-		for (double val : data) sum += val;
-		double mean = sum / n;
+	    // Calculate mean and stddev directly from data
+	    double sum = 0.0;
+	    for (double val : data) sum += val;
+	    double mean = sum / n;
 		
-		double sum_sq = 0.0;
-		for (double val : data) {
-			double diff = val - mean;
-			sum_sq += diff * diff;
-		}
-		double variance = sum_sq / (n - 1);  // Sample variance
-		double stddev = std::sqrt(variance);
+	    double sum_sq = 0.0;
+	    for (double val : data) {
+		double diff = val - mean;
+		sum_sq += diff * diff;
+	    }
+	    double variance = sum_sq / (n - 1);  // Sample variance
+	    double stddev = std::sqrt(variance);
 		
-		// Sort data for KS test
-		std::sort(data.begin(), data.end());
+	    // Sort data for KS test
+	    std::sort(data.begin(), data.end());
 		
-		// Standard normal CDF: Φ(x) = 0.5 * (1 + erf((x - μ) / (σ * √2)))
-		auto norm_cdf = [mean, stddev](double x) {
-			return 0.5 * (1.0 + std::erf((x - mean) / (stddev * std::sqrt(2.0))));
-		};
+	    // Standard normal CDF: Φ(x) = 0.5 * (1 + erf((x - μ) / (σ * √2)))
+	    auto norm_cdf = [mean, stddev](double x) {
+		return 0.5 * (1.0 + std::erf((x - mean) / (stddev * std::sqrt(2.0))));
+	    };
 		
-		// Calculate Kolmogorov-Smirnov statistic
-		// D = max|F(x) - F_n(x)| where F_n is the empirical CDF
-		double D = 0.0;
-		for (size_t i = 0; i < n; ++i) {
-			double F_theoretical = norm_cdf(data[i]);
-			double F_empirical_before = static_cast<double>(i) / n;
-			double F_empirical_after = static_cast<double>(i + 1) / n;
+	    // Calculate Kolmogorov-Smirnov statistic
+	    // D = max|F(x) - F_n(x)| where F_n is the empirical CDF
+	    double D = 0.0;
+	    for (size_t i = 0; i < n; ++i) {
+		double F_theoretical = norm_cdf(data[i]);
+		double F_empirical_before = static_cast<double>(i) / n;
+		double F_empirical_after = static_cast<double>(i + 1) / n;
 			
-			// KS statistic is the maximum absolute difference
-			double diff_before = std::abs(F_theoretical - F_empirical_before);
-			double diff_after = std::abs(F_theoretical - F_empirical_after);
-			D = std::max(D, std::max(diff_before, diff_after));
-		}
+		// KS statistic is the maximum absolute difference
+		double diff_before = std::abs(F_theoretical - F_empirical_before);
+		double diff_after = std::abs(F_theoretical - F_empirical_after);
+		D = std::max(D, std::max(diff_before, diff_after));
+	    }
 		
-		return D;
+	    return D;
 	};
 
 	// helper map table for statistics
@@ -398,20 +402,34 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 
 	// Kolmogorov-Smirnov goodness-of-fit tests with Lilliefors correction
 	// (parameters estimated from data, not known a priori)
-	// Critical values at α=0.05: ~0.886/√n (reject if D > 0.886/√n)
-	// Lower values indicate better fit to normal distribution
+	// Critical values at alpha=0.05: ~0.886/√n - 0.01/n (reject if D > Dcrit)
+	auto dcrit = [] (size_t n) -> double {
+	    return 0.886 / std::sqrt(static_cast<double>(n)) - 0.01 / static_cast<double>(n);
+	};
+
 	auto ks_normal_val = stats["ks_normal"]();
 	Measure<> ks_normal(ks_normal_val, "");
 	result_rows.emplace_back(std::forward_as_tuple("Lilliefors test, normal distribution", "ks.normal", std::move(ks_normal)));
+
+	auto ks_normal_dcrit = dcrit( stats_count );
+	Measure<> ks_normal_crit(ks_normal_dcrit, "");
+	result_rows.emplace_back(std::forward_as_tuple("Lilliefors test, critical value (a=0.05)", "ks.normal.crit", std::move(ks_normal_crit)));
+
+	auto ks_fit_str = (ks_normal_val > ks_normal_dcrit) ? "rejected" : "not rejected";
+	Measure<> ks_normal_fit(ks_normal_val - ks_normal_dcrit, 0, ks_fit_str);
+	result_rows.emplace_back(std::forward_as_tuple("Lilliefors test, fitness (normal)", "ks.normal.fit", std::move(ks_normal_fit)));
 
 	auto ks_lognormal_val = stats["ks_lognormal"]();
 	Measure<> ks_lognormal(ks_lognormal_val, "");
 	result_rows.emplace_back(std::forward_as_tuple("Lilliefors test, log-normal distribution", "ks.lognormal", std::move(ks_lognormal)));
 
-	// D-statistic: difference between the two Lilliefors tests (to compare fit quality)
-	double d_stat = std::abs(ks_normal_val - ks_lognormal_val);
-	Measure<> d_statistic(d_stat, "");
-	result_rows.emplace_back(std::forward_as_tuple("D-stat (|D_normal - D_lognormal|)", "d.stat", std::move(d_statistic)));
+	auto ks_lognormal_dcrit = dcrit( stats_count );
+	Measure<> ks_lognormal_crit(ks_lognormal_dcrit, "");
+	result_rows.emplace_back(std::forward_as_tuple("Lilliefors test, critical value (a=0.05)", "ks.lognormal.crit", std::move(ks_lognormal_crit)));
+
+	ks_fit_str = (ks_lognormal_val > ks_lognormal_dcrit) ? "rejected" : "not rejected";
+	Measure<> ks_lognormal_fit(ks_lognormal_val - ks_lognormal_dcrit, 0, ks_fit_str);
+	result_rows.emplace_back(std::forward_as_tuple("Lilliefors test, fitness (lognormal)", "ks.lognormal.fit", std::move(ks_lognormal_fit)));
 
 	// TPS is the number of "transactions" per second.
 	// the meaning of "transaction" depends upon the tested API/algorithm

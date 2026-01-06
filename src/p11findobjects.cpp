@@ -43,17 +43,12 @@ void P11FindObjectsBenchmark::prepare(Session &session, Object &obj, std::option
     m_temp_keys.clear();
     
     // Generate temporary AES keys with unique labels
-    Botan::AutoSeeded_RNG rng;
-    std::vector<uint8_t> key_value(32); // 256-bit AES key
     
     for (size_t i = 0; i < num_objects; i++) {
         // Generate unique label for each temporary key
         std::stringstream label_stream;
         label_stream << build_threaded_label(threadindex) << "-tmp-" << std::setw(6) << std::setfill('0') << i;
         std::string temp_label = label_stream.str();
-        
-        // Generate random key value
-        rng.randomize(key_value.data(), key_value.size());
         
         // Create attribute template for temporary AES secret key
         AttributeContainer key_template;

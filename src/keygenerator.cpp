@@ -80,17 +80,17 @@ bool KeyGenerator::generate_des_key(std::string alias, unsigned int bits, std::s
     Mechanism mechanism { CKM_DES_KEY_GEN, nullptr, 0 };
 
     switch(bits) {
-	case 64:
-	    mechanism.mechanism = CKM_DES_KEY_GEN;
-	    break;
+    case 64:
+	mechanism.mechanism = CKM_DES_KEY_GEN;
+	break;
 
-	case 128:
-	    mechanism.mechanism = CKM_DES2_KEY_GEN;
-	    break;
+    case 128:
+	mechanism.mechanism = CKM_DES2_KEY_GEN;
+	break;
 
-	case 192:
-	    mechanism.mechanism = CKM_DES3_KEY_GEN;
-	    break;
+    case 192:
+	mechanism.mechanism = CKM_DES3_KEY_GEN;
+	break;
 
     default:
 	std::cerr << "Invalid key length for DES:" << bits << std::endl;
@@ -328,7 +328,7 @@ bool KeyGenerator::generate_key_generic(KeyGenerator::KeyType keytype, std::stri
     for(th=0;th<m_numthreads;th++) {
 	if(future_array[th].get() == false) {
 	    std::cerr << "ERROR: Key generation failed for key " << alias << " on thread " << th+1 << std::endl;
-		return false;
+	    return false;
 	}
     }
 

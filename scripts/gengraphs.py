@@ -71,14 +71,16 @@ def format_title1(s1, s2):
     """Format title for vector size."""
     if str(s2)[0] == '8':
         return f"{s1} on an {s2} Bytes Vector"
-    return f"{s1} on a {s2} Bytes Vector"
+    else:
+        return f"{s1} on a {s2} Bytes Vector"
 
 
 def format_title2(s1, s2):
     """Format title for threads."""
     if s2 == 1:
         return f"{s1} on {s2} Thread"
-    return f"{s1} on {s2} Threads"
+    else:
+        return f"{s1} on {s2} Threads"
 
  
 def create_dataframe(xls, sheetname, xvar):
