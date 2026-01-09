@@ -46,13 +46,10 @@ P11Benchmark::P11Benchmark(const std::string &name, const std::string &label, Ob
 
 P11Benchmark::P11Benchmark(const P11Benchmark& other)
     : m_name(other.m_name), m_label(other.m_label), m_objectclass(other.m_objectclass), m_implementation(other.m_implementation)
-{
-    // std::cout << "copy constructor invoked for " << m_name << std::endl;
-}
+{ }
 
 P11Benchmark& P11Benchmark::operator=(const P11Benchmark& other)
 {
-    // std::cout << "copy assignment invoked for " << m_name << std::endl;
     m_name = other.m_name;
     m_label = other.m_label;
     m_objectclass = other.m_objectclass;
@@ -83,10 +80,31 @@ std::string P11Benchmark::build_threaded_label(std::optional<size_t> threadindex
 }
 
 
-benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uint8_t> &payload, size_t iterations, size_t skipiterations, std::optional<size_t> threadindex)
+// reset_timer(): initialize timer to zero and set starting point
+void P11Benchmark::reset_timer()
 {
-    int return_code = CKR_OK;
-    std::vector<nanosecond_type> records(iterations);
+    m_timer = milliseconds_double_t{0};
+    m_last_clock = std::chrono::high_resolution_clock::now();
+}
+
+// suspend_timer(): pause timer accumulation by adding elapsed time since last resume
+void P11Benchmark::suspend_timer()
+{
+    auto now =  std::chrono::high_resolution_clock::now();
+    m_timer += std::chrono::duration_cast<milliseconds_double_t>(now - m_last_clock);
+    m_last_clock = now;		// not really needed
+}
+
+// resume_timer(): resume timer accumulation from current time
+void P11Benchmark::resume_timer()
+{
+    m_last_clock = std::chrono::high_resolution_clock::now();
+}
+
+benchmark_result::benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uint8_t> &payload, size_t iterations, size_t skipiterations, std::optional<size_t> threadindex)
+{
+    benchmark_result::operation_outcome_t return_code = benchmark_result::Ok{};
+    std::vector<milliseconds_double_t> records(iterations);
 
     try {
 	auto label = build_threaded_label(threadindex); // build threaded label (if needed)
@@ -108,10 +126,6 @@ benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uin
 
 		prepare(*session, obj, threadindex);
 
-		boost::timer::cpu_times started;
-
-		started.clear();
-
 		// wait for green light - all threads are starting together
 		{
 		    std::unique_lock<std::mutex> greenlight_lck(greenlight_mtx);
@@ -126,29 +140,31 @@ benchmark_result_t P11Benchmark::execute(Session *session, const std::vector<uin
 		    cleanup(*session); // cleanup any created object (e.g. unwrapped or derived keys)
 		}
 		for (size_t i=0; i<iterations; i++) {
-		    m_t.start(); // start timer
-		    started.wall = m_t.elapsed().wall; // remember wall clock
+		    reset_timer();
 		    crashtestdummy(*session);
-		    m_t.stop(); // stop timer
+		    suspend_timer();
 		    cleanup(*session); // cleanup any created object (e.g. unwrapped or derived keys)
-		    records.at(i) = m_t.elapsed().wall - started.wall;
+		    records.at(i) = elapsed();
 		}
+		teardown(*session, obj, threadindex); // perform any needed teardown
 	    }
 	}
-    } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
-	{
-	    std::lock_guard<std::mutex> lg{display_mtx};
-	    std::cerr << "ERROR:: " << bexc.what()
-		      << " (" << errorcode(bexc.error_code()) << ")" << std::endl;
-	}
-	return_code = bexc.error_code();
+    } catch (benchmark_result::NotFound &nfe) {
 	// we print the exception, and move on
-    } catch (...) {
-	{
-	    std::lock_guard<std::mutex> lg{display_mtx};
-	    std::cerr << "ERROR: caught an unmanaged exception" << std::endl;
-	}
-	// bailing out
+	std::lock_guard<std::mutex> lg{display_mtx};
+	std::cerr << "ERROR: " << nfe.what() << std::endl;
+	return_code = benchmark_result::NotFound();		
+    } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
+	// we print the exception, and move on
+	std::lock_guard<std::mutex> lg{display_mtx};
+	std::cerr << "ERROR:: " << bexc.what()
+		<< " (" << errorcode(bexc.error_code()) << ")" 
+		<< std::endl;
+	return_code = benchmark_result::ApiErr{bexc.error_code()};
+    } catch (...) {	
+	std::lock_guard<std::mutex> lg{display_mtx};
+	std::cerr << "ERROR: caught an unmanaged exception" << std::endl;
+	// rethrow
 	throw;
     }
 

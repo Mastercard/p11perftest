@@ -27,11 +27,14 @@
 #include <condition_variable>
 #include <future>
 #include <functional>
+#include <variant>
 #include <utility>
 #include <sstream>
 #include <tuple>
 #include <vector>
-#include <boost/timer/timer.hpp>
+#include <chrono>
+#include <ratio>
+#include <cmath>
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/stats.hpp>
 #include <boost/accumulators/statistics/mean.hpp>
@@ -39,11 +42,13 @@
 #include <boost/accumulators/statistics/max.hpp>
 #include <boost/accumulators/statistics/count.hpp>
 #include <boost/accumulators/statistics/variance.hpp>
+#include <boost/accumulators/statistics/tail_quantile.hpp>
 #include "ConsoleTable.h"
 #include "errorcodes.hpp"
 #include "p11benchmark.hpp"
 #include "measure.hpp"
 #include "executor.hpp"
+
 
 // thread sync objects
 std::mutex greenlight_mtx;
@@ -51,7 +56,6 @@ std::condition_variable greenlight_cond;
 bool greenlight = false;
 
 namespace bacc = boost::accumulators;
-constexpr double nano_to_milli = 1000000.0 ;
 
 
 ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const size_t skipiter, const std::forward_list<std::string> shortlist )
@@ -61,27 +65,27 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 
     for(auto testcase: shortlist) {
 	size_t th;
-	std::vector<benchmark_result_t> elapsed_time_array(m_numthreads);
-	std::vector<std::future<benchmark_result_t> > future_array(m_numthreads);
+	std::vector<benchmark_result::benchmark_result_t> elapsed_time_array(m_numthreads);
+	std::vector<std::future<benchmark_result::benchmark_result_t> > future_array(m_numthreads);
 	std::vector<P11Benchmark *> benchmark_array(m_numthreads);
-	int last_errcode = CKR_OK;
+	benchmark_result::operation_outcome_t last_errcode = benchmark_result::Ok{};
 
-	boost::timer::cpu_timer wallclock_t;
-	nanosecond_type wallclock_elapsed { 0 }; // used to measure how much time in total was spent in executing the test
+	
+	milliseconds_double_t wallclock_elapsed { 0 }; // used to measure how much time in total was spent in executing the test
 
 	// helper functions for ConsoleTable conversion of items to string
 	auto d2s = [] (double arg, int precision=-1) -> std::string {
-		       std::ostringstream stream;
-		       if(precision>=0) stream << std::setprecision(precision);
-		       stream << arg;
-		       return stream.str();
-		   };
+	    std::ostringstream stream;
+	    if(precision>=0) stream << std::setprecision(precision);
+	    stream << arg;
+	    return stream.str();
+	};
 
 	auto i2s = [] (long arg) -> std::string {
-		       std::ostringstream stream;
-		       stream << arg;
-		       return stream.str();
-		   };
+	    std::ostringstream stream;
+	    stream << arg;
+	    return stream.str();
+	};
 
 	std::vector<std::tuple<std::string, std::string, std::string>> fact_rows {
 	    { "algorithm", "algorithm", benchmark.name() },
@@ -137,7 +141,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 
 	// start the wall clock
 
-	wallclock_t.start();
+	auto wallclock_1 = std::chrono::steady_clock::now();
 	// give start signal
 	{
 	    std::lock_guard<std::mutex> greenlight_lck(greenlight_mtx);
@@ -151,15 +155,106 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 	}
 
 	// stop wallclock and measure elapsed time
-	wallclock_t.stop();
-	wallclock_elapsed = wallclock_t.elapsed().wall;
+	auto wallclock_2 = std::chrono::steady_clock::now();
+	wallclock_elapsed = std::chrono::duration_cast<milliseconds_double_t>(wallclock_2 - wallclock_1);
 
+	// We need to adjust the cache size so it can hold at least 5% of the entire sample
+	// the sample size = # of threads x # of iterations per thread
+	size_t required_cache_size = static_cast<size_t>(std::ceil(0.05 * static_cast<double>(m_numthreads * iter)))+ 10;
+
+	// we create one accumulator for most of the stats
 	bacc::accumulator_set< double, bacc::stats<
 	    bacc::tag::mean,
 	    bacc::tag::min,
 	    bacc::tag::max,
 	    bacc::tag::count,
-	    bacc::tag::variance > > acc;
+	    bacc::tag::variance,
+	    bacc::tag::tail_quantile< bacc::right >
+	    > > acc( bacc::tag::tail<bacc::right>::cache_size = required_cache_size );
+
+	// and one for stats vs log-normal distribution
+	bacc::accumulator_set< double, bacc::stats<
+	    bacc::tag::mean,
+	    bacc::tag::variance,
+	    bacc::tag::count
+	    > > acc_log;
+
+	// Flag to track if we're using log1p (for small values) or log
+	bool use_log1p = false;
+
+	// Kolmogorov-Smirnov goodness-of-fit test function
+	auto kolmogorov_smirnov_gof = [](const std::vector<benchmark_result::benchmark_result_t>& elapsed_array, 
+	                                 bool use_log) -> double {
+	    // First, calculate the mean to decide log vs log1p
+	    double sum_raw = 0.0;
+	    size_t count = 0;
+	    for(const auto& elapsed : elapsed_array) {
+		// Only consider successful measurements
+		if(std::holds_alternative<benchmark_result::Ok>(elapsed.second)) {
+		    for(const auto& it : elapsed.first) {
+			sum_raw += it.count();
+			count++;
+		    }
+		}
+	    }
+	    bool use_log1p_local = use_log && (count > 0) && (sum_raw / count < 1.0);
+
+	    // Collect data
+	    std::vector<double> data;
+	    for(const auto& elapsed : elapsed_array) {
+		if(std::holds_alternative<benchmark_result::Ok>(elapsed.second)) {
+		    for(const auto& it : elapsed.first) {
+			double val = it.count();
+			if (use_log) {
+			    data.push_back(use_log1p_local ? std::log1p(val) : std::log(val));
+			} else {
+			    data.push_back(val);
+			}
+		    }
+		}
+	    }
+		
+	    if (data.empty()) return 0.0;
+		
+	    size_t n = data.size();
+		
+	    // Calculate mean and stddev directly from data
+	    double sum = 0.0;
+	    for (double val : data) sum += val;
+	    double mean = sum / n;
+		
+	    double sum_sq = 0.0;
+	    for (double val : data) {
+		double diff = val - mean;
+		sum_sq += diff * diff;
+	    }
+	    double variance = sum_sq / (n - 1);  // Sample variance
+	    double stddev = std::sqrt(variance);
+		
+	    // Sort data for KS test
+	    std::sort(data.begin(), data.end());
+		
+	    // Standard normal CDF: Φ(x) = 0.5 * (1 + erf((x - μ) / (σ * √2)))
+	    auto norm_cdf = [mean, stddev](double x) {
+		return 0.5 * (1.0 + std::erf((x - mean) / (stddev * std::sqrt(2.0))));
+	    };
+		
+	    // Calculate Kolmogorov-Smirnov statistic
+	    // D = max|F(x) - F_n(x)| where F_n is the empirical CDF
+	    double D = 0.0;
+	    for (size_t i = 0; i < n; ++i) {
+		double F_theoretical = norm_cdf(data[i]);
+		double F_empirical_before = static_cast<double>(i) / n;
+		double F_empirical_after = static_cast<double>(i + 1) / n;
+			
+		// KS statistic is the maximum absolute difference
+		double diff_before = std::abs(F_theoretical - F_empirical_before);
+		double diff_after = std::abs(F_theoretical - F_empirical_after);
+		D = std::max(D, std::max(diff_before, diff_after));
+	    }
+		
+	    return D;
+	};
 
 	// helper map table for statistics
 	std::map<std::string, std::function<double()> > stats {
@@ -168,25 +263,75 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 	    { "max",   [&acc] () { return bacc::max(acc);  }},
 	    { "range", [&acc] () { return (bacc::max(acc) - bacc::min(acc)); }},
 	    { "svar",   [&acc] () {
-			   auto n = bacc::count(acc);
-			   double f = static_cast<double>(n) / (n - 1);
-			   return f * bacc::variance(acc); }},
+		auto n = bacc::count(acc);
+		double f = static_cast<double>(n) / (n - 1);
+		return f * bacc::variance(acc); }},
 	    { "sstddev", [&stats] () { return std::sqrt(stats["svar"]()); }},
 	    // note: for error, we take k=2 so 95% of measures are within interval
 	    { "error", [&stats] () { return std::sqrt(stats["svar"]()/static_cast<double>( stats["count"]() ))*2; }},
 	    { "count", [&acc] () { return bacc::count(acc); }},
+	    { "p95", [&acc] () { return bacc::quantile(acc, bacc::quantile_probability = 0.95); }},
+	    { "p98", [&acc] () { return bacc::quantile(acc, bacc::quantile_probability = 0.98); }},
+	    { "p99", [&acc] () { return bacc::quantile(acc, bacc::quantile_probability = 0.99); }},
+	    { "logavg", [&acc_log, &use_log1p] () {
+		auto n = bacc::count(acc_log);
+		if (use_log1p) {
+		    return std::expm1( bacc::mean(acc_log) );  // exp(x)-1 for log1p case
+		} else {
+		    return std::exp( bacc::mean(acc_log) );
+		}
+	    }},
+	    { "logsvar",   [&acc_log, &use_log1p] () {
+		auto n = bacc::count(acc_log);
+		double f = static_cast<double>(n) / (n - 1);
+		if (use_log1p) {
+		    return std::expm1( f * bacc::variance(acc_log) );
+		} else {
+		    return std::exp( f * bacc::variance(acc_log) );
+		}
+	    }},
+	    { "logsstdev", [&stats] () { return std::sqrt(stats["logsvar"]()); }},
+	    { "logerror", [&stats] () { return std::sqrt(stats["logsvar"]()/static_cast<double>( stats["count"]() ))*2; }},
+	    // Kolmogorov-Smirnov goodness-of-fit tests
+	    { "ks_normal", [&kolmogorov_smirnov_gof, &elapsed_time_array] () {
+		return kolmogorov_smirnov_gof(elapsed_time_array, false);
+	    }},
+	    { "ks_lognormal", [&kolmogorov_smirnov_gof, &elapsed_time_array] () {
+		return kolmogorov_smirnov_gof(elapsed_time_array, true);
+	    }}
 	};
 
 	// compute statistics
+	// First pass: compute regular statistics to determine if we need log1p
 	for(auto elapsed: elapsed_time_array) {
-	    if(elapsed.second != CKR_OK) {
+	    if(!std::holds_alternative<benchmark_result::Ok>(elapsed.second)) {
 		last_errcode = elapsed.second;
-		wallclock_elapsed = 0;
+		wallclock_elapsed = milliseconds_double_t { 0 };
 		break;		// something wrong happened, no need to carry on
 	    }
 
-	    for(auto it=elapsed.first.begin(); it!=elapsed.first.end(); ++it) {
-		acc(*it/nano_to_milli);
+	    for(auto &it: elapsed.first) {
+		double val = it.count();
+		acc(val);
+	    }
+	}
+
+	// Check if average is small (< 1.0), if so use log1p for better numerical stability
+	use_log1p = (bacc::count(acc) > 0) && (bacc::mean(acc) < 1.0);
+
+	// Second pass: compute log statistics with appropriate transformation
+	for(auto elapsed: elapsed_time_array) {
+	    if(!std::holds_alternative<benchmark_result::Ok>(elapsed.second)) {
+		break;		// something wrong happened, no need to carry on
+	    }
+
+	    for(auto &it: elapsed.first) {
+		double val = it.count();
+		if (use_log1p) {
+		    acc_log(std::log1p(val));  // log(1+x) for small values
+		} else {
+		    acc_log(std::log(val));     // log(x) for normal values
+		}
 	    }
 	}
 
@@ -194,7 +339,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 	auto stats_count = stats["count"]();
 
 	// timer_res is the resolution of the timer
-	Measure<> timer_res(m_timer_res, m_timer_res_err, "ns");
+	Measure<> timer_res(m_timer_res.count(), m_timer_res_err.count(), "ns");
 	result_rows.emplace_back(std::forward_as_tuple("timer resolution", "timer resolution", std::move(timer_res)));
 
 	// epsilon represents the max resolution we have for a latency measurement.
@@ -203,7 +348,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 	// it is multiplied by two, as an interval is measured by making two time measurements. Therefore the
 	// uncertainties adds up.
 	// It is converted to milliseconds.
-	auto epsilon = 2 * (m_timer_res + m_timer_res_err ) / nano_to_milli;
+	auto epsilon = 2 * std::chrono::duration_cast<milliseconds_double_t>(m_timer_res + m_timer_res_err).count();
 
 	// if the statistical error is less than epsilon, then it is no more significant,
 	// as the measure is blurred by the resolution of the timer.
@@ -212,6 +357,13 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 	auto latency_avg_err = stats["error"]() < epsilon ? epsilon : stats["error"]();
 	Measure<> latency_avg(latency_avg_val, latency_avg_err, "ms");
 	result_rows.emplace_back(std::forward_as_tuple("latency, average", "latency.average", std::move(latency_avg)));
+
+	// let's also add the standard deviation
+	auto latency_stddev_val = stats["sstddev"]();
+	auto latency_stddev_err = stats["error"]() < epsilon ? epsilon : stats["error"]();
+	Measure<> latency_stddev(latency_stddev_val, latency_stddev_err, "ms");
+	result_rows.emplace_back(std::forward_as_tuple("latency, standard deviation", "latency.stddev", std::move(latency_stddev)));
+
 	// minimum and maximum are measured directly. their error depends directly upon
 	// the measurement of two times, i.e. t2-t1. Therefore, the error on that measurment
 	// equals twice the precision.
@@ -223,6 +375,62 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 	auto latency_max_err =  epsilon;
 	Measure<> latency_max(latency_max_val, latency_max_err, "ms");
 	result_rows.emplace_back(std::forward_as_tuple("latency, maximum", "latency.maximum", std::move(latency_max)));
+
+	// p95, p98, p99 quantiles
+	auto latency_p95_val = stats["p95"]();
+	auto latency_p95_err = epsilon;
+	Measure<> latency_p95(latency_p95_val, latency_p95_err, "ms");
+	result_rows.emplace_back(std::forward_as_tuple("latency, 95th percentile", "latency.p95", std::move(latency_p95)));
+	auto latency_p98_val = stats["p98"]();
+	auto latency_p98_err = epsilon;
+	Measure<> latency_p98(latency_p98_val, latency_p98_err, "ms");
+	result_rows.emplace_back(std::forward_as_tuple("latency, 98th percentile", "latency.p98", std::move(latency_p98)));
+	auto latency_p99_val = stats["p99"]();
+	auto latency_p99_err = epsilon;
+	Measure<> latency_p99(latency_p99_val, latency_p99_err, "ms");
+	result_rows.emplace_back(std::forward_as_tuple("latency, 99th percentile", "latency.p99", std::move(latency_p99)));
+
+	// log-normal stats
+	auto latency_log_geomavg_val = stats["logavg"]();
+	auto latency_log_geomavg_err = stats["logerror"]();
+	Measure<> latency_log_geomavg(latency_log_geomavg_val, latency_log_geomavg_err, "ms");
+	result_rows.emplace_back(std::forward_as_tuple("latency, log-normal geom average", "latency.logavg", std::move(latency_log_geomavg)));
+	auto latency_log_geomsstddev_val = stats["logsstdev"]();
+	auto latency_log_geomsstddev_err = stats["logerror"]();
+	Measure<> latency_log_geomsstddev(latency_log_geomsstddev_val, latency_log_geomsstddev_err, "ms");
+	result_rows.emplace_back(std::forward_as_tuple("latency, log-normal geom stddev", "latency.logstddev", std::move(latency_log_geomsstddev)));
+
+	// Kolmogorov-Smirnov goodness-of-fit tests with Lilliefors correction
+	// (parameters estimated from data, not known a priori)
+	// Critical values at alpha=0.05: ~0.886/√n - 0.01/n (reject if D > Dcrit)
+	auto dcrit = [] (size_t n) -> double {
+	    return 0.886 / std::sqrt(static_cast<double>(n)) - 0.01 / static_cast<double>(n);
+	};
+
+	auto ks_normal_val = stats["ks_normal"]();
+	Measure<> ks_normal(ks_normal_val, "");
+	result_rows.emplace_back(std::forward_as_tuple("Lilliefors test, normal distribution", "ks.normal", std::move(ks_normal)));
+
+	auto ks_normal_dcrit = dcrit( stats_count );
+	Measure<> ks_normal_crit(ks_normal_dcrit, "");
+	result_rows.emplace_back(std::forward_as_tuple("Lilliefors test, critical value (a=0.05)", "ks.normal.crit", std::move(ks_normal_crit)));
+
+	auto ks_fit_str = (ks_normal_val > ks_normal_dcrit) ? "rejected" : "not rejected";
+	Measure<> ks_normal_fit(ks_normal_val - ks_normal_dcrit, 0, ks_fit_str);
+	result_rows.emplace_back(std::forward_as_tuple("Lilliefors test, fitness (normal)", "ks.normal.fit", std::move(ks_normal_fit)));
+
+	auto ks_lognormal_val = stats["ks_lognormal"]();
+	Measure<> ks_lognormal(ks_lognormal_val, "");
+	result_rows.emplace_back(std::forward_as_tuple("Lilliefors test, log-normal distribution", "ks.lognormal", std::move(ks_lognormal)));
+
+	auto ks_lognormal_dcrit = dcrit( stats_count );
+	Measure<> ks_lognormal_crit(ks_lognormal_dcrit, "");
+	result_rows.emplace_back(std::forward_as_tuple("Lilliefors test, critical value (a=0.05)", "ks.lognormal.crit", std::move(ks_lognormal_crit)));
+
+	ks_fit_str = (ks_lognormal_val > ks_lognormal_dcrit) ? "rejected" : "not rejected";
+	Measure<> ks_lognormal_fit(ks_lognormal_val - ks_lognormal_dcrit, 0, ks_fit_str);
+	result_rows.emplace_back(std::forward_as_tuple("Lilliefors test, fitness (lognormal)", "ks.lognormal.fit", std::move(ks_lognormal_fit)));
+
 	// TPS is the number of "transactions" per second.
 	// the meaning of "transaction" depends upon the tested API/algorithm
 
@@ -249,7 +457,7 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 	result_rows.emplace_back(std::forward_as_tuple("global throughput, average", "throughput.global", std::move(throughput_global_avg)));
 
 	// wallclock_elapsed_ms is the total time elapsed (in ms).
-	Measure<> wallclock_elapsed_ms( wallclock_elapsed/nano_to_milli, epsilon, "ms" );
+	Measure<> wallclock_elapsed_ms( wallclock_elapsed.count(), epsilon, "ms" );
 	result_rows.emplace_back(std::forward_as_tuple("wall clock", "wallclock", std::move(wallclock_elapsed_ms)));
 
 	ConsoleTable results{"measure", "value", "error (+/-)", "unit", "rel. error" };
@@ -260,8 +468,8 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 		std::get<0>(row),
 		    d2s(std::get<2>(row).value(),12),
 		    d2s(std::get<2>(row).error(),12),
-		std::get<2>(row).unit(),
-		d2s(std::get<2>(row).relerr()*100,3)+'%'  };
+		    std::get<2>(row).unit(),
+		    d2s(std::get<2>(row).relerr()*100,3)+'%'  };
 	}
 
 	std::cout << "Test case results:\n" << results << std::endl;
@@ -280,6 +488,21 @@ ptree Executor::benchmark( P11Benchmark &benchmark, const size_t iter, const siz
 	    rv.add(thistestcase + std::get<1>(row) + ".unit",   std::get<2>(row).unit());
 	    rv.add(thistestcase + std::get<1>(row) + ".error",  d2s(std::get<2>(row).error()));
 	    rv.add(thistestcase + std::get<1>(row) + ".relerr", d2s(std::get<2>(row).relerr()));
+	}
+
+	// adding measured datapoints if requested
+	if(m_include_datapoints) {
+	    ptree datapoints_array;
+	    for(auto elapsed: elapsed_time_array) {
+		if(std::holds_alternative<benchmark_result::Ok>(elapsed.second)) {
+		    for(auto &it: elapsed.first) {
+			ptree datapoint;
+			datapoint.put("", it.count());
+			datapoints_array.push_back(std::make_pair("", datapoint));
+		    }
+		}
+	    }
+	    rv.add_child(thistestcase + "datapoints", datapoints_array);
 	}
 
 	// last error code, useful to identify when something crashes

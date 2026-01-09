@@ -19,7 +19,28 @@
 #include <botan/p11.h>
 #include "errorcodes.hpp"
 
-const std::string errorcode(int rc) {
+static const std::string _errorcode(int rc);
+
+// overloaded is needed for std::visit
+
+template<class... Ts>
+struct overloaded : Ts... { using Ts::operator()...; };
+template<class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
+
+
+const std::string errorcode(benchmark_result::operation_outcome_t outcome) {
+    return std::visit( 
+        overloaded {
+            [&](benchmark_result::Ok) -> std::string { return "CKR_OK"; },
+            [&](benchmark_result::NotFound const& nf) -> std::string { return nf.what(); },
+            [&](benchmark_result::ApiErr const& apiErr) -> std::string { return _errorcode(apiErr); }
+        }, outcome );
+}
+
+// static function to map error codes to strings
+
+static const std::string _errorcode(int rc) {
     switch ( rc ) {
     case CKR_OK:
 	return "CKR_OK";

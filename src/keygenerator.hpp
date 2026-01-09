@@ -57,7 +57,7 @@ private:
     bool generate_ecdh_keypair(std::string alias, unsigned int unused, std::string curve, Session *session);
     bool generate_generic_key(std::string alias, unsigned int bits, std::string param, Session *session);
 
-    void generate_key_generic( KeyGenerator::KeyType keytype, std::string alias, unsigned int bits, std::string curve);
+    bool generate_key_generic( KeyGenerator::KeyType keytype, std::string alias, unsigned int bits, std::string curve);
 
 public:
 
@@ -72,8 +72,8 @@ public:
     KeyGenerator( KeyGenerator &&) = delete;
     KeyGenerator& operator=( KeyGenerator &&) = delete;
 
-    void generate_key( KeyGenerator::KeyType keytype, std::string alias, unsigned int bits);
-    void generate_key( KeyGenerator::KeyType keytype, std::string alias, std::string curve);
+    bool generate_key( KeyGenerator::KeyType keytype, std::string alias, unsigned int bits);
+    bool generate_key( KeyGenerator::KeyType keytype, std::string alias, std::string curve);
 };
 
 

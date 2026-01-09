@@ -116,6 +116,9 @@ class Converter:
 
         def recursive_title(vector, prefix=""):
             for subk,subv in vector.items():
+                # Skip datapoints array if present
+                if subk == 'datapoints':
+                    continue
                 if not isinstance(subv,(dict)):
                     column_title = (prefix + f"{subk} ").strip()
                     column_dict = { 'header':column_title }
@@ -133,6 +136,9 @@ class Converter:
 
         def recursive_value(vector, prefix=""):
             for subk,subv in vector.items():
+                # Skip datapoints array if present
+                if subk == 'datapoints':
+                    continue
                 if not isinstance(subv,(dict)):
                     self.worksheet.write(self.row, self.col, cast.get(subk, noop)(subv))
                     self.col+=1
