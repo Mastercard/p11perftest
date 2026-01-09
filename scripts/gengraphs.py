@@ -395,16 +395,17 @@ class GraphGenerator:
     def _setup_comparison_labels(self):
         """Setup labels for comparison mode."""
         if not self.comparison:
-            self.xlsfp.label = '', ''
+            self.xlsfp_label = ('', '')
+            self.xlsfp2_label = None
             if self.labels is not None:
                 print('Not in comparison mode, ignoring labels. Did you forget to specify -c flag?')
         else:
             if self.labels is None:
-                self.xlsfp.label = 'data set 1', '(data set 1)'
-                self.xlsfp2.label = 'data set 2', '(data set 2)'
+                self.xlsfp_label = ('data set 1', '(data set 1)')
+                self.xlsfp2_label = ('data set 2', '(data set 2)')
             else:
-                self.xlsfp.label = self.labels[0], f'({self.labels[0]})'
-                self.xlsfp2.label = self.labels[1], f'({self.labels[1]})'
+                self.xlsfp_label = (self.labels[0], f'({self.labels[0]})')
+                self.xlsfp2_label = (self.labels[1], f'({self.labels[1]})')
     
     def generate(self, num_processes=None):
         """Generate all graphs using multiprocessing.
@@ -412,60 +413,55 @@ class GraphGenerator:
         Args:
             num_processes: Number of parallel processes to use. If None, uses CPU count.
         """
-        xls_tuple = (self.xlsfp, self.xlsfp)
+        # read from spreadsheet directly
+        df1 = create_dataframe(self.xlsfp, self.sheetname, self.xvar)
+        df2 = None
         if self.comparison:
-            xls_tuple = (self.xlsfp, self.xlsfp2)
+            df2 = create_dataframe(self.xlsfp2, 'Sheet1', self.xvar)
+        ### could reintroduce this logic below. removed for now...
+        #     if not (measure1 == measure2) and (df1[graph_parameter].unique() == df2[graph_parameter].unique()):
+        #         raise AssertionError('Please compare similar things.')
+        #     measure = measure1
+        # else:
+        #     measure = measure1
 
-        with xls_tuple[0], xls_tuple[1]:
-            # read from spreadsheet directly
-            df1 = create_dataframe(self.xlsfp, self.sheetname, self.xvar)
-            df2 = None
-            if self.comparison:
-                df2 = create_dataframe(self.xlsfp2, 'Sheet1', self.xvar)
-            ### could reintroduce this logic below. removed for now...
-            #     if not (measure1 == measure2) and (df1[graph_parameter].unique() == df2[graph_parameter].unique()):
-            #         raise AssertionError('Please compare similar things.')
-            #     measure = measure1
-            # else:
-            #     measure = measure1
-
-            # Build list of all tasks (testcase, item) pairs
-            tasks = []
-            for testcase in df1["test case"].unique():
-                for item in sorted(df1.loc[(df1['test case'] == testcase)][self.graph_parameter].unique()):
-                    tasks.append((testcase, item))
+        # Build list of all tasks (testcase, item) pairs
+        tasks = []
+        for testcase in df1["test case"].unique():
+            for item in sorted(df1.loc[(df1['test case'] == testcase)][self.graph_parameter].unique()):
+                tasks.append((testcase, item))
+        
+        # Process tasks in parallel
+        if num_processes == 1:
+            # Serial execution for debugging
+            for testcase, item in tasks:
+                self._create_single_graph(df1, df2, testcase, item)
+        else:
+            # Parallel execution - extract parameters needed by workers
+            worker_params = {
+                'xvar': self.xvar,
+                'graph_parameter': self.graph_parameter,
+                'xlabel': self.xlabel,
+                'ycomparison': self.ycomparison,
+                'fnsub': self.fnsub,
+                'col3name': self.col3name,
+                'format_title': self.format_title,
+                'comparison': self.comparison,
+                'xlsfp_label': self.xlsfp_label,
+                'xlsfp2_label': self.xlsfp2_label if self.comparison else None,
+                'no_error_region': self.no_error_region,
+                'p95': self.p95,
+                'p98': self.p98,
+                'p99': self.p99,
+                'output_format': self.output_format,
+                'indvar': self.indvar,
+                'reglines': self.reglines,
+                'output_dir': self.output_dir
+            }
             
-            # Process tasks in parallel
-            if num_processes == 1:
-                # Serial execution for debugging
-                for testcase, item in tasks:
-                    self._create_single_graph(df1, df2, testcase, item)
-            else:
-                # Parallel execution - extract parameters needed by workers
-                worker_params = {
-                    'xvar': self.xvar,
-                    'graph_parameter': self.graph_parameter,
-                    'xlabel': self.xlabel,
-                    'ycomparison': self.ycomparison,
-                    'fnsub': self.fnsub,
-                    'col3name': self.col3name,
-                    'format_title': self.format_title,
-                    'comparison': self.comparison,
-                    'xlsfp_label': self.xlsfp.label,
-                    'xlsfp2_label': self.xlsfp2.label if self.comparison else None,
-                    'no_error_region': self.no_error_region,
-                    'p95': self.p95,
-                    'p98': self.p98,
-                    'p99': self.p99,
-                    'output_format': self.output_format,
-                    'indvar': self.indvar,
-                    'reglines': self.reglines,
-                    'output_dir': self.output_dir
-                }
-                
-                with mp.Pool(processes=num_processes) as pool:
-                    pool.starmap(_create_single_graph_worker, 
-                                [(df1, df2, testcase, item, worker_params) for testcase, item in tasks])
+            with mp.Pool(processes=num_processes) as pool:
+                pool.starmap(_create_single_graph_worker, 
+                            [(df1, df2, testcase, item, worker_params) for testcase, item in tasks])
     
     def _create_single_graph(self, df1, df2, testcase, item):
         """Create and save a single graph for a specific testcase and item (serial execution)."""
@@ -479,8 +475,8 @@ class GraphGenerator:
             'col3name': self.col3name,
             'format_title': self.format_title,
             'comparison': self.comparison,
-            'xlsfp_label': self.xlsfp.label,
-            'xlsfp2_label': self.xlsfp2.label if self.comparison else None,
+            'xlsfp_label': self.xlsfp_label,
+            'xlsfp2_label': self.xlsfp2_label if self.comparison else None,
             'no_error_region': self.no_error_region,
             'p95': self.p95,
             'p98': self.p98,
@@ -498,7 +494,7 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal_handler)
     
     parser = argparse.ArgumentParser(description='Generate graphs from spreadsheet of p11perftest results')
-    parser.add_argument('xls', metavar='FILE', type=argparse.FileType('rb'), help='Path to Excel spreadsheet')
+    parser.add_argument('xls', metavar='FILE', type=str, help='Path to Excel spreadsheet')
     parser.add_argument('-t', '--table', help='Table name.', default=0)
     parser.add_argument('-f', '--format', help='Output format. Defaults to all (png and svg).', choices=['png', 'svg', 'all'], default='all')
     parser.add_argument('-j', '--jobs', type=int, metavar='N', help='Number of parallel jobs to run. Default is CPU count. Use 1 for serial execution.')
@@ -513,7 +509,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-c', '--comparison',
                         help='Compare two datasets. Provide the path to a second Excel spreadsheet.', metavar='FILE',
-                        type=argparse.FileType('rb'))
+                        type=str)
 
     subparsers = parser.add_subparsers(dest='indvar')
     size = subparsers.add_parser('size',
@@ -525,6 +521,22 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--labels', metavar=('LABEL1', 'LABEL2'), help='Dataset labels. Defaults to "data set 1" and "data set 2".', nargs=2)
     
     args = parser.parse_args()
+
+    # Validate input files
+    if not os.path.exists(args.xls):
+        print(f"Error: File '{args.xls}' does not exist.", file=sys.stderr)
+        sys.exit(1)
+    if not os.path.isfile(args.xls):
+        print(f"Error: '{args.xls}' is not a file.", file=sys.stderr)
+        sys.exit(1)
+    
+    if args.comparison:
+        if not os.path.exists(args.comparison):
+            print(f"Error: File '{args.comparison}' does not exist.", file=sys.stderr)
+            sys.exit(1)
+        if not os.path.isfile(args.comparison):
+            print(f"Error: '{args.comparison}' is not a file.", file=sys.stderr)
+            sys.exit(1)
 
     # Validate output directory
     if not os.path.exists(args.directory):
