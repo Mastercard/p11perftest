@@ -43,6 +43,7 @@ p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			p11oaepdec.cpp p11oaepdec.hpp \
 			p11oaepenc.cpp p11oaepenc.hpp \
 			p11jwe.cpp p11jwe.hpp \
+			p11jweenc.cpp p11jweenc.hpp \
 			p11ecdsasig.cpp p11ecdsasig.hpp \
 			p11des3ecb.cpp p11des3ecb.hpp \
 			p11des3cbc.cpp p11des3cbc.hpp \

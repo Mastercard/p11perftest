@@ -104,6 +104,20 @@ TestCoverage::TestCoverage(std::string tocover)
 	    m_algo_coverage.insert(AlgoCoverage::jweoaepsha256);
 	    break;
 
+	case "jweenc"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::jweenc);
+	    break;
+
+	case "jweencoaepsha1"_hash:
+	case "jweencsha1"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::jweencoaepsha1);
+	    break;
+
+	case "jweencoaepsha256"_hash:
+	case "jweencsha256"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::jweencoaepsha256);
+	    break;
+
 	case "oaep"_hash:
 	    m_algo_coverage.insert(AlgoCoverage::oaep);
 	    break;
@@ -232,6 +246,20 @@ bool TestCoverage::contains(std::string algo)
     case "jweoaepsha256"_hash:
     case "jwesha256"_hash:
 	return contains(AlgoCoverage::jweoaepsha256);
+	break;
+
+    case "jweenc"_hash:
+	return contains(AlgoCoverage::jweenc);
+	break;
+
+    case "jweencoaepsha1"_hash:
+    case "jweencsha1"_hash:
+	return contains(AlgoCoverage::jweencoaepsha1);
+	break;
+
+    case "jweencoaepsha256"_hash:
+    case "jweencsha256"_hash:
+	return contains(AlgoCoverage::jweencoaepsha256);
 	break;
 
     case "oaep"_hash:
