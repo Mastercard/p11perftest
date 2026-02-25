@@ -116,10 +116,10 @@ void P11FindObjectsBenchmark::crashtestdummy(Session &session)
     char* label_data = static_cast<char*>(m_search_template.attributes()[1].pValue);
     size_t label_len = m_search_template.attributes()[1].ulValueLen;
     
-    // Format the last 3 digits: units, tens, hundreds
-    label_data[label_len - 1] = '0' + (target_index % 10);
-    label_data[label_len - 2] = '0' + ((target_index / 10) % 10);
-    label_data[label_len - 3] = '0' + ((target_index / 100) % 10);
+    // Format the last 6 digits
+    for(size_t i = 0, lastn=1 ; i < 6; i++, lastn *= 10) {
+        label_data[label_len - 1 - i] = '0' + ((target_index / lastn) % 10);
+    }
 
     // Now perform the FindObjects operations
     // C_FindObjectsInit
