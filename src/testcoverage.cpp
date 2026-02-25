@@ -34,6 +34,10 @@ TestCoverage::TestCoverage(std::string tocover)
 	    m_algo_coverage.insert(AlgoCoverage::rsa);
 	    break;
 
+	case "rsapss"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::rsapss);
+	    break;
+
 	case "ecdsa"_hash:
 	    m_algo_coverage.insert(AlgoCoverage::ecdsa);
 	    break;
@@ -80,6 +84,10 @@ TestCoverage::TestCoverage(std::string tocover)
 
 	case "rand"_hash:
 	    m_algo_coverage.insert(AlgoCoverage::rand);
+	    break;
+
+	case "find"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::find);
 	    break;
 
 	case "jwe"_hash:
@@ -156,6 +164,10 @@ bool TestCoverage::contains(std::string algo)
 	return contains(AlgoCoverage::rsa);
 	break;
 
+    case "rsapss"_hash:
+	return contains(AlgoCoverage::rsapss);
+	break;
+
     case "ecdsa"_hash:
 	return contains(AlgoCoverage::ecdsa);
 	break;
@@ -202,6 +214,10 @@ bool TestCoverage::contains(std::string algo)
 
     case "rand"_hash:
 	return contains(AlgoCoverage::rand);
+	break;
+
+    case "find"_hash:
+	return contains(AlgoCoverage::find);
 	break;
 
     case "jwe"_hash:

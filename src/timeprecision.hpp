@@ -20,7 +20,8 @@
 #define TIMEPRECISION_H
 
 #include <utility>
+#include "units.hpp"
 
-std::pair<double, double> measure_clock_precision(int iter=100);
+std::pair<nanoseconds_double_t, nanoseconds_double_t> measure_clock_precision(int iter=100);
 
 #endif // TIMEPRECISION_H

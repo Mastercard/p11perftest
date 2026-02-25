@@ -63,10 +63,8 @@ AC_CONFIG_HEADERS([config.h])
 dnl Check for libraries, headers, data etc here.
 AC_SEARCH_LIBS([dlopen], [dl dld], [], [AC_MSG_FAILURE([can't find dynamic linker lib])])
 AX_PTHREAD(,[AC_MSG_ERROR[pthread is required to compile this project]])
-AX_BOOST_BASE([1.62],, [AC_MSG_ERROR([p11perftest needs Boost, but it was not found in your system])])
+AX_BOOST_BASE([1.66],, [AC_MSG_ERROR([p11perftest needs Boost, but it was not found in your system])])
 AX_BOOST_PROGRAM_OPTIONS()
-AX_BOOST_TIMER()
-AX_BOOST_CHRONO()
 
 PKG_CHECK_MODULES([BOTAN], [ botan-2 > 2.17.0 ])
 PKG_CHECK_MODULES([LIBCRYPTO], [ libcrypto > 1 ])

@@ -80,17 +80,17 @@ bool KeyGenerator::generate_des_key(std::string alias, unsigned int bits, std::s
     Mechanism mechanism { CKM_DES_KEY_GEN, nullptr, 0 };
 
     switch(bits) {
-	case 64:
-	    mechanism.mechanism = CKM_DES_KEY_GEN;
-	    break;
+    case 64:
+	mechanism.mechanism = CKM_DES_KEY_GEN;
+	break;
 
-	case 128:
-	    mechanism.mechanism = CKM_DES2_KEY_GEN;
-	    break;
+    case 128:
+	mechanism.mechanism = CKM_DES2_KEY_GEN;
+	break;
 
-	case 192:
-	    mechanism.mechanism = CKM_DES3_KEY_GEN;
-	    break;
+    case 192:
+	mechanism.mechanism = CKM_DES3_KEY_GEN;
+	break;
 
     default:
 	std::cerr << "Invalid key length for DES:" << bits << std::endl;
@@ -289,7 +289,7 @@ bool KeyGenerator::generate_ecdh_keypair(std::string alias, unsigned int unused,
 }
 
 
-void KeyGenerator::generate_key_generic(KeyGenerator::KeyType keytype, std::string alias, unsigned int bits, std::string curve)
+bool KeyGenerator::generate_key_generic(KeyGenerator::KeyType keytype, std::string alias, unsigned int bits, std::string curve)
 {
     int th;
     bool rv = true;
@@ -324,42 +324,47 @@ void KeyGenerator::generate_key_generic(KeyGenerator::KeyType keytype, std::stri
     }
 
     // recover futures. If one is false, return false
-    // TODO: replace with exception
 
     for(th=0;th<m_numthreads;th++) {
 	if(future_array[th].get() == false) {
-	    throw KeyGenerationException{"could not generate key"};
+	    std::cerr << "ERROR: Key generation failed for key " << alias << " on thread " << th+1 << std::endl;
+	    return false;
 	}
     }
+
+    return true;
 }
 
 
 // public overloaded member functions
 
-void KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias, unsigned int bits) {
+bool KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias, unsigned int bits) {
     std::set<KeyType> allowed_keytypes { KeyType::RSA, KeyType::DES, KeyType::AES, KeyType::GENERIC };
 
     auto match = allowed_keytypes.find( keytype );
 
     if(match == allowed_keytypes.end()) {
-	throw KeyGenerationException { "Invalid keytype/argument combination" };
+	std::cerr << "WARNING: Invalid keytype/argument combination" << std::endl;
+	return false;
     }
 
     return generate_key_generic(keytype, alias, bits, "");
 }
 
 
-void KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias, std::string curve) {
+bool KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias, std::string curve) {
     std::set<std::string> allowed_curves { "secp256r1", "secp384r1", "secp521r1" };
 
     if(keytype != KeyType::ECDH && keytype != KeyType::ECDSA) {
-	throw KeyGenerationException { "Invalid keytype/argument combination" };
+	std::cerr << "WARNING: Invalid keytype/argument combination" << std::endl;
+	return false;
     }
 
     auto match = allowed_curves.find(curve);
 
     if(match==allowed_curves.end()) {
-	throw KeyGenerationException { "Unknown/unmanaged key cureve given: " + curve };
+	std::cerr << "WARNING: Unknown/unmanaged key curve given: " << curve << std::endl;
+	return false;
     }
 
     return generate_key_generic(keytype, alias, 0, curve);

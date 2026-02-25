@@ -53,6 +53,7 @@
 #include "keygenerator.hpp"
 #include "executor.hpp"
 #include "p11rsasig.hpp"
+#include "p11rsapss.hpp"
 #include "p11oaepdec.hpp"
 #include "p11oaepenc.hpp"
 #include "p11oaepunw.hpp"
@@ -62,6 +63,7 @@
 #include "p11xorkeydataderive.hpp"
 #include "p11genrandom.hpp"
 #include "p11seedrandom.hpp"
+#include "p11findobjects.hpp"
 #include "p11hmacsha1.hpp"
 #include "p11hmacsha256.hpp"
 #include "p11hmacsha512.hpp"
@@ -104,13 +106,14 @@ int main(int argc, char **argv)
     int argiter, argskipiter;
     int argnthreads;
     bool json = false;
+    bool datapoints = false;
     std::fstream jsonout;
     bool generate_session_keys = true;
     po::options_description cliopts("command line options");
     po::options_description envvars("environment variables");
 
     // default coverage: RSA, ECDSA, HMAC, DES and AES
-    const auto default_tests {"rsa,ecdsa,ecdh,hmac,des,aes,xorder,rand,jwe,oaep,oaepenc,oaepunw"};
+    const auto default_tests {"rsa,rsapss,ecdsa,ecdh,hmac,des,aes,xorder,rand,find,jwe,oaep,oaepenc,oaepunw"};
     const auto default_vectors {"8,16,64,256,1024,4096"};
     const auto default_keysizes{"rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256"};
     const auto default_flavour{"generic"};
@@ -137,6 +140,7 @@ int main(int argc, char **argv)
 	 "(in addition to iterations)")
 	("json,j", "output results as JSON")
 	("jsonfile,o", po::value< std::string >(), "JSON output file name")
+	("datapoints,d", "add array of measured points to JSON output (requires -j/--json)")
 	("coverage,c", po::value< std::string >()->default_value(default_tests),
 	 "coverage of test cases\n"
 	 "Note: the following test cases are compound:\n"
@@ -200,6 +204,16 @@ int main(int argc, char **argv)
     } else if(vm.count("jsonfile")) {
 	std::cerr << "When jsonfile option is used, -j or -jsonfile is mandatory\n";
 	std::cerr << cliopts << '\n';
+    }
+
+    if(vm.count("datapoints")) {
+	if(vm.count("json")) {
+	    datapoints = true;
+	} else {
+	    std::cerr << "When datapoints option is used, -j or --json is mandatory\n";
+	    std::cerr << cliopts << '\n';
+	    std::exit(EX_USAGE);
+	}
     }
 
     if (vm.count("nogenerate")) {
@@ -320,15 +334,19 @@ int main(int argc, char **argv)
 	    }
 
 	    auto epsilon = measure_clock_precision();
-	    std::cout << std::endl << "timer granularity (ns): " << epsilon.first << " +/- " << epsilon.second << "\n\n";
+	    std::cout << std::endl << "timer granularity (ns): " << epsilon.first.count() << " +/- " << epsilon.second.count() << "\n\n";
 
-	    Executor executor( testvecs, sessions, argnthreads, epsilon, generate_session_keys==true );
+	    Executor executor( testvecs, sessions, argnthreads, epsilon, generate_session_keys==true, datapoints );
+	    // Track which keys were successfully generated
+	    std::set<std::string> generated_keys;
 
+	    // TODO: replace this whole spaghetti-like section with a more modular approach. Keys needed could be inferred from object classes.
 	    if(generate_session_keys) {
 		KeyGenerator keygenerator( sessions, argnthreads, vendor );
 
 		std::cout << "Generating session keys for " << argnthreads << " thread(s)\n";
 		if(tests.contains("rsa")
+		   || tests.contains("rsapss")
 		   || tests.contains("jwe")
 		   || tests.contains("jweoaepsha1")
 		   || tests.contains("jweoaepsha256")
@@ -342,213 +360,374 @@ int main(int argc, char **argv)
 		   || tests.contains("oaepunwsha1")
 		   || tests.contains("oaepunwsha256")
 		    ) {
-		    if(keysizes.contains("rsa2048")) keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-2048", 2048);
-		    if(keysizes.contains("rsa3072")) keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-3072", 3072);
-		    if(keysizes.contains("rsa4096")) keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-4096", 4096);
+		    if(keysizes.contains("rsa2048")) {
+			if(keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-2048", 2048)) {
+			    generated_keys.insert("rsa-2048");
+			} else {
+			    std::cerr << "WARNING: Failed to generate key 'rsa-2048', associated tests will be skipped\n";
+			}
+		    }
+		    if(keysizes.contains("rsa3072")) {
+			if(keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-3072", 3072)) {
+			    generated_keys.insert("rsa-3072");
+			} else {
+			    std::cerr << "WARNING: Failed to generate key 'rsa-3072', associated tests will be skipped\n";
+			}
+		    }
+		    if(keysizes.contains("rsa4096")) {
+			if(keygenerator.generate_key(KeyGenerator::KeyType::RSA, "rsa-4096", 4096)) {
+			    generated_keys.insert("rsa-4096");
+			} else {
+			    std::cerr << "WARNING: Failed to generate key 'rsa-4096', associated tests will be skipped\n";
+			}
+		    }
 		}
 
 		if(tests.contains("ecdsa")) {
-		    if(keysizes.contains("ecnistp256")) keygenerator.generate_key(KeyGenerator::KeyType::ECDSA, "ecdsa-secp256r1", "secp256r1");
-		    if(keysizes.contains("ecnistp384")) keygenerator.generate_key(KeyGenerator::KeyType::ECDSA, "ecdsa-secp384r1", "secp384r1");
-		    if(keysizes.contains("ecnistp521")) keygenerator.generate_key(KeyGenerator::KeyType::ECDSA, "ecdsa-secp521r1", "secp521r1");
+		    if(keysizes.contains("ecnistp256")) {
+			if(keygenerator.generate_key(KeyGenerator::KeyType::ECDSA, "ecdsa-secp256r1", "secp256r1")) {
+			    generated_keys.insert("ecdsa-secp256r1");
+			} else {
+			    std::cerr << "WARNING: Failed to generate key 'ecdsa-secp256r1', associated tests will be skipped\n";
+			}
+		    }
+		    if(keysizes.contains("ecnistp384")) {
+			if(keygenerator.generate_key(KeyGenerator::KeyType::ECDSA, "ecdsa-secp384r1", "secp384r1")) {
+			    generated_keys.insert("ecdsa-secp384r1");
+			} else {
+			    std::cerr << "WARNING: Failed to generate key 'ecdsa-secp384r1', associated tests will be skipped\n";
+			}
+		    }
+		    if(keysizes.contains("ecnistp521")) {
+			if(keygenerator.generate_key(KeyGenerator::KeyType::ECDSA, "ecdsa-secp521r1", "secp521r1")) {
+			    generated_keys.insert("ecdsa-secp521r1");
+			} else {
+			    std::cerr << "WARNING: Failed to generate key 'ecdsa-secp521r1', associated tests will be skipped\n";
+			}
+		    }
 		}
 
 		if(tests.contains("ecdh")) {
-		    if(keysizes.contains("ecnistp256")) keygenerator.generate_key(KeyGenerator::KeyType::ECDH, "ecdh-secp256r1", "secp256r1");
-		    if(keysizes.contains("ecnistp384")) keygenerator.generate_key(KeyGenerator::KeyType::ECDH, "ecdh-secp384r1", "secp384r1");
-		    if(keysizes.contains("ecnistp521")) keygenerator.generate_key(KeyGenerator::KeyType::ECDH, "ecdh-secp521r1", "secp521r1");
+		    if(keysizes.contains("ecnistp256")) {
+			if(keygenerator.generate_key(KeyGenerator::KeyType::ECDH, "ecdh-secp256r1", "secp256r1")) {
+			    generated_keys.insert("ecdh-secp256r1");
+			} else {
+			    std::cerr << "WARNING: Failed to generate key 'ecdh-secp256r1', associated tests will be skipped\n";
+			}
+		    }
+		    if(keysizes.contains("ecnistp384")) {
+			if(keygenerator.generate_key(KeyGenerator::KeyType::ECDH, "ecdh-secp384r1", "secp384r1")) {
+			    generated_keys.insert("ecdh-secp384r1");
+			} else {
+			    std::cerr << "WARNING: Failed to generate key 'ecdh-secp384r1', associated tests will be skipped\n";
+			}
+		    }
+		    if(keysizes.contains("ecnistp521")) {
+			if(keygenerator.generate_key(KeyGenerator::KeyType::ECDH, "ecdh-secp521r1", "secp521r1")) {
+			    generated_keys.insert("ecdh-secp521r1");
+			} else {
+			    std::cerr << "WARNING: Failed to generate key 'ecdh-secp521r1', associated tests will be skipped\n";
+			}
+		    }
 		}
 
 		if(tests.contains("hmac")) {
-		    if(keysizes.contains("hmac160")) keygenerator.generate_key(KeyGenerator::KeyType::GENERIC, "hmac-160", 160);
-		    if(keysizes.contains("hmac256")) keygenerator.generate_key(KeyGenerator::KeyType::GENERIC, "hmac-256", 256);
-		    if(keysizes.contains("hmac512")) keygenerator.generate_key(KeyGenerator::KeyType::GENERIC, "hmac-512", 512);
+		    if(keysizes.contains("hmac160")) {
+			if(keygenerator.generate_key(KeyGenerator::KeyType::GENERIC, "hmac-160", 160)) {
+			    generated_keys.insert("hmac-160");
+			} else {
+			    std::cerr << "WARNING: Failed to generate key 'hmac-160', associated tests will be skipped\n";
+			}
+		    }
+		    if(keysizes.contains("hmac256")) {
+			if(keygenerator.generate_key(KeyGenerator::KeyType::GENERIC, "hmac-256", 256)) {
+			    generated_keys.insert("hmac-256");
+			} else {
+			    std::cerr << "WARNING: Failed to generate key 'hmac-256', associated tests will be skipped\n";
+			}
+		    }
+		    if(keysizes.contains("hmac512")) {
+			if(keygenerator.generate_key(KeyGenerator::KeyType::GENERIC, "hmac-512", 512)) {
+			    generated_keys.insert("hmac-512");
+			} else {
+			    std::cerr << "WARNING: Failed to generate key 'hmac-512', associated tests will be skipped\n";
+			}
+		    }
 		}
 
 		if(tests.contains("des")
 		   || tests.contains("desecb")
 		   || tests.contains("descbc")) {
-		    if(keysizes.contains("des128")) keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-128", 128); // DES2
-		    if(keysizes.contains("des192")) keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-192", 192); // DES3
+		    if(keysizes.contains("des128")) {
+			if(keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-128", 128)) { // DES2
+			    generated_keys.insert("des-128");
+			} else {
+			    std::cerr << "WARNING: Failed to generate key 'des-128', associated tests will be skipped\n";
+			}
+		    }
+		    if(keysizes.contains("des192")) {
+			if(keygenerator.generate_key(KeyGenerator::KeyType::DES, "des-192", 192)) { // DES3
+			    generated_keys.insert("des-192");
+			} else {
+			    std::cerr << "WARNING: Failed to generate key 'des-192', associated tests will be skipped\n";
+			}
+		    }
 		}
 
 		if(tests.contains("aes")
 		   || tests.contains("aesecb")
 		   || tests.contains("aescbc")
 		   || tests.contains("aesgcm")) {
-		    if(keysizes.contains("aes128")) keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-128", 128);
-		    if(keysizes.contains("aes192")) keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-192", 192);
-		    if(keysizes.contains("aes256")) keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-256", 256);
+		    if(keysizes.contains("aes128")) {
+			if(keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-128", 128)) {
+			    generated_keys.insert("aes-128");
+			} else {
+			    std::cerr << "WARNING: Failed to generate key 'aes-128', associated tests will be skipped\n";
+			}
+		    }
+		    if(keysizes.contains("aes192")) {
+			if(keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-192", 192)) {
+			    generated_keys.insert("aes-192");
+			} else {
+			    std::cerr << "WARNING: Failed to generate key 'aes-192', associated tests will be skipped\n";
+			}
+		    }
+		    if(keysizes.contains("aes256")) {
+			if(keygenerator.generate_key(KeyGenerator::KeyType::AES, "aes-256", 256)) {
+			    generated_keys.insert("aes-256");
+			} else {
+			    std::cerr << "WARNING: Failed to generate key 'aes-256', associated tests will be skipped\n";
+			}
+		    }
 		}
 
 		if(tests.contains("xorder")) {
-		    keygenerator.generate_key(KeyGenerator::KeyType::GENERIC, "xorder-128", 128);
+		    if(keygenerator.generate_key(KeyGenerator::KeyType::GENERIC, "xorder-128", 128)) {
+			generated_keys.insert("xorder-128");
+		    } else {
+			std::cerr << "WARNING: Failed to generate key 'xorder-128', associated tests will be skipped\n";
+		    }
 		}
 
 		if(tests.contains("rand")) {
-		    keygenerator.generate_key(KeyGenerator::KeyType::AES, "rand-128", 128); // not really used
+		    keygenerator.generate_key(KeyGenerator::KeyType::AES, "rand-128", 128); // not really used, ignore result
+		    generated_keys.insert("rand-128"); // always insert, tests don't really need this key
 		}
 
+		if(tests.contains("find")) {
+		    keygenerator.generate_key(KeyGenerator::KeyType::AES, "find-128", 128); // not really used, ignore result
+		    generated_keys.insert("find-128"); // always insert, tests don't really need this key
+		}
+
+	    } else {
+		
+		std::cout << "Using existing token keys (no generation)\n";
+	    
+		if(keysizes.contains("rsa2048")) generated_keys.insert("rsa-2048");
+		if(keysizes.contains("rsa3072")) generated_keys.insert("rsa-3072");
+		if(keysizes.contains("rsa4096")) generated_keys.insert("rsa-4096");
+		if(keysizes.contains("ecnistp256")) {
+		    generated_keys.insert("ecdsa-secp256r1");
+		    generated_keys.insert("ecdh-secp256r1");
+		}
+		if(keysizes.contains("ecnistp384")) {
+		    generated_keys.insert("ecdsa-secp384r1");
+		    generated_keys.insert("ecdh-secp384r1");
+		}
+		if(keysizes.contains("ecnistp521")) {
+		    generated_keys.insert("ecdsa-secp521r1");
+		    generated_keys.insert("ecdh-secp521r1");
+		}
+		if(keysizes.contains("hmac160")) generated_keys.insert("hmac-160");
+		if(keysizes.contains("hmac256")) generated_keys.insert("hmac-256");
+		if(keysizes.contains("hmac512")) generated_keys.insert("hmac-512");
+		if(keysizes.contains("des128")) generated_keys.insert("des-128");
+		if(keysizes.contains("des192")) generated_keys.insert("des-192");
+		if(keysizes.contains("aes128")) generated_keys.insert("aes-128");
+		if(keysizes.contains("aes192")) generated_keys.insert("aes-192");
+		if(keysizes.contains("aes256")) generated_keys.insert("aes-256");
+		generated_keys.insert("xorder-128");
+		generated_keys.insert("rand-128");
+		generated_keys.insert("find-128");
 	    }
+
+	    // Helper lambda to check if key was generated (C++11 compatible)
+	    auto has_key = [&generated_keys](const std::string& key) {
+		return generated_keys.find(key) != generated_keys.end();
+	    };
 
 	    std::forward_list<P11Benchmark *> benchmarks;
 
 	    // RSA PKCS#1 signature
 	    if(tests.contains("rsa")) {
-		if(keysizes.contains("rsa2048")) benchmarks.emplace_front( new P11RSASigBenchmark("rsa-2048") );
-		if(keysizes.contains("rsa3072")) benchmarks.emplace_front( new P11RSASigBenchmark("rsa-3072") );
-		if(keysizes.contains("rsa4096")) benchmarks.emplace_front( new P11RSASigBenchmark("rsa-4096") );
+		if(keysizes.contains("rsa2048") && has_key("rsa-2048")) benchmarks.emplace_front( new P11RSASigBenchmark("rsa-2048") );
+		if(keysizes.contains("rsa3072") && has_key("rsa-3072")) benchmarks.emplace_front( new P11RSASigBenchmark("rsa-3072") );
+		if(keysizes.contains("rsa4096") && has_key("rsa-4096")) benchmarks.emplace_front( new P11RSASigBenchmark("rsa-4096") );
+	    }
+
+	    // RSA-PSS signature
+	    if(tests.contains("rsapss")) {
+		if(keysizes.contains("rsa2048") && has_key("rsa-2048")) benchmarks.emplace_front( new P11RSAPssBenchmark("rsa-2048") );
+		if(keysizes.contains("rsa3072") && has_key("rsa-3072")) benchmarks.emplace_front( new P11RSAPssBenchmark("rsa-3072") );
+		if(keysizes.contains("rsa4096") && has_key("rsa-4096")) benchmarks.emplace_front( new P11RSAPssBenchmark("rsa-4096") );
 	    }
 
 	    // RSA PKCS#1 OAEP decryption
 	    if(tests.contains("oaep") || tests.contains("oaepsha1")) {
-		if(keysizes.contains("rsa2048")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-2048", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA1) );
-		if(keysizes.contains("rsa3072")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-3072", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA1) );
-		if(keysizes.contains("rsa4096")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-4096", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA1) );
+		if(keysizes.contains("rsa2048") && has_key("rsa-2048")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-2048", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA1) );
+		if(keysizes.contains("rsa3072") && has_key("rsa-3072")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-3072", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA1) );
+		if(keysizes.contains("rsa4096") && has_key("rsa-4096")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-4096", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA1) );
 	    }
 
 	    if(tests.contains("oaep") || tests.contains("oaepsha256")) {
-		if(keysizes.contains("rsa2048")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-2048", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA256) );
-		if(keysizes.contains("rsa3072")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-3072", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA256) );
-		if(keysizes.contains("rsa4096")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-4096", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA256) );
+		if(keysizes.contains("rsa2048") && has_key("rsa-2048")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-2048", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA256) );
+		if(keysizes.contains("rsa3072") && has_key("rsa-3072")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-3072", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA256) );
+		if(keysizes.contains("rsa4096") && has_key("rsa-4096")) benchmarks.emplace_front( new P11OAEPDecryptBenchmark("rsa-4096", vendor, P11OAEPDecryptBenchmark::HashAlg::SHA256) );
 	    }
 
 	    // RSA PKCS#1 OAEP encryption
 	    if(tests.contains("oaepenc") || tests.contains("oaepencsha1")) {
-		if(keysizes.contains("rsa2048")) benchmarks.emplace_front( new P11OAEPEncryptBenchmark("rsa-2048", vendor, P11OAEPEncryptBenchmark::HashAlg::SHA1) );
-		if(keysizes.contains("rsa3072")) benchmarks.emplace_front( new P11OAEPEncryptBenchmark("rsa-3072", vendor, P11OAEPEncryptBenchmark::HashAlg::SHA1) );
-		if(keysizes.contains("rsa4096")) benchmarks.emplace_front( new P11OAEPEncryptBenchmark("rsa-4096", vendor, P11OAEPEncryptBenchmark::HashAlg::SHA1) );
+		if(keysizes.contains("rsa2048") && has_key("rsa-2048")) benchmarks.emplace_front( new P11OAEPEncryptBenchmark("rsa-2048", vendor, P11OAEPEncryptBenchmark::HashAlg::SHA1) );
+		if(keysizes.contains("rsa3072") && has_key("rsa-3072")) benchmarks.emplace_front( new P11OAEPEncryptBenchmark("rsa-3072", vendor, P11OAEPEncryptBenchmark::HashAlg::SHA1) );
+		if(keysizes.contains("rsa4096") && has_key("rsa-4096")) benchmarks.emplace_front( new P11OAEPEncryptBenchmark("rsa-4096", vendor, P11OAEPEncryptBenchmark::HashAlg::SHA1) );
 	    }
 
 	    if(tests.contains("oaepenc") || tests.contains("oaepencsha256")) {
-		if(keysizes.contains("rsa2048")) benchmarks.emplace_front( new P11OAEPEncryptBenchmark("rsa-2048", vendor, P11OAEPEncryptBenchmark::HashAlg::SHA256) );
-		if(keysizes.contains("rsa3072")) benchmarks.emplace_front( new P11OAEPEncryptBenchmark("rsa-3072", vendor, P11OAEPEncryptBenchmark::HashAlg::SHA256) );
-		if(keysizes.contains("rsa4096")) benchmarks.emplace_front( new P11OAEPEncryptBenchmark("rsa-4096", vendor, P11OAEPEncryptBenchmark::HashAlg::SHA256) );
+		if(keysizes.contains("rsa2048") && has_key("rsa-2048")) benchmarks.emplace_front( new P11OAEPEncryptBenchmark("rsa-2048", vendor, P11OAEPEncryptBenchmark::HashAlg::SHA256) );
+		if(keysizes.contains("rsa3072") && has_key("rsa-3072")) benchmarks.emplace_front( new P11OAEPEncryptBenchmark("rsa-3072", vendor, P11OAEPEncryptBenchmark::HashAlg::SHA256) );
+		if(keysizes.contains("rsa4096") && has_key("rsa-4096")) benchmarks.emplace_front( new P11OAEPEncryptBenchmark("rsa-4096", vendor, P11OAEPEncryptBenchmark::HashAlg::SHA256) );
 	    }
 
 	    // RSA PKCS#1 OAEP unwrapping
 	    if(tests.contains("oaepunw") || tests.contains("oaepunwsha1")) {
-		if(keysizes.contains("rsa2048")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-2048", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA1) );
-		if(keysizes.contains("rsa3072")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-3072", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA1) );
-		if(keysizes.contains("rsa4096")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-4096", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA1) );
+		if(keysizes.contains("rsa2048") && has_key("rsa-2048")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-2048", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA1) );
+		if(keysizes.contains("rsa3072") && has_key("rsa-3072")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-3072", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA1) );
+		if(keysizes.contains("rsa4096") && has_key("rsa-4096")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-4096", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA1) );
 	    }
 
 	    if(tests.contains("oaepunw") || tests.contains("oaepunwsha256")) {
-		if(keysizes.contains("rsa2048")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-2048", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA256) );
-		if(keysizes.contains("rsa3072")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-3072", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA256) );
-		if(keysizes.contains("rsa4096")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-4096", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA256) );
+		if(keysizes.contains("rsa2048") && has_key("rsa-2048")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-2048", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA256) );
+		if(keysizes.contains("rsa3072") && has_key("rsa-3072")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-3072", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA256) );
+		if(keysizes.contains("rsa4096") && has_key("rsa-4096")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-4096", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA256) );
 	    }
 
 	    // JWE ( RSA OAEP + AES GCM )
 	    if(tests.contains("jwe") || tests.contains("jweoaepsha1")) {
-		if(keysizes.contains("rsa2048")) {
-		    if(keysizes.contains("aes128"))
+		if(keysizes.contains("rsa2048") && has_key("rsa-2048")) {
+		    if(keysizes.contains("aes128") && has_key("aes-128"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192"))
+		    if(keysizes.contains("aes192") && has_key("aes-192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256"))
+		    if(keysizes.contains("aes256") && has_key("aes-256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM256) );
 		}
-		if(keysizes.contains("rsa3072")) {
-		    if(keysizes.contains("aes128"))
+		if(keysizes.contains("rsa3072") && has_key("rsa-3072")) {
+		    if(keysizes.contains("aes128") && has_key("aes-128"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192"))
+		    if(keysizes.contains("aes192") && has_key("aes-192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256"))
+		    if(keysizes.contains("aes256") && has_key("aes-256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM256) );
 		}
-		if(keysizes.contains("rsa4096")) {
-		    if(keysizes.contains("aes128"))
+		if(keysizes.contains("rsa4096") && has_key("rsa-4096")) {
+		    if(keysizes.contains("aes128") && has_key("aes-128"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192"))
+		    if(keysizes.contains("aes192") && has_key("aes-192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256"))
+		    if(keysizes.contains("aes256") && has_key("aes-256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM256) );
 		}
 	    }
 
 	    if(tests.contains("jwe") || tests.contains("jweoaepsha256")) {
-		if(keysizes.contains("rsa2048")) {
-		    if(keysizes.contains("aes128"))
+		if(keysizes.contains("rsa2048") && has_key("rsa-2048")) {
+		    if(keysizes.contains("aes128") && has_key("aes-128"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192"))
+		    if(keysizes.contains("aes192") && has_key("aes-192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256"))
+		    if(keysizes.contains("aes256") && has_key("aes-256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM256) );
 		}
-		if(keysizes.contains("rsa3072")) {
-		    if(keysizes.contains("aes128"))
+		if(keysizes.contains("rsa3072") && has_key("rsa-3072")) {
+		    if(keysizes.contains("aes128") && has_key("aes-128"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192"))
+		    if(keysizes.contains("aes192") && has_key("aes-192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256"))
+		    if(keysizes.contains("aes256") && has_key("aes-256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM256) );
 		}
-		if(keysizes.contains("rsa4096")) {
-		    if(keysizes.contains("aes128"))
+		if(keysizes.contains("rsa4096") && has_key("rsa-4096")) {
+		    if(keysizes.contains("aes128") && has_key("aes-128"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192"))
+		    if(keysizes.contains("aes192") && has_key("aes-192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256"))
+		    if(keysizes.contains("aes256") && has_key("aes-256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM256) );
 		}
 	    }
 
 	    if(tests.contains("ecdsa")) {
-		if(keysizes.contains("ecnistp256")) benchmarks.emplace_front( new P11ECDSASigBenchmark("ecdsa-secp256r1") );
-		if(keysizes.contains("ecnistp384")) benchmarks.emplace_front( new P11ECDSASigBenchmark("ecdsa-secp384r1") );
-		if(keysizes.contains("ecnistp521")) benchmarks.emplace_front( new P11ECDSASigBenchmark("ecdsa-secp521r1") );
+		if(keysizes.contains("ecnistp256") && has_key("ecdsa-secp256r1")) benchmarks.emplace_front( new P11ECDSASigBenchmark("ecdsa-secp256r1") );
+		if(keysizes.contains("ecnistp384") && has_key("ecdsa-secp384r1")) benchmarks.emplace_front( new P11ECDSASigBenchmark("ecdsa-secp384r1") );
+		if(keysizes.contains("ecnistp521") && has_key("ecdsa-secp521r1")) benchmarks.emplace_front( new P11ECDSASigBenchmark("ecdsa-secp521r1") );
 	    }
 
 	    if(tests.contains("ecdh")) {
-		if(keysizes.contains("ecnistp256")) benchmarks.emplace_front( new P11ECDH1DeriveBenchmark("ecdh-secp256r1") );
-		if(keysizes.contains("ecnistp384")) benchmarks.emplace_front( new P11ECDH1DeriveBenchmark("ecdh-secp384r1") );
-		if(keysizes.contains("ecnistp521")) benchmarks.emplace_front( new P11ECDH1DeriveBenchmark("ecdh-secp521r1") );
+		if(keysizes.contains("ecnistp256") && has_key("ecdh-secp256r1")) benchmarks.emplace_front( new P11ECDH1DeriveBenchmark("ecdh-secp256r1") );
+		if(keysizes.contains("ecnistp384") && has_key("ecdh-secp384r1")) benchmarks.emplace_front( new P11ECDH1DeriveBenchmark("ecdh-secp384r1") );
+		if(keysizes.contains("ecnistp521") && has_key("ecdh-secp521r1")) benchmarks.emplace_front( new P11ECDH1DeriveBenchmark("ecdh-secp521r1") );
 	    }
 
 	    if(tests.contains("hmac")) {
-		if(keysizes.contains("hmac160")) benchmarks.emplace_front( new P11HMACSHA1Benchmark("hmac-160") );
-		if(keysizes.contains("hmac256")) benchmarks.emplace_front( new P11HMACSHA256Benchmark("hmac-256") );
-		if(keysizes.contains("hmac512")) benchmarks.emplace_front( new P11HMACSHA512Benchmark("hmac-512") );
+		if(keysizes.contains("hmac160") && has_key("hmac-160")) benchmarks.emplace_front( new P11HMACSHA1Benchmark("hmac-160") );
+		if(keysizes.contains("hmac256") && has_key("hmac-256")) benchmarks.emplace_front( new P11HMACSHA256Benchmark("hmac-256") );
+		if(keysizes.contains("hmac512") && has_key("hmac-512")) benchmarks.emplace_front( new P11HMACSHA512Benchmark("hmac-512") );
 	    }
 
 	    if(tests.contains("des") || tests.contains("desecb")) {
-		if(keysizes.contains("des128")) benchmarks.emplace_front( new P11DES3ECBBenchmark("des-128") );
-		if(keysizes.contains("des192")) benchmarks.emplace_front( new P11DES3ECBBenchmark("des-192") );
+		if(keysizes.contains("des128") && has_key("des-128")) benchmarks.emplace_front( new P11DES3ECBBenchmark("des-128") );
+		if(keysizes.contains("des192") && has_key("des-192")) benchmarks.emplace_front( new P11DES3ECBBenchmark("des-192") );
 	    }
 
 	    if(tests.contains("des") || tests.contains("descbc")) {
-		if(keysizes.contains("des128")) benchmarks.emplace_front( new P11DES3CBCBenchmark("des-128") );
-		if(keysizes.contains("des192")) benchmarks.emplace_front( new P11DES3CBCBenchmark("des-192") );
+		if(keysizes.contains("des128") && has_key("des-128")) benchmarks.emplace_front( new P11DES3CBCBenchmark("des-128") );
+		if(keysizes.contains("des192") && has_key("des-192")) benchmarks.emplace_front( new P11DES3CBCBenchmark("des-192") );
 	    }
 
 	    if(tests.contains("aes") || tests.contains("aesecb")) {
-		if(keysizes.contains("aes128")) benchmarks.emplace_front( new P11AESECBBenchmark("aes-128") );
-		if(keysizes.contains("aes192")) benchmarks.emplace_front( new P11AESECBBenchmark("aes-192") );
-		if(keysizes.contains("aes256")) benchmarks.emplace_front( new P11AESECBBenchmark("aes-256") );
+		if(keysizes.contains("aes128") && has_key("aes-128")) benchmarks.emplace_front( new P11AESECBBenchmark("aes-128") );
+		if(keysizes.contains("aes192") && has_key("aes-192")) benchmarks.emplace_front( new P11AESECBBenchmark("aes-192") );
+		if(keysizes.contains("aes256") && has_key("aes-256")) benchmarks.emplace_front( new P11AESECBBenchmark("aes-256") );
 	    }
 
 	    if(tests.contains("aes") || tests.contains("aescbc")) {
-		if(keysizes.contains("aes128")) benchmarks.emplace_front( new P11AESCBCBenchmark("aes-128") );
-		if(keysizes.contains("aes192")) benchmarks.emplace_front( new P11AESCBCBenchmark("aes-192") );
-		if(keysizes.contains("aes256")) benchmarks.emplace_front( new P11AESCBCBenchmark("aes-256") );
+		if(keysizes.contains("aes128") && has_key("aes-128")) benchmarks.emplace_front( new P11AESCBCBenchmark("aes-128") );
+		if(keysizes.contains("aes192") && has_key("aes-192")) benchmarks.emplace_front( new P11AESCBCBenchmark("aes-192") );
+		if(keysizes.contains("aes256") && has_key("aes-256")) benchmarks.emplace_front( new P11AESCBCBenchmark("aes-256") );
 	    }
 
 	    if(tests.contains("aes") || tests.contains("aesgcm")) {
-		if(keysizes.contains("aes128")) benchmarks.emplace_front( new P11AESGCMBenchmark("aes-128", vendor) );
-		if(keysizes.contains("aes192")) benchmarks.emplace_front( new P11AESGCMBenchmark("aes-192", vendor) );
-		if(keysizes.contains("aes256")) benchmarks.emplace_front( new P11AESGCMBenchmark("aes-256", vendor) );
+		if(keysizes.contains("aes128") && has_key("aes-128")) benchmarks.emplace_front( new P11AESGCMBenchmark("aes-128", vendor) );
+		if(keysizes.contains("aes192") && has_key("aes-192")) benchmarks.emplace_front( new P11AESGCMBenchmark("aes-192", vendor) );
+		if(keysizes.contains("aes256") && has_key("aes-256")) benchmarks.emplace_front( new P11AESGCMBenchmark("aes-256", vendor) );
 	    }
 
 	    if(tests.contains("xorder")) {
-		benchmarks.emplace_front( new P11XorKeyDataDeriveBenchmark("xorder-128") );
+		if(has_key("xorder-128")) benchmarks.emplace_front( new P11XorKeyDataDeriveBenchmark("xorder-128") );
 	    }
 
 	    if(tests.contains("rand")) {
-		benchmarks.emplace_front( new P11SeedRandomBenchmark("rand-128") );
-		benchmarks.emplace_front( new P11GenerateRandomBenchmark("rand-128") );
+		if(has_key("rand-128")) {
+		    benchmarks.emplace_front( new P11SeedRandomBenchmark("rand-128") );
+		    benchmarks.emplace_front( new P11GenerateRandomBenchmark("rand-128") );
+		}
 	    }
 
+	    if(tests.contains("find")) {
+		if(has_key("find-128")) {
+		    benchmarks.emplace_front( new P11FindObjectsBenchmark("find-128") );
+		}
+	    }
 	    benchmarks.reverse();
 
 
@@ -568,10 +747,6 @@ int main(int argc, char **argv)
 		}
 	    }
 	}
-	catch ( KeyGenerationException &e) {
-	    std::cerr << "Ouch, got an error while generating keys: " << e.what() << '\n'
-		      << "bailing out" << std::endl;
-	}
 	catch ( std::exception &e) {
 	    std::cerr << "Ouch, got an error while execution: " << e.what() << '\n'
 		      << "diagnostic:\n"
@@ -587,7 +762,7 @@ int main(int argc, char **argv)
 	    rv = EX_SOFTWARE;
 	}
     } else {
-      std::cout << "The slot at index " << argslot << " has no token. Aborted.\n";
+	std::cout << "The slot at index " << argslot << " has no token. Aborted.\n";
     }
     return rv;
 }
