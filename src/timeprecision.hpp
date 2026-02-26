@@ -23,9 +23,8 @@
 #include "units.hpp"
 
 // Returns (mean_ns, 95% CI half-width in ns).
-// Behavior:
-//   - Filters out unrealistic timer values (> 1 ms).
-//   - Terminates the program (std::exit) if fewer than 100 valid samples remain.
+// All clock delta samples are accepted; large values on coarse-timer VMs (e.g. 15ms on Hyper-V)
+// are legitimate measurements of that system's clock granularity.
 std::pair<nanoseconds_double_t, nanoseconds_double_t> measure_clock_precision(int iter=1000);
 
 #endif // TIMEPRECISION_H

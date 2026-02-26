@@ -9,8 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - guarantee monotonic clock (prefer `steady_clock` over `high_resolution_clock` when not steady)
 - updated 95% confidence interval to use unbiased sample variance (Bessel's correction)
 - increased clock precision sample size (1000 iterations)
-- added safety checks: filter unrealistic timer values and exit if insufficient valid samples
-- return typed `nanoseconds_double_t` durations from `measure_clock_precision`
+- all clock delta samples are accepted as valid (large values on coarse-timer VMs are legitimate measurements)
 
 ## 3.16.0 - 2025-02-26
 ### Added

@@ -21,7 +21,6 @@
 #include <iostream>
 #include <chrono>
 #include <cmath>
-#include <cstdlib>
 
 using namespace std;
 
@@ -54,23 +53,13 @@ pair<nanoseconds_double_t, nanoseconds_double_t> measure_clock_precision(int ite
             std::chrono::duration_cast<std::chrono::nanoseconds>(current - start).count();
         const double x = static_cast<double>(delta_ns);
 
-        // Filter out unrealistic values (likely measurement errors)
-        // Timer granularity should be < 1ms on modern systems
-        if (x > 0.0 && x < 1'000'000.0) { // between 0 and 1 ms (in nanoseconds)
-            ++n;
-            const double delta  = x - mean;
-            mean += delta / static_cast<double>(n);
-            const double delta2 = x - mean;
-            M2 += delta * delta2;
-        } else {
-            std::cerr << "Warning: Filtered out unrealistic timer value: " << delta_ns << " ns\n";
-        }
-    }
-
-    // Kill the app if insufficient number of valid samples
-    if (n < 100) {
-        std::cerr << "Fatal error: Insufficient valid samples (" << n << "). Exiting.\n";
-        std::exit(EXIT_FAILURE); // terminate the program with failure status
+        // All non-zero deltas are valid: a large value (e.g. 15ms on Hyper-V) is a legitimate
+        // measurement of the system's clock granularity, not an error.
+        ++n;
+        const double delta  = x - mean;
+        mean += delta / static_cast<double>(n);
+        const double delta2 = x - mean;
+        M2 += delta * delta2;
     }
 
     // Unbiased sample variance (requires n >= 2, which is implied at this point)
