@@ -16,16 +16,6 @@
 // limitations under the License.
 //
 
-// this code is inspired from Boost library test sample
-// https://www.boost.org/doc/libs/1_72_0/libs/timer/test/cpu_timer_info.cpp
-
-//  Original copyright notice:
-//
-//  Copyright Beman Dawes 2006
-//  Distributed under the Boost Software License, Version 1.0.
-//  See http://www.boost.org/LICENSE_1_0.txt
-
-
 #include "timeprecision.hpp"
 
 #include <iostream>
@@ -37,9 +27,8 @@ using namespace std;
 
 // Returned time is in nanoseconds (ns).
 // Reference: https://www.statsdirect.com/help/basic_descriptive_statistics/standard_deviation.htm
-// TODO: use chrono literals for units if/when interface becomes typed
 
-pair<double, double> measure_clock_precision(int iter)
+pair<nanoseconds_double_t, nanoseconds_double_t> measure_clock_precision(int iter)
 {
     // Guard against non-monotonic high_resolution_clock (may alias system_clock) at compile-time
     using clock = std::conditional_t<
@@ -91,5 +80,5 @@ pair<double, double> measure_clock_precision(int iter)
     // ci_halfwidth_95 = sqrt( sample_variance / n ) * 1.96
     double ci_halfwidth_95 = std::sqrt(sample_variance / static_cast<double>(n)) * 1.96;
 
-    return make_pair(mean, ci_halfwidth_95);
+    return {nanoseconds_double_t(mean), nanoseconds_double_t(ci_halfwidth_95)};
 }
