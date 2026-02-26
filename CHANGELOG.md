@@ -3,6 +3,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
+## 3.16.1 - 2026-02-26
+### Changed
+- replaced Boost accumulator with Welford online algorithm for timer precision variance calculation
+- guarantee monotonic clock (prefer `steady_clock` over `high_resolution_clock` when not steady)
+- updated 95% confidence interval to use unbiased sample variance (Bessel's correction)
+- increased clock precision sample size (1000 iterations)
+- added safety checks: filter unrealistic timer values and exit if insufficient valid samples
+- return typed `nanoseconds_double_t` durations from `measure_clock_precision`
+
 ## 3.16.0 - 2025-02-26
 ### Added
  - Docker buildx recipes and scripts
@@ -24,14 +33,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
  - compilation warning under CLANG removed (using `std::abs` instead of `abs`)
  - updated python dependencies to fix reported vulnerabilities
-
-## 3.15.2 - 2025-12-12
-### Updated
-- removed Welford variance calculation boost dependency for timer precision (using standard lib)
-- guarantee monotonic clock
-- updated confidence interval calculation for sample variance
-- increased sample size
-- safety checks
 
 ## 3.15.1 - 2025-11-26
 ### Fixed
