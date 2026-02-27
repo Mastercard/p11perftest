@@ -612,8 +612,8 @@ int main(int argc, char **argv)
 	    }
 
 	    // JWE ( RSA OAEP + AES GCM )
-		// for JWE, we don't need to check has_key("") for AES, as these are session keys generated on the fly for each iteration of the benchmark, 
-		// and not persistent keys generated beforehand. We only check for the presence of RSA keys, which are needed for the key encryption step of JWE.
+	    // for JWE, we don't need to check has_key("") for AES, as these are session keys generated on the fly for each iteration of the benchmark, 
+	    // and not persistent keys generated beforehand. We only check for the presence of RSA keys, which are needed for the key encryption step of JWE.
 	    if(tests.contains("jwe") || tests.contains("jweoaepsha1")) {
 		if(keysizes.contains("rsa2048") && has_key("rsa-2048")) {
 		    if(keysizes.contains("aes128") )

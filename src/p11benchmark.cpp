@@ -108,9 +108,12 @@ benchmark_result::benchmark_result_t P11Benchmark::execute(Session *session, con
 
     // a small lambda to handle exceptions in a uniform way
     auto handle_benchmark_exception = [&](auto const& exc) {
-        std::lock_guard<std::mutex> lg{display_mtx};
-        std::cerr << "ERROR: " << exc.what() << std::endl;
-        return_code = decltype(exc){exc}; 
+        {
+            std::lock_guard<std::mutex> lg{display_mtx};
+            std::cerr << "ERROR: " << exc.what() << std::endl;
+        }
+        using Exc = std::decay_t<decltype(exc)>;
+        return_code = Exc{exc};
     };
 
     try {

@@ -69,6 +69,13 @@ bool P11OAEPEncryptBenchmark::is_payload_supported(size_t payload_size)
     if (m_modulus_size_bytes == 0) return true;
     
     size_t hash_len = (m_hashalg == HashAlg::SHA1) ? 20 : 32;
+
+    // Ensure modulus size is large enough to support OAEP with this hash;
+    // otherwise, any payload would be unsupported.
+    if (m_modulus_size_bytes < 2 * hash_len + 2) {
+        return false;
+    }
+
     size_t max_payload = m_modulus_size_bytes - 2 * hash_len - 2;
     
     return payload_size <= max_payload;

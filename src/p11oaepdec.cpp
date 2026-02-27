@@ -66,9 +66,18 @@ bool P11OAEPDecryptBenchmark::is_payload_supported(size_t payload_size)
 {
     // OAEP max payload = modulus_size - 2*hash_len - 2
     // Return true if modulus size not yet known (will be checked in prepare)
-    if (m_modulus_size_bytes == 0) return true;
+    if (m_modulus_size_bytes == 0) { 
+	return true;
+    }
     
     size_t hash_len = (m_hashalg == HashAlg::SHA1) ? 20 : 32;
+    
+    // Ensure modulus size is large enough to support OAEP with this hash;  
+    // otherwise, any payload would be unsupported.  
+    if (m_modulus_size_bytes < 2 * hash_len + 2) {  
+        return false;  
+    }
+
     size_t max_payload = m_modulus_size_bytes - 2 * hash_len - 2;
     
     return payload_size <= max_payload;
@@ -103,6 +112,10 @@ void P11OAEPDecryptBenchmark::prepare(Session &session, Object &obj, std::option
     // Retrieve modulus size from the RSA public key
     auto modulus = pubk_handles[0].get_attribute_value(AttributeType::Modulus);
     m_modulus_size_bytes = modulus.size();
+
+    if( !is_payload_supported( m_payload.size() ) ) {
+        throw benchmark_result::PayloadSizeNotSupported(m_payload.size());
+    }
 
     m_encrypted.resize(m_modulus_size_bytes);
 
