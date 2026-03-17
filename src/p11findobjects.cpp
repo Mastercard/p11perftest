@@ -163,7 +163,7 @@ void P11FindObjectsBenchmark::crashtestdummy(Session &session)
     
     // Verify we found exactly one object
     if (found_count != 1) {
-        throw benchmark_result::NotFound(label_data);
+        throw benchmark_result::NotFound(std::string(label_data, label_len));
     }
 }
 

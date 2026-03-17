@@ -18,6 +18,46 @@
 
 // p11oaepdec: PKCS#11 OAEP decryption (i.e. not unwrapping!)
 
+// ============================================================================
+// TEST CASE: RSA PKCS#1 OAEP Decryption
+// ============================================================================
+//
+// DESCRIPTION:
+//   This test case measures the performance of RSA decryption using the
+//   PKCS#1 OAEP (Optimal Asymmetric Encryption Padding) scheme. It decrypts
+//   a pre-encrypted payload using the CKM_RSA_PKCS_OAEP mechanism with a
+//   configurable hash algorithm for both the hash function and MGF.
+//
+// PAYLOAD:
+//   The payload consists of random data of configurable size. The maximum
+//   supported payload size is constrained by the RSA modulus and hash
+//   algorithm: max_payload = modulus_size_bytes - 2 * hash_len - 2.
+//   During preparation, the payload is encrypted with the matching RSA
+//   public key; the benchmark loop then performs the decryption operation.
+//
+// KEY REQUIREMENTS:
+//   - Key type: CKK_RSA (private key)
+//   - Key sizes: any RSA modulus size (e.g. 1024, 2048, 3072, 4096 bits)
+//   - The token must also have a matching RSA public key with the same label
+//     (used during the prepare phase to encrypt the payload)
+//   - Key attributes: CKA_DECRYPT must be set to CK_TRUE
+//
+// OPTIONS:
+//   --keysize <bits>    : Specifies the RSA key size (e.g. 2048, 4096)
+//   --payload <bytes>   : Size of data to decrypt (bounded by OAEP overhead)
+//   --hash <alg>        : Hash algorithm to use: sha1 (default) or sha256
+//
+// TESTING APPROACH:
+//   During prepare(), the matching RSA public key is located by label and
+//   used to encrypt the payload via C_Encrypt with CKM_RSA_PKCS_OAEP. The
+//   benchmark loop (crashtestdummy) then calls C_DecryptInit / C_Decrypt
+//   repeatedly, measuring the throughput of the OAEP decryption operation.
+//   The hash algorithm controls both the OAEP hash (hashAlg) and the mask
+//   generation function (MGF): SHA-1 uses CKG_MGF1_SHA1, SHA-256 uses
+//   CKG_MGF1_SHA256.
+//
+// ============================================================================
+
 #if !defined P11OAEPDEC_HPP
 #define P11OAEPDEC_HPP
 

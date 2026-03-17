@@ -103,13 +103,11 @@ void P11OAEPUnwrapBenchmark::prepare(Session &session, Object &obj, std::optiona
     auto pubk_handles = Object::search<Object>( session, pubkey_search_template.attributes() );
 
     if( pubk_handles.size()==0 ) {
-	std::cerr << "Error: no public key found for label '" << label << "'" << std::endl;
-	throw std::string("Error: no public key found for given label"); // TODO fix
+        throw benchmark_result::NotFound(label);
     }
 
     if( pubk_handles.size()>1) {
-	std::cerr << "Error: more than one public key found for label '" << label << "'" << std::endl;
-	throw std::string("Error: more than one public key found for given label"); // TODO fix
+        throw benchmark_result::AmbiguousResult(label);
     }
 
     // OK now let's wrap the key
