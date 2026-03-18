@@ -64,23 +64,8 @@ inline P11OAEPUnwrapBenchmark *P11OAEPUnwrapBenchmark::clone() const {
 
 bool P11OAEPUnwrapBenchmark::is_payload_supported(size_t payload_size)
 {
-    // OAEP max payload = modulus_size - 2*hash_len - 2
-    // Return true if modulus size not yet known (will be checked in prepare)
-    if (m_modulus_size_bytes == 0) { 
-	return true;
-    }
-    
     size_t hash_len = (m_hashalg == HashAlg::SHA1) ? 20 : 32;
-    
-    // Ensure modulus size is large enough to support OAEP with this hash;  
-    // otherwise, any payload would be unsupported.  
-    if (m_modulus_size_bytes < 2 * hash_len + 2) {  
-        return false;  
-    }
-
-    size_t max_payload = m_modulus_size_bytes - 2 * hash_len - 2;
-    
-    return payload_size <= max_payload;
+    return oaep_payload_supported(m_modulus_size_bytes, hash_len, payload_size);
 }
 
 void P11OAEPUnwrapBenchmark::prepare(Session &session, Object &obj, std::optional<size_t> threadindex)

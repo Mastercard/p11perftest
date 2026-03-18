@@ -185,6 +185,16 @@ public:
     // provides a way to test cases to skip invalid key sizes
     virtual bool is_payload_supported(size_t payload_size) { return true; }
 
+protected:
+    // helper for OAEP payload size validation, shared by OAEP decrypt/encrypt/unwrap
+    static bool oaep_payload_supported(size_t modulus_size_bytes, size_t hash_len, size_t payload_size) {
+	if (modulus_size_bytes == 0) return true;
+	if (modulus_size_bytes < 2 * hash_len + 2) return false;
+	return payload_size <= modulus_size_bytes - 2 * hash_len - 2;
+    }
+
+public:
+
     benchmark_result::benchmark_result_t execute(Session* session, const std::vector<uint8_t> &payload, size_t iterations, size_t skipiterations, std::optional<size_t> threadindex);
 
 };
