@@ -612,56 +612,58 @@ int main(int argc, char **argv)
 	    }
 
 	    // JWE ( RSA OAEP + AES GCM )
+	    // for JWE, we don't need to check has_key("") for AES, as these are session keys generated on the fly for each iteration of the benchmark, 
+	    // and not persistent keys generated beforehand. We only check for the presence of RSA keys, which are needed for the key encryption step of JWE.
 	    if(tests.contains("jwe") || tests.contains("jweoaepsha1")) {
 		if(keysizes.contains("rsa2048") && has_key("rsa-2048")) {
-		    if(keysizes.contains("aes128") && has_key("aes-128"))
+		    if(keysizes.contains("aes128") )
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192") && has_key("aes-192"))
+		    if(keysizes.contains("aes192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256") && has_key("aes-256"))
+		    if(keysizes.contains("aes256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM256) );
 		}
 		if(keysizes.contains("rsa3072") && has_key("rsa-3072")) {
-		    if(keysizes.contains("aes128") && has_key("aes-128"))
+		    if(keysizes.contains("aes128"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192") && has_key("aes-192"))
+		    if(keysizes.contains("aes192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256") && has_key("aes-256"))
+		    if(keysizes.contains("aes256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM256) );
 		}
 		if(keysizes.contains("rsa4096") && has_key("rsa-4096")) {
-		    if(keysizes.contains("aes128") && has_key("aes-128"))
+		    if(keysizes.contains("aes128"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192") && has_key("aes-192"))
+		    if(keysizes.contains("aes192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256") && has_key("aes-256"))
+		    if(keysizes.contains("aes256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA1, P11JWEBenchmark::SymAlg::GCM256) );
 		}
 	    }
 
 	    if(tests.contains("jwe") || tests.contains("jweoaepsha256")) {
 		if(keysizes.contains("rsa2048") && has_key("rsa-2048")) {
-		    if(keysizes.contains("aes128") && has_key("aes-128"))
+		    if(keysizes.contains("aes128"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192") && has_key("aes-192"))
+		    if(keysizes.contains("aes192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256") && has_key("aes-256"))
+		    if(keysizes.contains("aes256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-2048", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM256) );
 		}
 		if(keysizes.contains("rsa3072") && has_key("rsa-3072")) {
-		    if(keysizes.contains("aes128") && has_key("aes-128"))
+		    if(keysizes.contains("aes128"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192") && has_key("aes-192"))
+		    if(keysizes.contains("aes192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256") && has_key("aes-256"))
+		    if(keysizes.contains("aes256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-3072", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM256) );
 		}
 		if(keysizes.contains("rsa4096") && has_key("rsa-4096")) {
-		    if(keysizes.contains("aes128") && has_key("aes-128"))
+		    if(keysizes.contains("aes128"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM128) );
-		    if(keysizes.contains("aes192") && has_key("aes-192"))
+		    if(keysizes.contains("aes192"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM192) );
-		    if(keysizes.contains("aes256") && has_key("aes-256"))
+		    if(keysizes.contains("aes256"))
 			benchmarks.emplace_front( new P11JWEBenchmark("rsa-4096", vendor, P11JWEBenchmark::HashAlg::SHA256, P11JWEBenchmark::SymAlg::GCM256) );
 		}
 	    }

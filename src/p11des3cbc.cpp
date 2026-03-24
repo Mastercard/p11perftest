@@ -31,6 +31,11 @@ inline P11DES3CBCBenchmark *P11DES3CBCBenchmark::clone() const {
     return new P11DES3CBCBenchmark{*this};
 }
 
+bool P11DES3CBCBenchmark::is_payload_supported(size_t payload_size)
+{
+    // DES3 CBC requires payload to be multiple of block size (8 bytes)
+    return (payload_size % 8) == 0;
+}
 
 void P11DES3CBCBenchmark::prepare(Session &session, Object &obj, std::optional<size_t> threadindex)
 {

@@ -23,6 +23,51 @@
 
 #include "p11benchmark.hpp"
 
+// ============================================================================
+// TEST CASE: JWE Decryption (JSON Web Encryption - RFC 7516)
+// ============================================================================
+//
+// DESCRIPTION:
+//   This test case measures the performance of JWE (JSON Web Encryption)
+//   decryption, which combines asymmetric key unwrapping with symmetric
+//   authenticated encryption. It implements the RSA-OAEP + AES-GCM algorithm
+//   combination commonly used in JWE, performing both key unwrap and content
+//   decryption operations.
+//
+// PAYLOAD:
+//   The payload is the encrypted content (ciphertext) that will be decrypted
+//   after unwrapping the content encryption key (CEK). The payload size is
+//   configurable and represents the size of the encrypted data. The test
+//   simulates a complete JWE decryption workflow.
+//
+// KEY REQUIREMENTS:
+//   - Key type: CKK_RSA (RSA private key for CEK unwrapping)
+//   - Key sizes: Common RSA key sizes (2048, 3072, 4096 bits)
+//   - The key must support unwrap operations (CKA_UNWRAP = TRUE)
+//   - A temporary AES key (CEK) is unwrapped and used for content decryption
+//   - AES key sizes: 128, 192, or 256 bits (configurable via SymAlg)
+//
+// OPTIONS:
+//   --keysize <bits>    : Specifies the RSA key size (2048, 3072, 4096)
+//   --payload <bytes>   : Size of encrypted content to decrypt
+//   Hash algorithm (SHA1/SHA256) and symmetric algorithm (AES-128/192/256-GCM)
+//   are configurable via constructor parameters
+//
+// TESTING APPROACH:
+//   The test implements a two-step JWE decryption process:
+//   1. KEY UNWRAP: Uses RSA-OAEP to unwrap the encrypted Content Encryption
+//      Key (CEK), importing it as an AES key into the token
+//   2. CONTENT DECRYPTION: Uses AES-GCM with the unwrapped CEK to decrypt
+//      the actual payload content
+//   During preparation, both the wrapped CEK and encrypted content are
+//   generated. The benchmark loop performs the complete two-step decryption,
+//   measuring the combined throughput. This test is particularly relevant
+//   for applications using JWE for secure message exchange, such as OAuth2
+//   tokens or encrypted API payloads. The performance includes both asymmetric
+//   and symmetric operations, providing a realistic end-to-end metric.
+//
+// ============================================================================
+
 // this class implements JWE decryption, using RSA-OAEP and AESGCM
 class P11JWEBenchmark : public P11Benchmark
 {

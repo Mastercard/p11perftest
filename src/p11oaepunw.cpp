@@ -62,33 +62,35 @@ inline P11OAEPUnwrapBenchmark *P11OAEPUnwrapBenchmark::clone() const {
     return new P11OAEPUnwrapBenchmark{*this};
 }
 
+bool P11OAEPUnwrapBenchmark::is_payload_supported(size_t payload_size)
+{
+    // OAEP max payload = modulus_size - 2*hash_len - 2
+    // Return true if modulus size not yet known (will be checked in prepare)
+    if (m_modulus_size_bytes == 0) { 
+	return true;
+    }
+    
+    size_t hash_len = (m_hashalg == HashAlg::SHA1) ? 20 : 32;
+    
+    // Ensure modulus size is large enough to support OAEP with this hash;  
+    // otherwise, any payload would be unsupported.  
+    if (m_modulus_size_bytes < 2 * hash_len + 2) {  
+        return false;  
+    }
+
+    size_t max_payload = m_modulus_size_bytes - 2 * hash_len - 2;
+    
+    return payload_size <= max_payload;
+}
+
 void P11OAEPUnwrapBenchmark::prepare(Session &session, Object &obj, std::optional<size_t> threadindex)
 {
     Byte btrue = CK_TRUE;
     Byte bfalse = CK_FALSE;
-    ObjectHandle symkey_handle;
     Mechanism mech_generic_secret_key_gen { CKM_GENERIC_SECRET_KEY_GEN, nullptr, 0 };
     Ulong keylen;
 
     m_objhandle = obj.handle();	// RSA key handle stored at m_objhandle
-
-    // we need to wrap a key, that we create.
-    // we don't use the payload, but we take payload size to generate a new key
-    // for more flexibility, we generate a CKK_GENERIC_SECRET key
-
-    keylen = m_payload.size();
-
-    std::array<Attribute,6> genseckeytemplate {
-	{
-	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Token), &bfalse, sizeof(Byte) },
-	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Private), &btrue, sizeof(Byte) },
-	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Derive), &btrue, sizeof(Byte) },
-	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Extractable), &btrue, sizeof(Byte) },
-	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::ValueLen), &keylen, sizeof(Ulong) }
-	}
-    };
-
-    session.module()->C_GenerateKey(session.handle(), &mech_generic_secret_key_gen, genseckeytemplate.data(), genseckeytemplate.size(), &symkey_handle );
 
     // retrieve the public key matching our object private key
     AttributeContainer pubkey_search_template;
@@ -101,18 +103,42 @@ void P11OAEPUnwrapBenchmark::prepare(Session &session, Object &obj, std::optiona
     auto pubk_handles = Object::search<Object>( session, pubkey_search_template.attributes() );
 
     if( pubk_handles.size()==0 ) {
-	std::cerr << "Error: no public key found for label '" << label << "'" << std::endl;
-	throw std::string("Error: no public key found for given label"); // TODO fix
+        throw benchmark_result::NotFound(label);
     }
 
     if( pubk_handles.size()>1) {
-	std::cerr << "Error: more than one public key found for label '" << label << "'" << std::endl;
-	throw std::string("Error: more than one public key found for given label"); // TODO fix
+        throw benchmark_result::AmbiguousResult(label);
     }
 
     // OK now let's wrap the key
+    // Retrieve modulus size from the RSA public key
+    auto modulus = pubk_handles[0].get_attribute_value(AttributeType::Modulus);
+    m_modulus_size_bytes = modulus.size();
 
-    m_wrapped.resize(512);	// TODO infer size from modulus size
+    if( !is_payload_supported( m_payload.size() ) ) {
+        throw benchmark_result::PayloadSizeNotSupported(m_payload.size());
+    }
+
+    keylen = m_payload.size();
+
+    // we need to wrap a key, that we create.
+    // we don't use the payload, we instead use the payload size to generate a new key
+    // for maximum flexibility, we generate a CKK_GENERIC_SECRET key
+
+    std::array<Attribute,5> genseckeytemplate {
+	{
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Token), &bfalse, sizeof(Byte) },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Private), &btrue, sizeof(Byte) },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Derive), &btrue, sizeof(Byte) },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Extractable), &btrue, sizeof(Byte) },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::ValueLen), &keylen, sizeof(Ulong) }
+	}
+    };
+
+    ObjectHandle symkey_handle;
+    session.module()->C_GenerateKey(session.handle(), &mech_generic_secret_key_gen, genseckeytemplate.data(), genseckeytemplate.size(), &symkey_handle );
+
+    m_wrapped.resize(m_modulus_size_bytes);
 
     // adjust PKCS OAEP params
     switch(m_hashalg) {

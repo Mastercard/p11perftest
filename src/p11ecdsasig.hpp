@@ -21,6 +21,41 @@
 
 #include "p11benchmark.hpp"
 
+// ============================================================================
+// TEST CASE: ECDSA Signature Generation
+// ============================================================================
+//
+// DESCRIPTION:
+//   This test case measures the performance of ECDSA (Elliptic Curve Digital
+//   Signature Algorithm) signature generation. It signs pre-computed digests
+//   using EC private keys through the PKCS#11 interface.
+//
+// PAYLOAD:
+//   The payload is a pre-computed hash/digest of the data to be signed.
+//   The digest is generated using Botan's hashing facilities and provided
+//   to the signing operation. The digest size depends on the hash algorithm
+//   used (typically SHA-256, producing a 32-byte digest).
+//
+// KEY REQUIREMENTS:
+//   - Key type: CKK_EC (EC private key)
+//   - Key curves: Supported elliptic curves (e.g., P-256, P-384, P-521)
+//   - The key must be a private key with signing capabilities
+//   - Key attributes: CKA_SIGN must be set to CK_TRUE
+//   - The key must be accessible via PKCS#11 and usable with Botan's
+//     PKCS11_ECDSA_PrivateKey wrapper
+//
+// OPTIONS:
+//   --keysize <bits>    : Specifies the EC curve size (256, 384, or 521)
+//
+// TESTING APPROACH:
+//   The test uses Botan's PKCS#11 integration to wrap the EC private key
+//   and create a PK_Signer object. During the prepare phase, the digest
+//   is computed once. The benchmark loop repeatedly signs this digest,
+//   measuring the number of signature operations per second. This approach
+//   isolates the cryptographic signing operation from hashing overhead.
+//
+// ============================================================================
+
 class P11ECDSASigBenchmark : public P11Benchmark
 {
     Botan::AutoSeeded_RNG m_rng;

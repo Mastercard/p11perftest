@@ -44,18 +44,79 @@ namespace benchmark_result {
     // an exception to signal that an object was not found
     class NotFound : public std::exception
     {
+        mutable std::string m_whatmsg;
+
     public:
+        // constructor - with a label
+        NotFound(const std::string &label) {
+            m_whatmsg = "Object with label '" + label + "' not found";
+        }
+
+        // constructor - with a C string label
+        NotFound(const char *label) {
+            m_whatmsg = "Object with label '" + std::string(label) + "' not found";
+        }
+
+        // copy constructor
+        NotFound(const NotFound&) = default;
+
         virtual const char* what() const noexcept override
         {
-            return "Requested object not found";
+            return m_whatmsg.c_str();
+        }
+    };
+
+    // an exception to signal that multiple objects were found when only one was expected
+    class AmbiguousResult : public std::exception
+    {
+        mutable std::string m_whatmsg;
+
+    public:
+        // constructor - with a label
+        AmbiguousResult(const std::string &label) {
+            m_whatmsg = "Multiple objects with label '" + label + "' found";
+        }
+
+        // constructor - with a C string label
+        AmbiguousResult(const char *label) {
+            m_whatmsg = "Multiple objects with label '" + std::string(label) + "' found";
+        }
+        
+        // copy constructor
+        AmbiguousResult(const AmbiguousResult&) = default;
+        virtual const char* what() const noexcept override
+        {
+            return m_whatmsg.c_str();
+        }
+    };
+
+    // an exception to signal that the payload size is not supported
+    class PayloadSizeNotSupported : public std::exception
+    {
+        size_t m_size;
+        mutable std::string m_whatmsg;
+
+    public:
+        // constructor: takes an argument containing the payload size
+        PayloadSizeNotSupported(size_t size) : m_size(size) { 
+            m_whatmsg = "Payload with size " + std::to_string(m_size) + " is not supported for this benchmark";
+        }
+
+        // copy constructor
+        PayloadSizeNotSupported(const PayloadSizeNotSupported&) = default;
+
+        virtual const char* what() const noexcept override
+        {
+            return m_whatmsg.c_str();
         }
     };
 
     using Ok = std::monostate;      // the default: all went well
+    
     // ApiErr is the type returned by Botan::PKCS11::PKCS11_Error::error_code()
     using ApiErr = decltype(std::declval<Botan::PKCS11::PKCS11_ReturnError>().error_code());
 
-    using operation_outcome_t = std::variant<Ok, ApiErr, NotFound>;
+    using operation_outcome_t = std::variant<Ok, ApiErr, NotFound, AmbiguousResult, PayloadSizeNotSupported>;
     using benchmark_result_t = std::pair<std::vector<milliseconds_double_t>,operation_outcome_t>;
 }
 
@@ -120,6 +181,9 @@ public:
     inline std::string label() const { return m_label; }
 
     virtual std::string features() const;
+
+    // provides a way to test cases to skip invalid key sizes
+    virtual bool is_payload_supported(size_t payload_size) { return true; }
 
     benchmark_result::benchmark_result_t execute(Session* session, const std::vector<uint8_t> &payload, size_t iterations, size_t skipiterations, std::optional<size_t> threadindex);
 

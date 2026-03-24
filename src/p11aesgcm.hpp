@@ -23,6 +23,40 @@
 
 #include "p11benchmark.hpp"
 
+// ============================================================================
+// TEST CASE: AES-GCM Encryption
+// ============================================================================
+//
+// DESCRIPTION:
+//   This test case measures the performance of AES encryption using Galois/
+//   Counter Mode (GCM), an authenticated encryption mode. It encrypts
+//   variable-size payloads using the CKM_AES_GCM mechanism with a randomly
+//   generated initialization vector and produces an authentication tag.
+//
+// PAYLOAD:
+//   The payload consists of random data of configurable size. Unlike ECB and
+//   CBC modes, GCM does not require the payload to be a multiple of the block
+//   size. The payload size is specified via command-line options.
+//
+// KEY REQUIREMENTS:
+//   - Key type: CKK_AES (secret key)
+//   - Key sizes: 128, 192, or 256 bits
+//   - The key must support encryption operations
+//   - Key attributes: CKA_ENCRYPT must be set to CK_TRUE
+//
+// OPTIONS:
+//   --keysize <bits>    : Specifies the AES key size (128, 192, or 256)
+//   --payload <bytes>   : Size of data to encrypt (any size supported)
+//
+// TESTING APPROACH:
+//   The test performs authenticated encryption operations in a tight loop.
+//   GCM mode provides both confidentiality and authenticity with a 128-bit
+//   authentication tag. The IV is randomly generated during the prepare phase.
+//   The performance metric is the number of encryption operations per second
+//   and data throughput, including the authentication overhead.
+//
+// ============================================================================
+
 class P11AESGCMBenchmark : public P11Benchmark
 {
     std::vector<uint8_t> m_iv;

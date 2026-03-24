@@ -62,6 +62,27 @@ inline P11OAEPDecryptBenchmark *P11OAEPDecryptBenchmark::clone() const {
     return new P11OAEPDecryptBenchmark{*this};
 }
 
+bool P11OAEPDecryptBenchmark::is_payload_supported(size_t payload_size)
+{
+    // OAEP max payload = modulus_size - 2*hash_len - 2
+    // Return true if modulus size not yet known (will be checked in prepare)
+    if (m_modulus_size_bytes == 0) { 
+	return true;
+    }
+    
+    size_t hash_len = (m_hashalg == HashAlg::SHA1) ? 20 : 32;
+    
+    // Ensure modulus size is large enough to support OAEP with this hash;  
+    // otherwise, any payload would be unsupported.  
+    if (m_modulus_size_bytes < 2 * hash_len + 2) {  
+        return false;  
+    }
+
+    size_t max_payload = m_modulus_size_bytes - 2 * hash_len - 2;
+    
+    return payload_size <= max_payload;
+}
+
 void P11OAEPDecryptBenchmark::prepare(Session &session, Object &obj, std::optional<size_t> threadindex)
 {
 
@@ -76,21 +97,25 @@ void P11OAEPDecryptBenchmark::prepare(Session &session, Object &obj, std::option
     pubkey_search_template.add_class( ObjectClass::PublicKey );
 
     auto pubk_handles = Object::search<Object>( session, pubkey_search_template.attributes() );
-
+ 
     if( pubk_handles.size()==0 ) {
-	std::cerr << "Error: no public key found for label '" << label << "'" << std::endl;
-	throw std::string("Error: no public key found for given label"); // TODO fix
+        throw benchmark_result::NotFound(label);
     }
 
     if( pubk_handles.size()>1) {
-	std::cerr << "Error: more than one public key found for label '" << label << "'" << std::endl;
-	throw std::string("Error: more than one public key found for given label"); // TODO fix
+        throw benchmark_result::AmbiguousResult(label);
     }
 
     // OK now let's encrypt the payload
+    // Retrieve modulus size from the RSA public key
+    auto modulus = pubk_handles[0].get_attribute_value(AttributeType::Modulus);
+    m_modulus_size_bytes = modulus.size();
 
-    m_encrypted.resize(512);	// TODO infer size from modulus size
-    // TODO check also if payload does not exceed maximum size
+    if( !is_payload_supported( m_payload.size() ) ) {
+        throw benchmark_result::PayloadSizeNotSupported(m_payload.size());
+    }
+
+    m_encrypted.resize(m_modulus_size_bytes);
 
     // adjust PKCS OAEP params
     switch(m_hashalg) {

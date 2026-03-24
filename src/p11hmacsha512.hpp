@@ -21,6 +21,39 @@
 
 #include "p11benchmark.hpp"
 
+// ============================================================================
+// TEST CASE: HMAC-SHA512 Message Authentication
+// ============================================================================
+//
+// DESCRIPTION:
+//   This test case measures the performance of HMAC (Hash-based Message
+//   Authentication Code) using SHA-512 as the underlying hash function. It
+//   computes authentication tags for variable-size payloads using the
+//   CKM_SHA512_HMAC mechanism.
+//
+// PAYLOAD:
+//   The payload consists of random data of configurable size. HMAC can
+//   process messages of any length. The payload size is specified via
+//   command-line options. The output is a 64-byte (512-bit) digest.
+//
+// KEY REQUIREMENTS:
+//   - Key type: CKK_GENERIC_SECRET (generic secret key)
+//   - Key size: Typically matches or exceeds the hash output size (≥64 bytes)
+//   - The key must support HMAC/signing operations
+//   - Key attributes: CKA_SIGN must be set to CK_TRUE
+//
+// OPTIONS:
+//   --payload <bytes>   : Size of data to authenticate (any size supported)
+//
+// TESTING APPROACH:
+//   The test performs HMAC operations in a tight loop using C_Sign.
+//   Each iteration computes the HMAC-SHA512 of the payload, producing a
+//   64-byte authentication tag. The performance metric is the number of
+//   HMAC operations per second and data throughput. SHA-512 provides
+//   stronger security guarantees at the cost of larger output size.
+//
+// ============================================================================
+
 class P11HMACSHA512Benchmark : public P11Benchmark
 {
     static constexpr auto m_digest_size = 64;
