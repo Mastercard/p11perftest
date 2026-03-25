@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+### Added
+ - adds support for JWE-like encryption test cases (`jweenc`, `jweencsha1`/`jweencoaepsha1`, `jweencsha256`/`jweencoaepsha256`): RSA OAEP key wrapping of an AES session key, followed by AES GCM content encryption, performed on a PKCS#11 token
+
 ## 3.16.0 - 2025-02-26
 ### Added
  - Docker buildx recipes and scripts
