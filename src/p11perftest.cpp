@@ -58,6 +58,7 @@
 #include "p11oaepenc.hpp"
 #include "p11oaepunw.hpp"
 #include "p11jwe.hpp"
+#include "p11jweenc.hpp"
 #include "p11ecdsasig.hpp"
 #include "p11ecdh1derive.hpp"
 #include "p11xorkeydataderive.hpp"
@@ -113,7 +114,7 @@ int main(int argc, char **argv)
     po::options_description envvars("environment variables");
 
     // default coverage: RSA, ECDSA, HMAC, DES and AES
-    const auto default_tests {"rsa,rsapss,ecdsa,ecdh,hmac,des,aes,xorder,rand,find,jwe,oaep,oaepenc,oaepunw"};
+	const auto default_tests {"rsa,rsapss,ecdsa,ecdh,hmac,des,aes,xorder,rand,find,jwe,jweenc,oaep,oaepenc,oaepunw"};
     const auto default_vectors {"8,16,64,256,1024,4096"};
     const auto default_keysizes{"rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256"};
     const auto default_flavour{"generic"};
@@ -149,7 +150,8 @@ int main(int argc, char **argv)
 	 " - oaep = oaepsha1 + oaepsha256\n"
 	 " - oaepuwn = oaepunwsha1 + oaepunwsha256\n"
 	 " - oaepenc = oaepencsha1 + oaepencsha256\n"
-	 " - jwe  = jweoaepsha1 + jweoaepsha256")
+	 " - jwe  = jweoaepsha1 + jweoaepsha256\n"
+	 " - jweenc  = jweencoaepsha1 + jweencoaepsha256")
 	("vectors,v", po::value< std::string >()->default_value(default_vectors), "test vectors to use")
 	("keysizes,k", po::value< std::string >()->default_value(default_keysizes), "key sizes or curves to use")
 	("flavour,f", po::value< std::string >()->default_value(default_flavour), help_text_flavour.c_str() )
@@ -350,6 +352,9 @@ int main(int argc, char **argv)
 		   || tests.contains("jwe")
 		   || tests.contains("jweoaepsha1")
 		   || tests.contains("jweoaepsha256")
+		   || tests.contains("jweenc")
+		   || tests.contains("jweencoaepsha1")
+		   || tests.contains("jweencoaepsha256")
 		   || tests.contains("oaep")
 		   || tests.contains("oaepsha1")
 		   || tests.contains("oaepsha256")
@@ -609,6 +614,62 @@ int main(int argc, char **argv)
 		if(keysizes.contains("rsa2048") && has_key("rsa-2048")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-2048", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA256) );
 		if(keysizes.contains("rsa3072") && has_key("rsa-3072")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-3072", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA256) );
 		if(keysizes.contains("rsa4096") && has_key("rsa-4096")) benchmarks.emplace_front( new P11OAEPUnwrapBenchmark("rsa-4096", vendor, P11OAEPUnwrapBenchmark::HashAlg::SHA256) );
+	    }
+
+	    // JWE-like encryption ( RSA OAEP + AES GCM )
+	    // AES keys are generated per iteration; we only check RSA key presence
+	    if(tests.contains("jweenc") || tests.contains("jweencoaepsha1")) {
+		if(keysizes.contains("rsa2048") && has_key("rsa-2048")) {
+		    if(keysizes.contains("aes128") )
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-2048", vendor, P11JWEEncryptBenchmark::HashAlg::SHA1, P11JWEEncryptBenchmark::SymAlg::GCM128) );
+		    if(keysizes.contains("aes192"))
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-2048", vendor, P11JWEEncryptBenchmark::HashAlg::SHA1, P11JWEEncryptBenchmark::SymAlg::GCM192) );
+		    if(keysizes.contains("aes256"))
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-2048", vendor, P11JWEEncryptBenchmark::HashAlg::SHA1, P11JWEEncryptBenchmark::SymAlg::GCM256) );
+		}
+		if(keysizes.contains("rsa3072") && has_key("rsa-3072")) {
+		    if(keysizes.contains("aes128"))
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-3072", vendor, P11JWEEncryptBenchmark::HashAlg::SHA1, P11JWEEncryptBenchmark::SymAlg::GCM128) );
+		    if(keysizes.contains("aes192"))
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-3072", vendor, P11JWEEncryptBenchmark::HashAlg::SHA1, P11JWEEncryptBenchmark::SymAlg::GCM192) );
+		    if(keysizes.contains("aes256"))
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-3072", vendor, P11JWEEncryptBenchmark::HashAlg::SHA1, P11JWEEncryptBenchmark::SymAlg::GCM256) );
+		}
+		if(keysizes.contains("rsa4096") && has_key("rsa-4096")) {
+		    if(keysizes.contains("aes128"))
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-4096", vendor, P11JWEEncryptBenchmark::HashAlg::SHA1, P11JWEEncryptBenchmark::SymAlg::GCM128) );
+		    if(keysizes.contains("aes192"))
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-4096", vendor, P11JWEEncryptBenchmark::HashAlg::SHA1, P11JWEEncryptBenchmark::SymAlg::GCM192) );
+		    if(keysizes.contains("aes256"))
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-4096", vendor, P11JWEEncryptBenchmark::HashAlg::SHA1, P11JWEEncryptBenchmark::SymAlg::GCM256) );
+		}
+	    }
+
+	    if(tests.contains("jweenc") || tests.contains("jweencoaepsha256")) {
+		if(keysizes.contains("rsa2048") && has_key("rsa-2048")) {
+		    if(keysizes.contains("aes128"))
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-2048", vendor, P11JWEEncryptBenchmark::HashAlg::SHA256, P11JWEEncryptBenchmark::SymAlg::GCM128) );
+		    if(keysizes.contains("aes192"))
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-2048", vendor, P11JWEEncryptBenchmark::HashAlg::SHA256, P11JWEEncryptBenchmark::SymAlg::GCM192) );
+		    if(keysizes.contains("aes256"))
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-2048", vendor, P11JWEEncryptBenchmark::HashAlg::SHA256, P11JWEEncryptBenchmark::SymAlg::GCM256) );
+		}
+		if(keysizes.contains("rsa3072") && has_key("rsa-3072")) {
+		    if(keysizes.contains("aes128"))
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-3072", vendor, P11JWEEncryptBenchmark::HashAlg::SHA256, P11JWEEncryptBenchmark::SymAlg::GCM128) );
+		    if(keysizes.contains("aes192"))
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-3072", vendor, P11JWEEncryptBenchmark::HashAlg::SHA256, P11JWEEncryptBenchmark::SymAlg::GCM192) );
+		    if(keysizes.contains("aes256"))
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-3072", vendor, P11JWEEncryptBenchmark::HashAlg::SHA256, P11JWEEncryptBenchmark::SymAlg::GCM256) );
+		}
+		if(keysizes.contains("rsa4096") && has_key("rsa-4096")) {
+		    if(keysizes.contains("aes128"))
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-4096", vendor, P11JWEEncryptBenchmark::HashAlg::SHA256, P11JWEEncryptBenchmark::SymAlg::GCM128) );
+		    if(keysizes.contains("aes192"))
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-4096", vendor, P11JWEEncryptBenchmark::HashAlg::SHA256, P11JWEEncryptBenchmark::SymAlg::GCM192) );
+		    if(keysizes.contains("aes256"))
+			benchmarks.emplace_front( new P11JWEEncryptBenchmark("rsa-4096", vendor, P11JWEEncryptBenchmark::HashAlg::SHA256, P11JWEEncryptBenchmark::SymAlg::GCM256) );
+		}
 	    }
 
 	    // JWE ( RSA OAEP + AES GCM )
