@@ -3,6 +3,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+### Added
+ - each benchmark test case now documents its purpose, key requirements, and supported algorithms
+ - payload size detection support: test cases can now report the size of the payload being processed
+
+### Changed
+ - benchmark exception handling refactored for improved clarity and consistency
+
+### Fixed
+ - removed unnecessary key checks for AES in JWE benchmarks
+ - fixed key generation issue for OAEP unwrap case
+
 ## 3.16.0 - 2025-02-26
 ### Added
  - Docker buildx recipes and scripts
