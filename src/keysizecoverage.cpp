@@ -112,6 +112,18 @@ KeySizeCoverage::KeySizeCoverage(std::string tocover)
 	    m_keysize_coverage.insert(KeySize::slhdsa_256s);
 	    break;
 
+	case "slhdsa128f"_hash:
+	    m_keysize_coverage.insert(KeySize::slhdsa_128f);
+	    break;
+
+	case "slhdsa192f"_hash:
+	    m_keysize_coverage.insert(KeySize::slhdsa_192f);
+	    break;
+
+	case "slhdsa256f"_hash:
+	    m_keysize_coverage.insert(KeySize::slhdsa_256f);
+	    break;
+
 	default:
 	    std::cerr << "Uncovered key size or curve: " << token << ", skipping." << std::endl;
 	}
@@ -223,6 +235,18 @@ bool KeySizeCoverage::contains(std::string sizeorcurve)
 
     case "slhdsa256s"_hash:
 	return contains(KeySize::slhdsa_256s);
+	break;
+
+    case "slhdsa128f"_hash:
+	return contains(KeySize::slhdsa_128f);
+	break;
+
+    case "slhdsa192f"_hash:
+	return contains(KeySize::slhdsa_192f);
+	break;
+
+    case "slhdsa256f"_hash:
+	return contains(KeySize::slhdsa_256f);
 	break;
     }
     return false;

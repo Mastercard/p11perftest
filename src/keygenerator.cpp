@@ -399,7 +399,10 @@ bool KeyGenerator::generate_slhdsa_keypair(std::string alias, unsigned int unuse
     static const std::map<std::string, Ulong> paramsets {
 	{ "sha2-128s", CKP_SLH_DSA_SHA2_128S },
 	{ "sha2-192s", CKP_SLH_DSA_SHA2_192S },
-	{ "sha2-256s", CKP_SLH_DSA_SHA2_256S }
+	{ "sha2-256s", CKP_SLH_DSA_SHA2_256S },
+	{ "sha2-128f", CKP_SLH_DSA_SHA2_128F },
+	{ "sha2-192f", CKP_SLH_DSA_SHA2_192F },
+	{ "sha2-256f", CKP_SLH_DSA_SHA2_256F }
     };
 
     auto match = paramsets.find(paramset);

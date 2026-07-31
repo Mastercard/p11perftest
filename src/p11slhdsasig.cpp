@@ -42,11 +42,23 @@ namespace {
 	static const SLHDSATraits sha2_256s {
 	    "SLH-DSA-SHA2-256s Signature, externally hashed with SHA-512 (CKM_HASH_SLH_DSA)",
 	    "SHA-512", CKM_SHA512, 29792 };
+	static const SLHDSATraits sha2_128f {
+	    "SLH-DSA-SHA2-128f Signature, externally hashed with SHA-256 (CKM_HASH_SLH_DSA)",
+	    "SHA-256", CKM_SHA256, 17088 };
+	static const SLHDSATraits sha2_192f {
+	    "SLH-DSA-SHA2-192f Signature, externally hashed with SHA-384 (CKM_HASH_SLH_DSA)",
+	    "SHA-384", CKM_SHA384, 35664 };
+	static const SLHDSATraits sha2_256f {
+	    "SLH-DSA-SHA2-256f Signature, externally hashed with SHA-512 (CKM_HASH_SLH_DSA)",
+	    "SHA-512", CKM_SHA512, 49856 };
 
 	switch(parameterset) {
 	case P11SLHDSASigBenchmark::ParameterSet::SHA2_128S: return sha2_128s;
 	case P11SLHDSASigBenchmark::ParameterSet::SHA2_192S: return sha2_192s;
 	case P11SLHDSASigBenchmark::ParameterSet::SHA2_256S: return sha2_256s;
+	case P11SLHDSASigBenchmark::ParameterSet::SHA2_128F: return sha2_128f;
+	case P11SLHDSASigBenchmark::ParameterSet::SHA2_192F: return sha2_192f;
+	case P11SLHDSASigBenchmark::ParameterSet::SHA2_256F: return sha2_256f;
 	}
 	return sha2_128s;	// not reached, keeps the compiler happy
     }

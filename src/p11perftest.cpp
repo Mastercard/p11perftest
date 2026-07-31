@@ -119,7 +119,7 @@ int main(int argc, char **argv)
     // default coverage: RSA, ECDSA, HMAC, DES, AES and the NIST PQC algorithms
     const auto default_tests {"rsa,rsapss,ecdsa,ecdh,hmac,des,aes,xorder,rand,find,jwe,oaep,oaepenc,oaepunw,mlkem,mldsa,slhdsa"};
     const auto default_vectors {"8,16,64,256,1024,4096"};
-    const auto default_keysizes{"rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256,mlkem512,mlkem768,mlkem1024,mldsa44,mldsa65,mldsa87,slhdsa128s,slhdsa192s,slhdsa256s"};
+    const auto default_keysizes{"rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256,mlkem512,mlkem768,mlkem1024,mldsa44,mldsa65,mldsa87,slhdsa128s,slhdsa192s,slhdsa256s,slhdsa128f,slhdsa192f,slhdsa256f"};
     const auto default_flavour{"generic"};
     const auto help_text_flavour = "PKCS#11 implementation flavour. Possible values: " + Implementation::choices();
 
@@ -551,6 +551,9 @@ int main(int argc, char **argv)
 		    if(keysizes.contains("slhdsa128s")) generate_pqc(KeyGenerator::KeyType::SLHDSA, "slhdsa-sha2-128s", "sha2-128s");
 		    if(keysizes.contains("slhdsa192s")) generate_pqc(KeyGenerator::KeyType::SLHDSA, "slhdsa-sha2-192s", "sha2-192s");
 		    if(keysizes.contains("slhdsa256s")) generate_pqc(KeyGenerator::KeyType::SLHDSA, "slhdsa-sha2-256s", "sha2-256s");
+		    if(keysizes.contains("slhdsa128f")) generate_pqc(KeyGenerator::KeyType::SLHDSA, "slhdsa-sha2-128f", "sha2-128f");
+		    if(keysizes.contains("slhdsa192f")) generate_pqc(KeyGenerator::KeyType::SLHDSA, "slhdsa-sha2-192f", "sha2-192f");
+		    if(keysizes.contains("slhdsa256f")) generate_pqc(KeyGenerator::KeyType::SLHDSA, "slhdsa-sha2-256f", "sha2-256f");
 		}
 
 	    } else {
@@ -589,6 +592,9 @@ int main(int argc, char **argv)
 		if(keysizes.contains("slhdsa128s")) generated_keys.insert("slhdsa-sha2-128s");
 		if(keysizes.contains("slhdsa192s")) generated_keys.insert("slhdsa-sha2-192s");
 		if(keysizes.contains("slhdsa256s")) generated_keys.insert("slhdsa-sha2-256s");
+		if(keysizes.contains("slhdsa128f")) generated_keys.insert("slhdsa-sha2-128f");
+		if(keysizes.contains("slhdsa192f")) generated_keys.insert("slhdsa-sha2-192f");
+		if(keysizes.contains("slhdsa256f")) generated_keys.insert("slhdsa-sha2-256f");
 		generated_keys.insert("xorder-128");
 		generated_keys.insert("rand-128");
 		generated_keys.insert("find-128");
@@ -804,6 +810,9 @@ int main(int argc, char **argv)
 		if(keysizes.contains("slhdsa128s") && has_key("slhdsa-sha2-128s")) benchmarks.emplace_front( new P11SLHDSASigBenchmark("slhdsa-sha2-128s", PS::SHA2_128S) );
 		if(keysizes.contains("slhdsa192s") && has_key("slhdsa-sha2-192s")) benchmarks.emplace_front( new P11SLHDSASigBenchmark("slhdsa-sha2-192s", PS::SHA2_192S) );
 		if(keysizes.contains("slhdsa256s") && has_key("slhdsa-sha2-256s")) benchmarks.emplace_front( new P11SLHDSASigBenchmark("slhdsa-sha2-256s", PS::SHA2_256S) );
+		if(keysizes.contains("slhdsa128f") && has_key("slhdsa-sha2-128f")) benchmarks.emplace_front( new P11SLHDSASigBenchmark("slhdsa-sha2-128f", PS::SHA2_128F) );
+		if(keysizes.contains("slhdsa192f") && has_key("slhdsa-sha2-192f")) benchmarks.emplace_front( new P11SLHDSASigBenchmark("slhdsa-sha2-192f", PS::SHA2_192F) );
+		if(keysizes.contains("slhdsa256f") && has_key("slhdsa-sha2-256f")) benchmarks.emplace_front( new P11SLHDSASigBenchmark("slhdsa-sha2-256f", PS::SHA2_256F) );
 	    }
 
 	    benchmarks.reverse();

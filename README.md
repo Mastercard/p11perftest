@@ -72,6 +72,9 @@ In order to execute the test, you will need to create the following keys upfront
 | `slhdsa-sha2-128s` | an SLH-DSA-SHA2-128s key pair, with `CKA_SIGN`                                               |
 | `slhdsa-sha2-192s` | an SLH-DSA-SHA2-192s key pair, with `CKA_SIGN`                                               |
 | `slhdsa-sha2-256s` | an SLH-DSA-SHA2-256s key pair, with `CKA_SIGN`                                               |
+| `slhdsa-sha2-128f` | an SLH-DSA-SHA2-128f key pair, with `CKA_SIGN`                                               |
+| `slhdsa-sha2-192f` | an SLH-DSA-SHA2-192f key pair, with `CKA_SIGN`                                               |
+| `slhdsa-sha2-256f` | an SLH-DSA-SHA2-256f key pair, with `CKA_SIGN`                                               |
 
 Note that ML-KEM decapsulation needs the public key as well, as it is used to produce the ciphertext to decapsulate.
 
@@ -117,17 +120,19 @@ For the two signature algorithms, `p11perftest` deliberately uses the `CKM_HASH_
 mechanisms, where **the digest is computed on the client side** and the hash algorithm is declared through the
 `CK_HASH_SIGN_ADDITIONAL_CONTEXT` mechanism parameter. Hashing inside the HSM would add latency and force the
 whole message over the network, whereas the purpose of this tool is to measure the cost of invoking the
-cryptographic primitive. The hash strength follows the parameter set: SHA-256 for ML-DSA-44 and SLH-DSA-128s,
-SHA-384 for ML-DSA-65 and SLH-DSA-192s, SHA-512 for ML-DSA-87 and SLH-DSA-256s. As the digest is computed during
-the preparation phase, the measured latency does not depend on the payload size.
+cryptographic primitive. The hash strength follows the parameter set: SHA-256 for ML-DSA-44 and the SLH-DSA 128
+bits sets, SHA-384 for ML-DSA-65 and the 192 bits ones, SHA-512 for ML-DSA-87 and the 256 bits ones. As the digest
+is computed during the preparation phase, the measured latency does not depend on the payload size.
 
 For ML-KEM, `C_EncapsulateKey()` and `C_DecapsulateKey()` inherently create a secret key object on the token: the
 shared secret is never exported, only its handle is returned. That object is destroyed after each iteration, from
 outside the measurement window, so that the token object table does not grow and skew the results. Neither
 operation consumes the payload, so they are only run against the smallest requested test vector.
 
-Beware that the SLH-DSA `s` ("small signature") parameter sets trade signing speed for signature size: a single
-signature typically takes hundreds of milliseconds. Lower the iteration count accordingly.
+SLH-DSA comes in two flavours, both covered. The `s` ("small signature") parameter sets trade signing speed for
+signature size: a single signature typically takes hundreds of milliseconds. The `f` ("fast signing") sets make
+the opposite trade-off, signing roughly an order of magnitude faster but producing signatures two to three times
+larger. Lower the iteration count accordingly when benchmarking the `s` sets.
 
 
 
@@ -150,7 +155,7 @@ Here is the full list of supported arguments:
   - `-o [ --jsonfile ] arg`, JSON output file name
   - `-c [ --coverage ] arg (=rsa,rsapss,ecdsa,ecdh,hmac,des,aes,xorder,rand,find,jwe,oaep,oaepenc,oaepunw,mlkem,mldsa,slhdsa)`, coverage of test cases
   - `-v [ --vectors ] arg (=8,16,64,256,1024,4096)`, test vectors to use
-  - `-k [ --keysizes ] arg (=rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256,mlkem512,mlkem768,mlkem1024,mldsa44,mldsa65,mldsa87,slhdsa128s,slhdsa192s,slhdsa256s)`, key sizes or curves to use
+  - `-k [ --keysizes ] arg (=rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256,mlkem512,mlkem768,mlkem1024,mldsa44,mldsa65,mldsa87,slhdsa128s,slhdsa192s,slhdsa256s,slhdsa128f,slhdsa192f,slhdsa256f)`, key sizes or curves to use
   - `-f [ --flavour ] arg (=generic)`, PKCS#11 implementation flavour. Possible values: `generic`, `luna` , `utimaco`, `entrust`, `marvell`
   - `-n [ --nogenerate ]`, do not attempt to generate session keys; instead, use pre-existing keys on token
 

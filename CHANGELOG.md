@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - post-quantum test cases, covering the three NIST algorithms:
    - `mlkem`: ML-KEM key encapsulation (`mlkemencap`) and decapsulation (`mlkemdecap`), through the PKCS#11 v3.2 functions `C_EncapsulateKey()` and `C_DecapsulateKey()`, for ML-KEM-512, ML-KEM-768 and ML-KEM-1024
    - `mldsa`: ML-DSA signature over an externally computed digest (`CKM_HASH_ML_DSA`), for ML-DSA-44, ML-DSA-65 and ML-DSA-87
-   - `slhdsa`: SLH-DSA signature over an externally computed digest (`CKM_HASH_SLH_DSA`), for SLH-DSA-SHA2-128s, -192s and -256s
+   - `slhdsa`: SLH-DSA signature over an externally computed digest (`CKM_HASH_SLH_DSA`), for SLH-DSA-SHA2-128s, -192s and -256s ("small signature") as well as -128f, -192f and -256f ("fast signing")
    The three of them are part of the default coverage. Hashing is deliberately performed on the client side: doing it in the HSM would add latency and send the whole message over the network, while this tool measures the cost of invoking the primitive.
  - generation of ML-KEM, ML-DSA and SLH-DSA session key pairs, using `CKA_PARAMETER_SET`
  - `buildx.sh` gained `--proxy`, `--noproxy`, `--local-source`, `--no-cache`, `--ignore-proxy`, `--proxyrootca`, `--extra-header`, `--config-args`, `--package` and `--help`

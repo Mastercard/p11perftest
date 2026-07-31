@@ -41,6 +41,10 @@ struct KeySizeCoverage
 	slhdsa_128s,		// SLH-DSA-SHA2-128s
 	slhdsa_192s,		// SLH-DSA-SHA2-192s
 	slhdsa_256s,		// SLH-DSA-SHA2-256s
+
+	slhdsa_128f,		// SLH-DSA-SHA2-128f
+	slhdsa_192f,		// SLH-DSA-SHA2-192f
+	slhdsa_256f,		// SLH-DSA-SHA2-256f
     };
     
     KeySizeCoverage(std::string tocover);

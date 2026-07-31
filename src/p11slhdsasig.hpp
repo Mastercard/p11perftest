@@ -45,29 +45,36 @@
 //
 // KEY REQUIREMENTS:
 //   - Key type: CKK_SLH_DSA (SLH-DSA private key)
-//   - Parameter sets: SLH-DSA-SHA2-128s, -192s and -256s, carried by the
+//   - Parameter sets: SLH-DSA-SHA2-128s, -192s and -256s ("small signature"),
+//     and SLH-DSA-SHA2-128f, -192f and -256f ("fast signing"), carried by the
 //     CKA_PARAMETER_SET attribute at key generation time
 //   - Key attributes: CKA_SIGN must be set to CK_TRUE
 //
 // OPTIONS:
-//   --keysizes slhdsa128s, slhdsa192s, slhdsa256s : select the parameter set(s)
+//   --keysizes slhdsa128s, slhdsa192s, slhdsa256s : "small signature" sets
+//   --keysizes slhdsa128f, slhdsa192f, slhdsa256f : "fast signing" sets
 //
 // TESTING APPROACH:
 //   The digest is computed once, during the prepare phase, with a hash whose
-//   strength matches the parameter set (SHA-256 for 128s, SHA-384 for 192s,
-//   SHA-512 for 256s). The benchmark loop then repeatedly invokes
-//   C_SignInit()/C_Sign() over that digest.
+//   strength matches the parameter set (SHA-256 for the 128 bits sets, SHA-384
+//   for the 192 bits ones, SHA-512 for the 256 bits ones). The benchmark loop
+//   then repeatedly invokes C_SignInit()/C_Sign() over that digest.
 //
-//   Beware: the 's' ("small signature") parameter sets trade signing speed for
-//   signature size. A single signature can take a fraction of a second, so a
-//   low iteration count is advisable.
+//   Beware: the 's' parameter sets trade signing speed for signature size. A
+//   single signature can take a fraction of a second, so a low iteration count
+//   is advisable. The 'f' sets make the opposite trade-off: they sign roughly
+//   an order of magnitude faster, but produce signatures two to three times
+//   larger.
 //
 // ============================================================================
 
 class P11SLHDSASigBenchmark : public P11Benchmark
 {
 public:
-    enum class ParameterSet { SHA2_128S, SHA2_192S, SHA2_256S };
+    enum class ParameterSet {
+	SHA2_128S, SHA2_192S, SHA2_256S,
+	SHA2_128F, SHA2_192F, SHA2_256F
+    };
 
 private:
     ParameterSet m_parameterset;
