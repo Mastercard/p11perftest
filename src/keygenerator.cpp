@@ -231,7 +231,7 @@ bool KeyGenerator::generate_ecdsa_keypair(std::string alias, unsigned int unused
 	if(m_vendor!=Implementation::Vendor::marvell) { priv_generate_props.set_private( true ); } // not well supported on Marvell
 
 	Botan::PKCS11::EC_PublicKeyGenerationProperties pub_generate_props(
-	    Botan::EC_Group( curve ).DER_encode(Botan::EC_Group_Encoding::EC_DOMPAR_ENC_OID ) );
+	    Botan::EC_Group::from_name( curve ).DER_encode() );
 
 	pub_generate_props.set_label( alias );
 	pub_generate_props.set_token( false );
@@ -266,7 +266,7 @@ bool KeyGenerator::generate_ecdh_keypair(std::string alias, unsigned int unused,
 	if(m_vendor!=Implementation::Vendor::marvell) { priv_generate_props.set_private( true ); } // not well supported on Marvell
 
 	Botan::PKCS11::EC_PublicKeyGenerationProperties pub_generate_props(
-	    Botan::EC_Group( curve ).DER_encode(Botan::EC_Group_Encoding::EC_DOMPAR_ENC_OID ) );
+	    Botan::EC_Group::from_name( curve ).DER_encode() );
 
 	pub_generate_props.set_label( alias );
 	pub_generate_props.set_token( false );

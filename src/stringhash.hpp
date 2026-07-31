@@ -23,6 +23,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 
 // Important note: stringhash.hpp is header only, it has no corresponding stringhash.cpp
 //                 this is because litterals are evaluated at compile-time (constexpr).
@@ -67,7 +68,8 @@ namespace stringhash
 	}
 
 
-	constexpr unsigned long long operator "" _hash(char const* p, size_t)
+	// note: no space between "" and the suffix, as C++20 deprecates it
+	constexpr unsigned long long operator""_hash(char const* p, size_t)
 	{
 	    return stringhash::hash_compile_time(p);
 	}
