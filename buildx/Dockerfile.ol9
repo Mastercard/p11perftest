@@ -24,9 +24,29 @@ ARG REPO_SSLVERIFY="true"
 ARG DISTRO_NAME="oraclelinux"
 ARG DISTRO_VERSION="9"
 ARG DISTRO_SHORT_NAME="ol9"
-ARG NOCACHE_CLONEAGAIN="1"
+ARG IGNORE_PROXY="false"
+ARG SOURCE_MODE="git"
+ARG PROXY_ROOT_CA="proxyrootca.crt"
+ARG CONFIG_ARGS=""
 
-FROM ${DISTRO_NAME}:${DISTRO_VERSION}-slim AS base
+# Fallback for the "extra-headers" build context: an empty filesystem.
+# Overridden when buildx.sh is invoked with --extra-header, to inject a
+# vendor-supplied pkcs11.h without polluting the workspace.
+FROM scratch AS extra-headers
+
+# base0 is the distribution image with the proxy root CA installed.
+# When no root CA is supplied, buildx.sh passes an empty file.
+FROM ${DISTRO_NAME}:${DISTRO_VERSION}-slim AS base0
+ARG PROXY_ROOT_CA
+COPY ${PROXY_ROOT_CA} /etc/pki/ca-trust/source/anchors/${PROXY_ROOT_CA}
+RUN microdnf install -y ca-certificates && update-ca-trust extract && microdnf clean all
+
+
+# Make tools that ship their own trust store (uv, pip, ...) honour the system
+# bundle, so that a proxy root CA supplied with --proxyrootca is effective.
+ENV SSL_CERT_FILE=/etc/pki/tls/certs/ca-bundle.crt
+ENV REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
+FROM base0 AS base
 ARG DISTRO_SHORT_NAME
 
 # ol9_codeready_builder is required to install autoconf-archive
@@ -49,6 +69,7 @@ RUN OL=$(rpm --eval "%{dist}" | sed s/.e/o/) EL=$(rpm --eval "%{dist}" | sed s/.
     wget \
     boost-devel \
     openssl-devel \
+    python3.11 \
     && microdnf clean all
 
 # Deploy pandoc from github
@@ -60,32 +81,79 @@ RUN DISTROARCH=$(arch | sed 's/aarch64/arm64/;s/x86_64/amd64/') \
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/bin/
-RUN uv python install 3.11
+# Provision a Python >= 3.11 for Botan's configure.py and pyinstaller.
+# Prefer a standalone build, but fall back to the interpreter provided by the
+# distribution: downloading a full CPython is not always possible behind a
+# restrictive proxy.
+RUN uv python install 3.11 || uv python find '>=3.11'
 
-FROM base AS gitcloned
-ARG REPO_URL
-ARG REPO_COMMIT_OR_TAG
+# Build and install Botan 3 statically.
+# No supported distribution ships Botan >= 3.11, which is the first release
+# providing the PKCS#11 v3.2 headers required for ML-KEM, ML-DSA and SLH-DSA.
+FROM base AS botan
 ARG REPO_SSLVERIFY
-
-# The meta directory is used to store the version and maintainer information
-# for the RPM package
-RUN mkdir -p /meta
 
 # Set the git configuration right
 RUN if [ "$REPO_SSLVERIFY" != "true" ]; then git config --global http.sslVerify false; fi
 
-# We need to deploy Botan
 WORKDIR /deps/botan
-RUN git clone https://github.com/randombit/botan.git .
-RUN git checkout 2.19.3
-RUN uv run python3 configure.py --cc=gcc --with-boost --disable-shared-library && make -j $(nproc) && make install
+RUN git clone --depth 1 --branch 3.12.0 https://github.com/randombit/botan.git .
+# Only the static library is needed: the Botan CLI and test suite pull in
+# boost::beast, which does not build against the Boost versions shipped by
+# some of the supported distributions, and p11perftest uses neither.
+RUN uv run python3 configure.py --cc=gcc \
+    --disable-shared-library \
+    --build-targets=static \
+    --without-documentation \
+    && make -j $(nproc) \
+    && make install
 
-# Clone the repository
+# Source stage: --local-source mode.
+# The build context is the local workspace. We bind-mount it read-only and
+# clone from it over the local git protocol: no network access, and only the
+# committed history is taken (dirty files are not copied).
+FROM botan AS source-local
+ARG REPO_COMMIT_OR_TAG
 WORKDIR /src
-ARG NOCACHE_CLONEAGAIN
-RUN if [ "$NOCACHE_CLONEAGAIN" = "1" ]; then rm -rf .git; fi
-RUN git clone $REPO_URL .
-RUN git checkout $REPO_COMMIT_OR_TAG
+RUN --mount=type=bind,target=/host-repo,ro \
+    git -c protocol.file.allow=always clone /host-repo /src \
+    && if [ "$REPO_COMMIT_OR_TAG" != "HEAD" ]; then git checkout "$REPO_COMMIT_OR_TAG"; fi
+
+# Source stage: default git-clone mode, cloning REPO_URL from a remote.
+FROM botan AS source-git
+ARG REPO_URL
+ARG REPO_COMMIT_OR_TAG
+ARG IGNORE_PROXY
+WORKDIR /src
+RUN if [ "$IGNORE_PROXY" = "true" ]; then \
+        env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
+            -u all_proxy -u ALL_PROXY -u no_proxy -u NO_PROXY \
+            git clone $REPO_URL .; \
+    else \
+        git clone $REPO_URL .; \
+    fi
+RUN if [ -d .git ] && [ "$REPO_COMMIT_OR_TAG" != "HEAD" ]; then git checkout $REPO_COMMIT_OR_TAG; fi
+
+# Pick the source variant based on SOURCE_MODE (local|git).
+ARG SOURCE_MODE
+FROM source-${SOURCE_MODE} AS gitcloned
+WORKDIR /src
+ENV GIT_CONFIG_COUNT=1
+ENV GIT_CONFIG_KEY_0=safe.directory
+ENV GIT_CONFIG_VALUE_0=/src
+
+# The meta directory is used to store the version and maintainer information
+# for the package built later on
+RUN mkdir -p /meta
+
+# Inject any extra cryptoki header (.h) supplied through `--extra-header FILE`
+# on the buildx.sh command line. The `extra-headers` build context is
+# bind-mounted read-only; when no extra header was passed it falls back to the
+# empty `FROM scratch AS extra-headers` stage and this step is a no-op.
+# A vendor-supplied pkcs11.h therefore overrides the forwarding header that
+# p11perftest ships for Botan.
+RUN --mount=type=bind,from=extra-headers,target=/extra-headers,ro \
+    find /extra-headers -maxdepth 1 -name '*.h' -exec cp {} src/cryptoki/ \;
 
 # Retrieve information for building RPM package later
 
@@ -126,10 +194,11 @@ RUN echo "export PKG_GITSUFFIX PKG_VERSION PKG_RELEASE PKG_GITCOMMIT PKG_MAINTAI
 
 
 FROM gitcloned AS builder
+ARG CONFIG_ARGS
 
 # Build the project for tar package (/usr/local)
 RUN ./bootstrap.sh \
-    && ./configure CXX=g++ CXXFLAGS='-include cstdint' PKG_CONFIG_PATH=/usr/local/lib/pkgconfig \
+    && ./configure $CONFIG_ARGS CXX=g++ CXXFLAGS='-include cstdint' PKG_CONFIG_PATH=/usr/local/lib/pkgconfig \
     && make -j $(nproc) \
     && make install-strip DESTDIR=/tar_build
 
@@ -147,7 +216,7 @@ RUN mkdir -p /tar_build/usr/local/share/doc/p11perftest \
 
 # Build again the project for rpm package (/usr)
 RUN make distclean \
-    && ./configure --prefix=/usr CXX=g++ CXXFLAGS='-include cstdint' PKG_CONFIG_PATH=/usr/local/lib/pkgconfig \
+    && ./configure $CONFIG_ARGS --prefix=/usr CXX=g++ CXXFLAGS='-include cstdint' PKG_CONFIG_PATH=/usr/local/lib/pkgconfig \
     && make -j $(nproc) \
     && make install-strip DESTDIR=/rpm_build
 
@@ -162,6 +231,9 @@ RUN mkdir -p /rpm_build/usr/share/doc/p11perftest \
 # Final stage
 FROM builder AS final
 ARG DISTRO_SHORT_NAME
+# REPO_URL is referenced by the package metadata generated below.
+# ARG values do not cross build stages, so it must be redeclared here.
+ARG REPO_URL
 
 RUN mkdir -p /artifacts
 
