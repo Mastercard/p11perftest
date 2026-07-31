@@ -90,10 +90,18 @@ def create_dataframe(xls, sheetname, xvar):
     return df
 
 
+# Test cases whose measured operation does not process the test vector: either
+# it takes no input at all (key encapsulation), or the vector size carries a
+# different meaning altogether (number of objects, for C_FindObjects). Reporting
+# a byte throughput for those would multiply the transaction rate by an
+# arbitrary vector size, which is meaningless.
+TPS_ONLY_KEYWORDS = ('signature', 'hmac', 'encapsulation', 'decapsulation', 'find objects')
+
+
 def determine_measure(testcase, col3name):
     """determine if we are measuring TPS or throughput based on test case name"""    
-    if "signature" in testcase.lower() or "hmac" in testcase.lower():
-        # for signature and HMAC algos, we are interested only in knowing the TPS
+    if any(keyword in testcase.lower() for keyword in TPS_ONLY_KEYWORDS):
+        # for these algos, we are interested only in knowing the TPS
         measure = 'tps'
         unit = 'TPS'
         col2, col3 = 'tps global value', col3name.format(measure)
@@ -143,6 +151,13 @@ def _create_single_graph_worker(df1, df2, testcase, item, params):
     frame1, measure, unit, col2, col3, p_avail = create_graph_frame(
         df1, testcase, item, params['xvar'], params['graph_parameter'], 
         params['col3name'], params['p95'], params['p98'], params['p99'])
+
+    # a test case may not support every test vector size, in which case
+    # p11perftest reports NaN. Drawing an empty canvas would only add noise.
+    if frame1[col2].dropna().empty:
+        print('no data, skipped', flush=True)
+        return
+
     frame2 = None
     if params['comparison']:
         frame2, measure2, _, _, _, _ = create_graph_frame(

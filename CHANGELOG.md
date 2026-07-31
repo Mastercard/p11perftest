@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - benchmark exception handling refactored for improved clarity and consistency
 
 ### Fixed
+ - `gengraphs.py` now reports transactions per second, rather than a byte throughput, for the test cases whose measured operation does not process the test vector: ML-KEM encapsulation and decapsulation take no input at all, and the vector size of `findobjects` is a number of objects
+ - `gengraphs.py` no longer produces an empty graph when a test case does not support a given test vector size
  - removed unnecessary key checks for AES in JWE benchmarks
  - fixed key generation issue for OAEP unwrap case
 
