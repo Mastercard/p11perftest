@@ -15,7 +15,10 @@
 #
 
 ACLOCAL_AMFLAGS = -I m4
-AM_CPPFLAGS = $(BOTAN_CFLAGS) $(BOOST_CPPFLAGS) $(LIBCRYPTO_CFLAGS) $(PTHREAD_CFLAGS)
+# Note: $(srcdir)/cryptoki is placed last, so that a vendor-supplied pkcs11.h
+# available elsewhere on the include path takes precedence over the forwarding
+# header we ship for Botan.
+AM_CPPFLAGS = $(BOTAN_CFLAGS) $(BOOST_CPPFLAGS) $(LIBCRYPTO_CFLAGS) $(PTHREAD_CFLAGS) -I$(srcdir)/cryptoki
 AM_LDFLAGS = $(BOTAN_LDFLAGS) $(BOOST_LDFLAGS) $(LIBCRYPTO_LDFLAGS) $(PTHREAD_LIBS)
 
 if HAS_BOTAN_RPATH
@@ -68,6 +71,7 @@ p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			vectorcoverage.cpp vectorcoverage.hpp \
 			keysizecoverage.cpp keysizecoverage.hpp \
 			implementation.cpp implementation.hpp \
+			cryptoki/pkcs11.h \
 			p11perftest.cpp
 
 p11perftest_LDADD = $(BOTAN_LIBS) $(BOOST_PROGRAM_OPTIONS_LIB) $(LIBCRYPTO_LIBS) $(PTHREAD_LIBS)

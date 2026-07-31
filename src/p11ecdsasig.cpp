@@ -45,7 +45,7 @@ void P11ECDSASigBenchmark::prepare(Session &session, Object &obj, std::optional<
     m_signer = std::unique_ptr<Botan::PK_Signer>(new Botan::PK_Signer( *m_ecdsakey,
 								       m_rng,
 								       "Raw",
-								       Botan::Signature_Format::IEEE_1363 ));
+								       Botan::Signature_Format::Standard ));
 
     // PKCS#11 ECDSA does not hash (except CKM_ECDSA_SHA1, which we don't test
     // as such, software hashing must take place. We use a Botan::HashFunction to do that job.
