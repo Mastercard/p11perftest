@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
    - `slhdsa`: SLH-DSA signature over an externally computed digest (`CKM_HASH_SLH_DSA`), for SLH-DSA-SHA2-128s, -192s and -256s ("small signature") as well as -128f, -192f and -256f ("fast signing")
    The three of them are part of the default coverage. Hashing is deliberately performed on the client side: doing it in the HSM would add latency and send the whole message over the network, while this tool measures the cost of invoking the primitive.
  - generation of ML-KEM, ML-DSA and SLH-DSA session key pairs, using `CKA_PARAMETER_SET`
+ - `scripts/createkeys.sh` now creates the twelve post-quantum key pairs, which requires [pkcs11-tools](https://github.com/Mastercard/pkcs11-tools) v3.0.0 or above
+ - `scripts/generatekeys.py` now creates the ML-DSA key pairs. ML-KEM and SLH-DSA are left out, as `python-pkcs11` exposes neither `CKK_ML_KEM` nor `CKK_SLH_DSA`; the script reports it rather than failing silently
  - `buildx.sh` gained `--proxy`, `--noproxy`, `--local-source`, `--no-cache`, `--ignore-proxy`, `--proxyrootca`, `--extra-header`, `--config-args`, `--package` and `--help`
  - each benchmark test case now documents its purpose, key requirements, and supported algorithms
  - payload size detection support: test cases can now report the size of the payload being processed
@@ -30,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - `gengraphs.py` no longer produces an empty graph when a test case does not support a given test vector size
  - removed unnecessary key checks for AES in JWE benchmarks
  - fixed key generation issue for OAEP unwrap case
+ - `scripts/generatekeys.py` no longer drops into the debugger when a secret key cannot be generated: a leftover `breakpoint()` sat in the error path of `generate_key()`. It also raises a proper `ValueError` for an unsupported key type, instead of raising a string
 
 ## 3.16.0 - 2025-02-26
 ### Added

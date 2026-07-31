@@ -92,8 +92,23 @@ Alternatively, [`uv`](https://docs.astral.sh/uv/) takes care of both the interpr
 $ uv run scripts/generatekeys.py --help
 ```
 
-Neither helper covers the post-quantum key pairs yet: when `--nogenerate` is used, those must be created with
-the tooling of your token. Without `--nogenerate`, `p11perftest` generates them itself as session keys.
+The two helpers do not cover the same ground for post-quantum keys:
+
+| helper                   | ML-KEM | ML-DSA | SLH-DSA | requirement                                                    |
+|--------------------------|--------|--------|---------|----------------------------------------------------------------|
+| `scripts/createkeys.sh`  | yes    | yes    | yes     | [pkcs11-tools](https://github.com/Mastercard/pkcs11-tools) v3.0.0 or later |
+| `scripts/generatekeys.py`| no     | yes    | no      | `python-pkcs11` 0.9.5 or later                                 |
+
+`pkcs11-tools` enables post-quantum support by default; a build configured with `--disable-pqc` will
+reject `-k mlkem`, `-k mldsa` and `-k slhdsa`. Generating the key pairs only needs OpenSSL 3.x, but
+exporting their public key, issuing a CSR with `p11req` or a self-signed certificate with `p11mkcert`
+additionally requires `libcrypto` 3.5.0 or later for ML-DSA and SLH-DSA.
+
+`generatekeys.py` is limited by its underlying library: `python-pkcs11` exposes `CKK_ML_DSA`, but
+neither `CKK_ML_KEM` nor `CKK_SLH_DSA`, so it skips those two and says so on its output.
+
+None of this applies unless you use `--nogenerate`: left to itself, `p11perftest` generates all the
+post-quantum key pairs it needs as session keys.
 
 ## implemented tests
 

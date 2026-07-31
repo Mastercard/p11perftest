@@ -35,3 +35,18 @@ p11keygen -k generic -b 256 -i hmac-sha256 sign verify
 p11keygen -k generic -b 512 -i hmac-sha512 sign verify
 p11keygen -k generic -b 128 -i xorder-128 derive
 p11keygen -k aes -b 128 -i rand-128
+
+# Post-quantum key pairs. These require pkcs11-tools v3.0.0 or later, built with
+# post-quantum support enabled (the default; --disable-pqc turns it off).
+p11keygen -k mlkem -b 512 -i mlkem-512 encapsulate decapsulate
+p11keygen -k mlkem -b 768 -i mlkem-768 encapsulate decapsulate
+p11keygen -k mlkem -b 1024 -i mlkem-1024 encapsulate decapsulate
+p11keygen -k mldsa -b 44 -i mldsa-44 sign verify
+p11keygen -k mldsa -b 65 -i mldsa-65 sign verify
+p11keygen -k mldsa -b 87 -i mldsa-87 sign verify
+p11keygen -k slhdsa -q sha2-128s -i slhdsa-sha2-128s sign verify
+p11keygen -k slhdsa -q sha2-192s -i slhdsa-sha2-192s sign verify
+p11keygen -k slhdsa -q sha2-256s -i slhdsa-sha2-256s sign verify
+p11keygen -k slhdsa -q sha2-128f -i slhdsa-sha2-128f sign verify
+p11keygen -k slhdsa -q sha2-192f -i slhdsa-sha2-192f sign verify
+p11keygen -k slhdsa -q sha2-256f -i slhdsa-sha2-256f sign verify
