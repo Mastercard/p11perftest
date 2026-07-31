@@ -29,6 +29,18 @@ struct KeySizeCoverage
 	aes_128,		// AES 128 bits
 	aes_192,		// AES 192 bits
 	aes_256,		// AES 256 bits
+
+	mlkem_512,		// ML-KEM-512
+	mlkem_768,		// ML-KEM-768
+	mlkem_1024,		// ML-KEM-1024
+
+	mldsa_44,		// ML-DSA-44
+	mldsa_65,		// ML-DSA-65
+	mldsa_87,		// ML-DSA-87
+
+	slhdsa_128s,		// SLH-DSA-SHA2-128s
+	slhdsa_192s,		// SLH-DSA-SHA2-192s
+	slhdsa_256s,		// SLH-DSA-SHA2-256s
     };
     
     KeySizeCoverage(std::string tocover);

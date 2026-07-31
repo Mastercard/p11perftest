@@ -72,6 +72,10 @@
 #include "p11aesecb.hpp"
 #include "p11aescbc.hpp"
 #include "p11aesgcm.hpp"
+#include "p11mldsasig.hpp"
+#include "p11slhdsasig.hpp"
+#include "p11mlkemencap.hpp"
+#include "p11mlkemdecap.hpp"
 
 
 namespace po = boost::program_options;
@@ -112,10 +116,10 @@ int main(int argc, char **argv)
     po::options_description cliopts("command line options");
     po::options_description envvars("environment variables");
 
-    // default coverage: RSA, ECDSA, HMAC, DES and AES
-    const auto default_tests {"rsa,rsapss,ecdsa,ecdh,hmac,des,aes,xorder,rand,find,jwe,oaep,oaepenc,oaepunw"};
+    // default coverage: RSA, ECDSA, HMAC, DES, AES and the NIST PQC algorithms
+    const auto default_tests {"rsa,rsapss,ecdsa,ecdh,hmac,des,aes,xorder,rand,find,jwe,oaep,oaepenc,oaepunw,mlkem,mldsa,slhdsa"};
     const auto default_vectors {"8,16,64,256,1024,4096"};
-    const auto default_keysizes{"rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256"};
+    const auto default_keysizes{"rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256,mlkem512,mlkem768,mlkem1024,mldsa44,mldsa65,mldsa87,slhdsa128s,slhdsa192s,slhdsa256s"};
     const auto default_flavour{"generic"};
     const auto help_text_flavour = "PKCS#11 implementation flavour. Possible values: " + Implementation::choices();
 
@@ -149,7 +153,8 @@ int main(int argc, char **argv)
 	 " - oaep = oaepsha1 + oaepsha256\n"
 	 " - oaepuwn = oaepunwsha1 + oaepunwsha256\n"
 	 " - oaepenc = oaepencsha1 + oaepencsha256\n"
-	 " - jwe  = jweoaepsha1 + jweoaepsha256")
+	 " - jwe  = jweoaepsha1 + jweoaepsha256\n"
+	 " - mlkem = mlkemencap + mlkemdecap")
 	("vectors,v", po::value< std::string >()->default_value(default_vectors), "test vectors to use")
 	("keysizes,k", po::value< std::string >()->default_value(default_keysizes), "key sizes or curves to use")
 	("flavour,f", po::value< std::string >()->default_value(default_flavour), help_text_flavour.c_str() )
@@ -519,6 +524,35 @@ int main(int argc, char **argv)
 		    generated_keys.insert("find-128"); // always insert, tests don't really need this key
 		}
 
+		// a small helper, as all PQC key pairs are generated the same way
+		auto generate_pqc = [&](KeyGenerator::KeyType keytype, const std::string &alias, const std::string &paramset) {
+		    if(keygenerator.generate_key(keytype, alias, paramset)) {
+			generated_keys.insert(alias);
+		    } else {
+			std::cerr << "WARNING: Failed to generate key '" << alias << "', associated tests will be skipped\n";
+		    }
+		};
+
+		if(tests.contains("mlkem")
+		   || tests.contains("mlkemencap")
+		   || tests.contains("mlkemdecap")) {
+		    if(keysizes.contains("mlkem512"))  generate_pqc(KeyGenerator::KeyType::MLKEM, "mlkem-512", "512");
+		    if(keysizes.contains("mlkem768"))  generate_pqc(KeyGenerator::KeyType::MLKEM, "mlkem-768", "768");
+		    if(keysizes.contains("mlkem1024")) generate_pqc(KeyGenerator::KeyType::MLKEM, "mlkem-1024", "1024");
+		}
+
+		if(tests.contains("mldsa")) {
+		    if(keysizes.contains("mldsa44")) generate_pqc(KeyGenerator::KeyType::MLDSA, "mldsa-44", "44");
+		    if(keysizes.contains("mldsa65")) generate_pqc(KeyGenerator::KeyType::MLDSA, "mldsa-65", "65");
+		    if(keysizes.contains("mldsa87")) generate_pqc(KeyGenerator::KeyType::MLDSA, "mldsa-87", "87");
+		}
+
+		if(tests.contains("slhdsa")) {
+		    if(keysizes.contains("slhdsa128s")) generate_pqc(KeyGenerator::KeyType::SLHDSA, "slhdsa-sha2-128s", "sha2-128s");
+		    if(keysizes.contains("slhdsa192s")) generate_pqc(KeyGenerator::KeyType::SLHDSA, "slhdsa-sha2-192s", "sha2-192s");
+		    if(keysizes.contains("slhdsa256s")) generate_pqc(KeyGenerator::KeyType::SLHDSA, "slhdsa-sha2-256s", "sha2-256s");
+		}
+
 	    } else {
 		
 		std::cout << "Using existing token keys (no generation)\n";
@@ -546,6 +580,15 @@ int main(int argc, char **argv)
 		if(keysizes.contains("aes128")) generated_keys.insert("aes-128");
 		if(keysizes.contains("aes192")) generated_keys.insert("aes-192");
 		if(keysizes.contains("aes256")) generated_keys.insert("aes-256");
+		if(keysizes.contains("mlkem512")) generated_keys.insert("mlkem-512");
+		if(keysizes.contains("mlkem768")) generated_keys.insert("mlkem-768");
+		if(keysizes.contains("mlkem1024")) generated_keys.insert("mlkem-1024");
+		if(keysizes.contains("mldsa44")) generated_keys.insert("mldsa-44");
+		if(keysizes.contains("mldsa65")) generated_keys.insert("mldsa-65");
+		if(keysizes.contains("mldsa87")) generated_keys.insert("mldsa-87");
+		if(keysizes.contains("slhdsa128s")) generated_keys.insert("slhdsa-sha2-128s");
+		if(keysizes.contains("slhdsa192s")) generated_keys.insert("slhdsa-sha2-192s");
+		if(keysizes.contains("slhdsa256s")) generated_keys.insert("slhdsa-sha2-256s");
 		generated_keys.insert("xorder-128");
 		generated_keys.insert("rand-128");
 		generated_keys.insert("find-128");
@@ -730,6 +773,39 @@ int main(int argc, char **argv)
 		    benchmarks.emplace_front( new P11FindObjectsBenchmark("find-128") );
 		}
 	    }
+
+	    // ML-KEM encapsulation and decapsulation do not consume the payload,
+	    // so they are only run against the smallest requested test vector.
+	    const size_t smallest_vector = vectors.cbegin()!=vectors.cend() ? *vectors.cbegin() : 0;
+
+	    if(tests.contains("mlkem") || tests.contains("mlkemencap")) {
+		using PS = P11MLKEMEncapsulateBenchmark::ParameterSet;
+		if(keysizes.contains("mlkem512") && has_key("mlkem-512")) benchmarks.emplace_front( new P11MLKEMEncapsulateBenchmark("mlkem-512", PS::MLKEM512, smallest_vector) );
+		if(keysizes.contains("mlkem768") && has_key("mlkem-768")) benchmarks.emplace_front( new P11MLKEMEncapsulateBenchmark("mlkem-768", PS::MLKEM768, smallest_vector) );
+		if(keysizes.contains("mlkem1024") && has_key("mlkem-1024")) benchmarks.emplace_front( new P11MLKEMEncapsulateBenchmark("mlkem-1024", PS::MLKEM1024, smallest_vector) );
+	    }
+
+	    if(tests.contains("mlkem") || tests.contains("mlkemdecap")) {
+		using PS = P11MLKEMDecapsulateBenchmark::ParameterSet;
+		if(keysizes.contains("mlkem512") && has_key("mlkem-512")) benchmarks.emplace_front( new P11MLKEMDecapsulateBenchmark("mlkem-512", PS::MLKEM512, smallest_vector) );
+		if(keysizes.contains("mlkem768") && has_key("mlkem-768")) benchmarks.emplace_front( new P11MLKEMDecapsulateBenchmark("mlkem-768", PS::MLKEM768, smallest_vector) );
+		if(keysizes.contains("mlkem1024") && has_key("mlkem-1024")) benchmarks.emplace_front( new P11MLKEMDecapsulateBenchmark("mlkem-1024", PS::MLKEM1024, smallest_vector) );
+	    }
+
+	    if(tests.contains("mldsa")) {
+		using PS = P11MLDSASigBenchmark::ParameterSet;
+		if(keysizes.contains("mldsa44") && has_key("mldsa-44")) benchmarks.emplace_front( new P11MLDSASigBenchmark("mldsa-44", PS::MLDSA44) );
+		if(keysizes.contains("mldsa65") && has_key("mldsa-65")) benchmarks.emplace_front( new P11MLDSASigBenchmark("mldsa-65", PS::MLDSA65) );
+		if(keysizes.contains("mldsa87") && has_key("mldsa-87")) benchmarks.emplace_front( new P11MLDSASigBenchmark("mldsa-87", PS::MLDSA87) );
+	    }
+
+	    if(tests.contains("slhdsa")) {
+		using PS = P11SLHDSASigBenchmark::ParameterSet;
+		if(keysizes.contains("slhdsa128s") && has_key("slhdsa-sha2-128s")) benchmarks.emplace_front( new P11SLHDSASigBenchmark("slhdsa-sha2-128s", PS::SHA2_128S) );
+		if(keysizes.contains("slhdsa192s") && has_key("slhdsa-sha2-192s")) benchmarks.emplace_front( new P11SLHDSASigBenchmark("slhdsa-sha2-192s", PS::SHA2_192S) );
+		if(keysizes.contains("slhdsa256s") && has_key("slhdsa-sha2-256s")) benchmarks.emplace_front( new P11SLHDSASigBenchmark("slhdsa-sha2-256s", PS::SHA2_256S) );
+	    }
+
 	    benchmarks.reverse();
 
 

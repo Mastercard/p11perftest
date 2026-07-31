@@ -6,10 +6,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
+ - post-quantum test cases, covering the three NIST algorithms:
+   - `mlkem`: ML-KEM key encapsulation (`mlkemencap`) and decapsulation (`mlkemdecap`), through the PKCS#11 v3.2 functions `C_EncapsulateKey()` and `C_DecapsulateKey()`, for ML-KEM-512, ML-KEM-768 and ML-KEM-1024
+   - `mldsa`: ML-DSA signature over an externally computed digest (`CKM_HASH_ML_DSA`), for ML-DSA-44, ML-DSA-65 and ML-DSA-87
+   - `slhdsa`: SLH-DSA signature over an externally computed digest (`CKM_HASH_SLH_DSA`), for SLH-DSA-SHA2-128s, -192s and -256s
+   The three of them are part of the default coverage. Hashing is deliberately performed on the client side: doing it in the HSM would add latency and send the whole message over the network, while this tool measures the cost of invoking the primitive.
+ - generation of ML-KEM, ML-DSA and SLH-DSA session key pairs, using `CKA_PARAMETER_SET`
+ - `buildx.sh` gained `--proxy`, `--noproxy`, `--local-source`, `--no-cache`, `--ignore-proxy`, `--proxyrootca`, `--extra-header`, `--config-args`, `--package` and `--help`
  - each benchmark test case now documents its purpose, key requirements, and supported algorithms
  - payload size detection support: test cases can now report the size of the payload being processed
 
 ### Changed
+ - **Botan 3.11.0 or above is now required**, as it is the first release shipping the PKCS#11 v3.2 headers needed by the post-quantum test cases. As a consequence, the project is now built with C++20.
+ - a forwarding `pkcs11.h` is shipped under `src/cryptoki`, since Botan expects the PKCS#11 header to be reachable as `<pkcs11.h>`. It is placed last on the include path, so a vendor-supplied header still takes precedence, and can be injected into container builds with `buildx.sh --extra-header`
+ - `buildx.sh` no longer relies on bash associative arrays nor on `nproc`, and therefore runs on macOS; it is aligned with the script of the `pkcs11-tools` project
+ - Docker builds now compile Botan 3.12.0 statically, build only the Botan static library (its CLI and test suite do not build against the Boost versions of some distributions), and use `gcc-toolset-13` on Oracle Linux 8, whose system compiler does not support C++20
  - benchmark exception handling refactored for improved clarity and consistency
 
 ### Fixed

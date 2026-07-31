@@ -60,6 +60,11 @@ p11perftest_SOURCES = 	p11benchmark.cpp p11benchmark.hpp \
 			p11seedrandom.cpp p11seedrandom.hpp \
 			p11genrandom.cpp p11genrandom.hpp \
 			p11findobjects.cpp p11findobjects.hpp \
+			p11mldsasig.cpp p11mldsasig.hpp \
+			p11slhdsasig.cpp p11slhdsasig.hpp \
+			p11mlkemencap.cpp p11mlkemencap.hpp \
+			p11mlkemdecap.cpp p11mlkemdecap.hpp \
+			p11mlkemtraits.hpp \
 			stringhash.hpp \
 			errorcodes.cpp errorcodes.hpp \
 			keygenerator.cpp keygenerator.hpp \

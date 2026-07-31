@@ -7,9 +7,12 @@ On Nov 30th 2023, This repo has been rebased for quality reasons. Pay attention 
 # Installing
 ## Pre-requisites
 You will need the following:
- - a recent/decent C++ compiler that supports [C++17](https://en.cppreference.com/w/cpp/17)
+ - a recent/decent C++ compiler that supports [C++20](https://en.cppreference.com/w/cpp/20)
  - the [Boost library](https://www.boost.org/) (a recent copy, above 1.60)
- - the [Botan library](https://botan.randombit.net/) (a recent copy, above 2.17.1)
+ - the [Botan library](https://botan.randombit.net/), version 3.11.0 or above
+
+Botan 3.11.0 is the first release shipping the PKCS#11 v3.2 headers, which are required by the
+ML-KEM, ML-DSA and SLH-DSA test cases. Botan 3 itself requires a C++20 compiler.
 
 On RedHat/Oracle, you can generally find Boost on RPMs, from the EPEL repository. Check out [this link](https://blogs.oracle.com/wim/using-epel-repos-with-oracle-linux) to add EPEL to your yum repositories. Note that on EPEL, boost is suffixed with a version number, like `boost169`.
 
@@ -60,6 +63,17 @@ In order to execute the test, you will need to create the following keys upfront
 | `hmac-sha512`      | a 512 bits generic secret key, with `CKA_SIGN`                                               |
 | `xorder-128`       | a 128 bits generic secret key, with `CKA_DERIVE`                                             |
 | `rand-128`         | a 128 bits AES key (not used during testing), presence yet needed                            |
+| `mlkem-512`        | an ML-KEM-512 key pair, with `CKA_ENCAPSULATE` and `CKA_DECAPSULATE`                         |
+| `mlkem-768`        | an ML-KEM-768 key pair, with `CKA_ENCAPSULATE` and `CKA_DECAPSULATE`                         |
+| `mlkem-1024`       | an ML-KEM-1024 key pair, with `CKA_ENCAPSULATE` and `CKA_DECAPSULATE`                        |
+| `mldsa-44`         | an ML-DSA-44 key pair, with `CKA_SIGN`                                                       |
+| `mldsa-65`         | an ML-DSA-65 key pair, with `CKA_SIGN`                                                       |
+| `mldsa-87`         | an ML-DSA-87 key pair, with `CKA_SIGN`                                                       |
+| `slhdsa-sha2-128s` | an SLH-DSA-SHA2-128s key pair, with `CKA_SIGN`                                               |
+| `slhdsa-sha2-192s` | an SLH-DSA-SHA2-192s key pair, with `CKA_SIGN`                                               |
+| `slhdsa-sha2-256s` | an SLH-DSA-SHA2-256s key pair, with `CKA_SIGN`                                               |
+
+Note that ML-KEM decapsulation needs the public key as well, as it is used to produce the ciphertext to decapsulate.
 
 
 There is a script at `scripts/createkeys.sh` to create these keys, using the [PKCS#11 toolkit](https://github.com/Mastercard/pkcs11-tools).
@@ -68,6 +82,9 @@ There is also a python script, at `scripts/generatekeys.py`. It requires Python 
 ```bash
 $ pip install -r requirements.txt
 ```
+
+Neither helper covers the post-quantum key pairs yet: when `--nogenerate` is used, those must be created with
+the tooling of your token. Without `--nogenerate`, `p11perftest` generates them itself as session keys.
 
 ## implemented tests
 
@@ -86,6 +103,31 @@ $ pip install -r requirements.txt
 | `oaepunw` | RSA OAEP unwrapping ( a generic secret key)          | keysize dependent                                            | `CKM_RSA_PKCS_OAEP` with `C_Unwrap()`  |
 | `rand`    | Generate random numbers                              | 1+                                                           | `C_GenerateRandom()`                   |
 | `xorder`  | Key derivation based on exclusive OR                 | 1+                                                           | `CKM_XOR_BASE_AND_DATA`                |
+| `mlkemencap` | ML-KEM key encapsulation                          | smallest vector only                                         | `CKM_ML_KEM` with `C_EncapsulateKey()` |
+| `mlkemdecap` | ML-KEM key decapsulation                          | smallest vector only                                         | `CKM_ML_KEM` with `C_DecapsulateKey()` |
+| `mldsa`   | ML-DSA signature, digest computed in software        | 1+                                                           | `CKM_HASH_ML_DSA`                      |
+| `slhdsa`  | SLH-DSA signature, digest computed in software       | 1+                                                           | `CKM_HASH_SLH_DSA`                     |
+
+### Post-quantum test cases
+
+The three NIST post-quantum algorithms standardized in FIPS 203, 204 and 205 are covered. They require a token
+implementing PKCS#11 v3.2.
+
+For the two signature algorithms, `p11perftest` deliberately uses the `CKM_HASH_ML_DSA` and `CKM_HASH_SLH_DSA`
+mechanisms, where **the digest is computed on the client side** and the hash algorithm is declared through the
+`CK_HASH_SIGN_ADDITIONAL_CONTEXT` mechanism parameter. Hashing inside the HSM would add latency and force the
+whole message over the network, whereas the purpose of this tool is to measure the cost of invoking the
+cryptographic primitive. The hash strength follows the parameter set: SHA-256 for ML-DSA-44 and SLH-DSA-128s,
+SHA-384 for ML-DSA-65 and SLH-DSA-192s, SHA-512 for ML-DSA-87 and SLH-DSA-256s. As the digest is computed during
+the preparation phase, the measured latency does not depend on the payload size.
+
+For ML-KEM, `C_EncapsulateKey()` and `C_DecapsulateKey()` inherently create a secret key object on the token: the
+shared secret is never exported, only its handle is returned. That object is destroyed after each iteration, from
+outside the measurement window, so that the token object table does not grow and skew the results. Neither
+operation consumes the payload, so they are only run against the smallest requested test vector.
+
+Beware that the SLH-DSA `s` ("small signature") parameter sets trade signing speed for signature size: a single
+signature typically takes hundreds of milliseconds. Lower the iteration count accordingly.
 
 
 
@@ -106,9 +148,9 @@ Here is the full list of supported arguments:
   - `--skip arg (=0)`, number of iterations to skip before recording for statistics (in addition to iterations)
   - `-j [ --json ]`, output results as JSON
   - `-o [ --jsonfile ] arg`, JSON output file name
-  - `-c [ --coverage ] arg (=rsa,ecdsa,ecdh,hmac,des,aes,xorder,rand,jwe,oaep,oaepunw)`, coverage of test cases
+  - `-c [ --coverage ] arg (=rsa,rsapss,ecdsa,ecdh,hmac,des,aes,xorder,rand,find,jwe,oaep,oaepenc,oaepunw,mlkem,mldsa,slhdsa)`, coverage of test cases
   - `-v [ --vectors ] arg (=8,16,64,256,1024,4096)`, test vectors to use
-  - `-k [ --keysizes ] arg (=rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256)`, key sizes or curves to use
+  - `-k [ --keysizes ] arg (=rsa2048,rsa3072,rsa4096,ecnistp256,ecnistp384,ecnistp521,hmac160,hmac256,hmac512,des128,des192,aes128,aes192,aes256,mlkem512,mlkem768,mlkem1024,mldsa44,mldsa65,mldsa87,slhdsa128s,slhdsa192s,slhdsa256s)`, key sizes or curves to use
   - `-f [ --flavour ] arg (=generic)`, PKCS#11 implementation flavour. Possible values: `generic`, `luna` , `utimaco`, `entrust`, `marvell`
   - `-n [ --nogenerate ]`, do not attempt to generate session keys; instead, use pre-existing keys on token
 
@@ -118,12 +160,13 @@ Some arguments allow to specify more than one value. To do so, just separate val
 Some tokens tend to show a different performance for the first call of an API, compared to the subsequent ones. The parameter `--skip` allows to skip any number of iterations, i.e. these are executed but not accounted for in statistics.
 
 ### algorithms descriptors
-By default, coverage for `des` includes ECB and CBC mode; coverage for `aes` includes ECB, CBC and GCM modes; coverage for `jwe` includes RSA-OAEP and RSA-OAEP-SHA256; coverage for `oaep` includes OAEP decryption with SHA1 and OAEP with SHA256, and `oaepunw` includes OAEP key unwrapping with SHA1 and with SHA256. It is possible to narrow down to specific modes:
+By default, coverage for `des` includes ECB and CBC mode; coverage for `aes` includes ECB, CBC and GCM modes; coverage for `jwe` includes RSA-OAEP and RSA-OAEP-SHA256; coverage for `oaep` includes OAEP decryption with SHA1 and OAEP with SHA256, `oaepunw` includes OAEP key unwrapping with SHA1 and with SHA256, and coverage for `mlkem` includes both encapsulation and decapsulation. It is possible to narrow down to specific modes:
  - for AES, `aesecb`, `aescbc`, or `aesgcm` instead of `aes`
  - for DES, `desecb` or `descbc` for `des`
  - for JWE, `jweoaepsha1` for RSA-OAEP or `jweoaepsha256` for RSA-OAEP-SHA256
  - for OAEP decryption, `oaepsha1` for OAEP with SHA1 or `oaepsha256` for OAEP with SHA256
  - for OAEP unwrapping, `oaepunwsha1` for OAEP with SHA1 or `oaepunwsha256` for OAEP with SHA256
+ - for ML-KEM, `mlkemencap` for encapsulation only or `mlkemdecap` for decapsulation only
 
 ### algorithms and key sizes
 Some tests need more than one key type to operate. If specific key sizes are chosen, it is important to include all keys needed by the algorithms. Forgetting to give one of the key sizes lead to skip the test case, even if specified on the command line.
@@ -136,6 +179,27 @@ All environment variables below can be used instead of command line options. Whe
 - `PKCS11LIB`: path to a PKCS\#11 library. Equivalent to `-l [ --library ] arg`.
 - `PKCS11SLOT`: valid PKCS\#11 slot. Equivalent to `-s [ --slot ] arg`.
 - `PKCS11PASSWORD`: token password. Equivalent to `-p [ --password ] arg`. Note that at this point, `p11perftest` does not support the syntaxes from [pkcs11-tools - accessing public objects](https://github.com/Mastercard/pkcs11-tools/blob/master/docs/MANUAL.md#accessing-public-objects) and [pkcs11-tools - fetching password from a subprocess](https://github.com/Mastercard/pkcs11-tools/blob/master/docs/MANUAL.md#fetching-password-from-a-subprocess) yet.
+
+## Building packages for other platforms
+`buildx.sh` builds distribution packages (`.deb`, `.rpm`, `.apk` and tarballs) for the supported distributions,
+using Docker buildx. Each build compiles Botan 3 statically from source, as no supported distribution ships a
+Botan recent enough for PKCS#11 v3.2; Boost comes from the distribution packages.
+
+```
+$ ./buildx.sh deb12,ubuntu2404            # build for two distributions, host architecture
+$ ./buildx.sh all/all                     # every distribution, every architecture
+$ ./buildx.sh --local-source deb12        # build the local checkout instead of cloning from GitHub
+```
+
+Behind a proxy, pass it explicitly. A loopback address is automatically rewritten to `host.docker.internal`, so
+that the container can reach a proxy listening on the host:
+
+```
+$ ./buildx.sh --proxy http://localhost:8118 --proxyrootca ~/.config/corp/ca/rootca.crt deb12
+```
+
+`--proxyrootca` adds a root CA to the trust store of the build container, and points the tools that ship their
+own trust store (such as `uv`) at the system bundle. Run `./buildx.sh --help` for the full list of options.
 
 ## Parsing JSON output
 JSON output files (when `-j` and/or `-o` options are specified) can be turned into Excel spreadsheets, using `scripts/json2xlsx.py` script. To run that package, you must first deploy the dependencies, using the `requirements.txt` file. Once completed, the script can be executed. It takes two arguments: the source JSON file, and a file name for the target spreadsheet.

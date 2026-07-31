@@ -42,7 +42,10 @@ public:
 	  AES,
 	  ECDSA,
 	  ECDH,
-	  GENERIC
+	  GENERIC,
+	  MLKEM,
+	  MLDSA,
+	  SLHDSA
 	};
 
 private:
@@ -56,6 +59,18 @@ private:
     bool generate_ecdsa_keypair(std::string alias, unsigned int unused, std::string curve, Session *session);
     bool generate_ecdh_keypair(std::string alias, unsigned int unused, std::string curve, Session *session);
     bool generate_generic_key(std::string alias, unsigned int bits, std::string param, Session *session);
+    bool generate_mlkem_keypair(std::string alias, unsigned int unused, std::string paramset, Session *session);
+    bool generate_mldsa_keypair(std::string alias, unsigned int unused, std::string paramset, Session *session);
+    bool generate_slhdsa_keypair(std::string alias, unsigned int unused, std::string paramset, Session *session);
+
+    // generate_pqc_keypair(): common implementation for the NIST PQC algorithms.
+    // Their key pairs only differ by the generation mechanism, the parameter set
+    // and whether the key is meant for signature or for key encapsulation.
+    bool generate_pqc_keypair(std::string alias,
+			      MechanismType keygen_mechanism,
+			      Ulong parameter_set,
+			      bool for_signature,
+			      Session *session);
 
     bool generate_key_generic( KeyGenerator::KeyType keytype, std::string alias, unsigned int bits, std::string curve);
 
