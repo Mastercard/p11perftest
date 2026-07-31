@@ -22,8 +22,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - `buildx.sh` no longer relies on bash associative arrays nor on `nproc`, and therefore runs on macOS; it is aligned with the script of the `pkcs11-tools` project
  - Docker builds now compile Botan 3.12.0 statically, build only the Botan static library (its CLI and test suite do not build against the Boost versions of some distributions), and use `gcc-toolset-13` on Oracle Linux 8, whose system compiler does not support C++20
  - benchmark exception handling refactored for improved clarity and consistency
+ - the Python helpers now require Python 3.13 or above, and their dependencies have been refreshed (notably pandas 3.0, matplotlib 3.11, NumPy 2.5, SciPy 1.18 and PyInstaller 6.21). Container builds provision that interpreter with `uv`, instead of falling back on whatever the distribution ships.
 
 ### Fixed
+ - `gengraphs.py` used to hang forever, or to restart itself endlessly, whenever the `multiprocessing` start method was not `fork`: it built its shared state at import time, which every worker re-runs under `spawn` and `forkserver`. It now sets that state up in the parent only and hands it to the workers, and calls `freeze_support()`. This affected the packaged `gengraphs` executable on macOS and Windows since 3.16.0, and would have affected Linux too as of Python 3.14, whose default start method is `forkserver`.
  - `gengraphs.py` now reports transactions per second, rather than a byte throughput, for the test cases whose measured operation does not process the test vector: ML-KEM encapsulation and decapsulation take no input at all, and the vector size of `findobjects` is a number of objects
  - `gengraphs.py` no longer produces an empty graph when a test case does not support a given test vector size
  - removed unnecessary key checks for AES in JWE benchmarks

@@ -80,10 +80,16 @@ Note that ML-KEM decapsulation needs the public key as well, as it is used to pr
 
 
 There is a script at `scripts/createkeys.sh` to create these keys, using the [PKCS#11 toolkit](https://github.com/Mastercard/pkcs11-tools).
-There is also a python script, at `scripts/generatekeys.py`. It requires Python 3, and you will need to deploy the dependent libraries using `pip`:
+There is also a python script, at `scripts/generatekeys.py`. It requires Python 3.13 or above, and you will need to deploy the dependent libraries using `pip`:
 
 ```bash
 $ pip install -r requirements.txt
+```
+
+Alternatively, [`uv`](https://docs.astral.sh/uv/) takes care of both the interpreter and the libraries:
+
+```bash
+$ uv run scripts/generatekeys.py --help
 ```
 
 Neither helper covers the post-quantum key pairs yet: when `--nogenerate` is used, those must be created with

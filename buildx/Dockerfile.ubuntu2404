@@ -73,11 +73,10 @@ RUN apt-get update && apt-get install -y \
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/bin/
-# Provision a Python >= 3.11 for Botan's configure.py and pyinstaller.
-# Prefer a standalone build, but fall back to the interpreter provided by the
-# distribution: downloading a full CPython is not always possible behind a
-# restrictive proxy.
-RUN uv python install 3.11 || uv python find '>=3.11'
+# Provision the Python used by Botan's configure.py and by pyinstaller. uv
+# fetches a standalone build, so the version is the same on every distribution
+# and does not depend on what the platform happens to ship.
+RUN uv python install 3.13
 
 # Build and install Botan 3 statically.
 # No supported distribution ships Botan >= 3.11, which is the first release
