@@ -51,7 +51,7 @@ void P11ECDSASigBenchmark::prepare(Session &session, Object &obj, std::optional<
     // as such, software hashing must take place. We use a Botan::HashFunction to do that job.
     // since this happens from "prepare" method, time is not accounted for.
 
-    std::unique_ptr<Botan::HashFunction> sha256(Botan::HashFunction::create("SHA-256"));
+    std::unique_ptr<Botan::HashFunction> sha256(Botan::HashFunction::create_or_throw("SHA-256"));
     sha256->update(m_payload.data(), m_payload.size()); // compute hash on given message.
     m_digest = sha256->final() ;
 }

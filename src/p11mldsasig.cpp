@@ -75,7 +75,7 @@ void P11MLDSASigBenchmark::prepare(Session &session, Object &obj, std::optional<
     // compute the digest on the client side, and tell the token which hash was
     // used through the mechanism parameter. Since this happens from the prepare
     // method, the hashing time is not accounted for.
-    std::unique_ptr<Botan::HashFunction> hash(Botan::HashFunction::create(t.hash));
+    std::unique_ptr<Botan::HashFunction> hash(Botan::HashFunction::create_or_throw(t.hash));
     hash->update(m_payload.data(), m_payload.size());
     m_digest = hash->final();
 

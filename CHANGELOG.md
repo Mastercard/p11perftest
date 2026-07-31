@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - `gengraphs.py` no longer produces an empty graph when a test case does not support a given test vector size
  - removed unnecessary key checks for AES in JWE benchmarks
  - fixed key generation issue for OAEP unwrap case
+ - the benchmarks that hash their payload on the client side no longer dereference a null pointer when the digest algorithm is missing from the Botan build: `HashFunction::create()` returns nothing in that case, and the result was used unchecked. They now use `create_or_throw()`, and `P11Benchmark::execute()` reports the Botan error before letting it propagate, rather than calling it an unmanaged exception
  - `scripts/generatekeys.py` no longer drops into the debugger when a secret key cannot be generated: a leftover `breakpoint()` sat in the error path of `generate_key()`. It also raises a proper `ValueError` for an unsupported key type, instead of raising a string
 
 ## 3.16.0 - 2025-02-26

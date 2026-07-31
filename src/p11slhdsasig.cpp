@@ -86,7 +86,7 @@ void P11SLHDSASigBenchmark::prepare(Session &session, Object &obj, std::optional
     // the digest is deliberately computed on the client side, and the hash
     // algorithm is advertised to the token through the mechanism parameter.
     // Since this happens from the prepare method, hashing is not measured.
-    std::unique_ptr<Botan::HashFunction> hash(Botan::HashFunction::create(t.hash));
+    std::unique_ptr<Botan::HashFunction> hash(Botan::HashFunction::create_or_throw(t.hash));
     hash->update(m_payload.data(), m_payload.size());
     m_digest = hash->final();
 
