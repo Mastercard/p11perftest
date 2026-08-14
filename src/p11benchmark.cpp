@@ -177,6 +177,16 @@ benchmark_result::benchmark_result_t P11Benchmark::execute(Session *session, con
                 << " (" << errorcode(bexc.error_code()) << ")" 
                 << std::endl;
         return_code = benchmark_result::ApiErr{bexc.error_code()};
+    } catch (const Botan::Exception &bexc) {
+        // typically a Botan::Lookup_Error, raised when the library was built
+        // without an algorithm a test case relies upon. This affects every
+        // thread alike, so there is nothing to recover from: rethrow, but not
+        // before saying what actually went wrong.
+        {
+            std::lock_guard<std::mutex> lg{display_mtx};
+            std::cerr << "ERROR: Botan: " << bexc.what() << std::endl;
+        }
+        throw;
     } catch (...) {	
         std::lock_guard<std::mutex> lg{display_mtx};
         std::cerr << "ERROR: caught an unmanaged exception" << std::endl;

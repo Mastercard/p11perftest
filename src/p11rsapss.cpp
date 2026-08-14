@@ -48,7 +48,7 @@ void P11RSAPssBenchmark::prepare(Session &session, Object &obj, std::optional<si
     m_signature.resize(m_signature_size);
     
     // Compute SHA-256 hash of the payload
-    std::unique_ptr<Botan::HashFunction> sha256(Botan::HashFunction::create("SHA-256"));
+    auto sha256 = Botan::HashFunction::create_or_throw("SHA-256");
     sha256->update(m_payload.data(), m_payload.size());
     m_hash = sha256->final();
 }
