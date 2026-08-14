@@ -40,7 +40,7 @@ FROM scratch AS extra-headers
 FROM ${DISTRO_NAME}:${DISTRO_VERSION} AS base0
 ARG PROXY_ROOT_CA
 COPY ${PROXY_ROOT_CA} /usr/local/share/ca-certificates/${PROXY_ROOT_CA}
-RUN apt-get update && apt-get install -y ca-certificates && update-ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && update-ca-certificates && rm -rf /var/lib/apt/lists/*
 
 
 # Make tools that ship their own trust store (uv, pip, ...) honour the system
@@ -50,7 +50,7 @@ ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 FROM base0 AS base
 
 # Install required packages for building the project
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     autoconf \
     autoconf-archive \
@@ -194,12 +194,14 @@ RUN ./bootstrap.sh \
     && make -j $(nproc)\
     && make install-strip DESTDIR=/tar_build
 
-# Build the python executables using pyinstaller
+# Build the python executables using pyinstaller.
+# requirements.txt is a hash-pinned `uv export`; --require-hashes enforces that
+# contract and --no-build forbids executing setup scripts from source distributions.
 RUN uv venv
-RUN uv pip install -r requirements.txt \
-    && uv run pyinstaller scripts/json2xlsx.spec \
-    && uv run pyinstaller scripts/gengraphs.spec \
-    && uv run pyinstaller scripts/datapoints2xlsx.spec \
+RUN uv pip install --require-hashes --no-build -r requirements.txt \
+    && uv run --no-sync pyinstaller scripts/json2xlsx.spec \
+    && uv run --no-sync pyinstaller scripts/gengraphs.spec \
+    && uv run --no-sync pyinstaller scripts/datapoints2xlsx.spec \
     && install -s -m 755 -t /tar_build/usr/local/bin dist/json2xlsx dist/gengraphs dist/datapoints2xlsx
 
 # Install documentation

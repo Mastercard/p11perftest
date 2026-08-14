@@ -91,10 +91,18 @@ RUN mkdir -p /opt/boost1.78/include \
 ENV BOOST_ROOT=/opt/boost1.78
 ENV LD_LIBRARY_PATH=/opt/boost1.78/lib:/opt/rh/gcc-toolset-13/root/usr/lib64:/opt/rh/gcc-toolset-13/root/usr/lib
 
-# Deploy pandoc from github
+# Deploy pandoc from github.
+# GitHub redirects release downloads to a CDN, so transport security alone does
+# not tell us what we got: the tarball is verified against a pinned SHA-256.
 WORKDIR /tmp
 RUN DISTROARCH=$(arch | sed 's/aarch64/arm64/;s/x86_64/amd64/') \
-    && wget -q https://github.com/jgm/pandoc/releases/download/3.6/pandoc-3.6-linux-$DISTROARCH.tar.gz \
+    && case "$DISTROARCH" in \
+        amd64) PANDOC_SHA256=8e3702b195f75412e425df46f8f3f08241b66a2b33abbd9e04eda501bfde860c ;; \
+        arm64) PANDOC_SHA256=4377731a0c896193aeab75734fd5965c21232638fde117f30e4d591700405e0f ;; \
+        *) echo "no pinned pandoc checksum for $DISTROARCH" >&2 && exit 1 ;; \
+    esac \
+    && wget -q --https-only https://github.com/jgm/pandoc/releases/download/3.6/pandoc-3.6-linux-$DISTROARCH.tar.gz \
+    && echo "$PANDOC_SHA256  pandoc-3.6-linux-$DISTROARCH.tar.gz" | sha256sum -c - \
     && tar -xf pandoc-3.6-linux-$DISTROARCH.tar.gz -C /usr/local --strip-components 1 \
     && rm pandoc-3.6-linux-$DISTROARCH.tar.gz
 
@@ -220,12 +228,14 @@ RUN ./bootstrap.sh \
     && make -j $(nproc) \
     && make install-strip DESTDIR=/tar_build
 
-# Build the python executables using pyinstaller
+# Build the python executables using pyinstaller.
+# requirements.txt is a hash-pinned `uv export`; --require-hashes enforces that
+# contract and --no-build forbids executing setup scripts from source distributions.
 RUN uv venv
-RUN uv pip install -r requirements.txt \
-    && uv run pyinstaller scripts/json2xlsx.spec \
-    && uv run pyinstaller scripts/gengraphs.spec \
-    && uv run pyinstaller scripts/datapoints2xlsx.spec \
+RUN uv pip install --require-hashes --no-build -r requirements.txt \
+    && uv run --no-sync pyinstaller scripts/json2xlsx.spec \
+    && uv run --no-sync pyinstaller scripts/gengraphs.spec \
+    && uv run --no-sync pyinstaller scripts/datapoints2xlsx.spec \
     && install -s -m 755 -t /tar_build/usr/local/bin dist/json2xlsx dist/gengraphs dist/datapoints2xlsx
 
 # Install documentation
