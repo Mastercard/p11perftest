@@ -30,11 +30,21 @@ from matplotlib.ticker import MaxNLocator
 import numpy as np
 from scipy.optimize import curve_fit
 
-# Global variables for multiprocess-safe file tracking
-manager = mp.Manager()
-current_files = manager.list()
-files_lock = manager.Lock()
-graphs_created = manager.Value('i', 0)  # Shared counter for created graphs
+# Shared state for multiprocess-safe file tracking. It is deliberately left
+# empty here and populated by main(): under the "spawn" and "forkserver" start
+# methods, a worker re-imports this module, so creating the manager at import
+# time would start a new manager process in every worker -- and, since the
+# manager itself spawns a process, recurse endlessly. Workers receive the
+# proxies through _init_worker() instead.
+current_files = None
+files_lock = None
+graphs_created = None
+
+
+def _init_worker(files, lock, counter):
+    """Hand the shared state over to a pool worker."""
+    global current_files, files_lock, graphs_created
+    current_files, files_lock, graphs_created = files, lock, counter
 
 
 def signal_handler(_sig, _frame):
@@ -90,10 +100,18 @@ def create_dataframe(xls, sheetname, xvar):
     return df
 
 
+# Test cases whose measured operation does not process the test vector: either
+# it takes no input at all (key encapsulation), or the vector size carries a
+# different meaning altogether (number of objects, for C_FindObjects). Reporting
+# a byte throughput for those would multiply the transaction rate by an
+# arbitrary vector size, which is meaningless.
+TPS_ONLY_KEYWORDS = ('signature', 'hmac', 'encapsulation', 'decapsulation', 'find objects')
+
+
 def determine_measure(testcase, col3name):
     """determine if we are measuring TPS or throughput based on test case name"""    
-    if "signature" in testcase.lower() or "hmac" in testcase.lower():
-        # for signature and HMAC algos, we are interested only in knowing the TPS
+    if any(keyword in testcase.lower() for keyword in TPS_ONLY_KEYWORDS):
+        # for these algos, we are interested only in knowing the TPS
         measure = 'tps'
         unit = 'TPS'
         col2, col3 = 'tps global value', col3name.format(measure)
@@ -143,6 +161,13 @@ def _create_single_graph_worker(df1, df2, testcase, item, params):
     frame1, measure, unit, col2, col3, p_avail = create_graph_frame(
         df1, testcase, item, params['xvar'], params['graph_parameter'], 
         params['col3name'], params['p95'], params['p98'], params['p99'])
+
+    # a test case may not support every test vector size, in which case
+    # p11perftest reports NaN. Drawing an empty canvas would only add noise.
+    if frame1[col2].dropna().empty:
+        print('no data, skipped', flush=True)
+        return
+
     frame2 = None
     if params['comparison']:
         frame2, measure2, _, _, _, _ = create_graph_frame(
@@ -459,7 +484,9 @@ class GraphGenerator:
                 'output_dir': self.output_dir
             }
             
-            with mp.Pool(processes=num_processes) as pool:
+            with mp.Pool(processes=num_processes,
+                         initializer=_init_worker,
+                         initargs=(current_files, files_lock, graphs_created)) as pool:
                 pool.starmap(_create_single_graph_worker, 
                             [(df1, df2, testcase, item, worker_params) for testcase, item in tasks])
     
@@ -490,6 +517,17 @@ class GraphGenerator:
 
 
 if __name__ == '__main__':
+    # Must come first: in a PyInstaller bundle the only available start method
+    # is "spawn", and the child re-runs the bundled executable. Without this,
+    # every worker would restart the whole program.
+    mp.freeze_support()
+
+    # Set up the shared state now that we know we are the parent process.
+    manager = mp.Manager()
+    current_files = manager.list()
+    files_lock = manager.Lock()
+    graphs_created = manager.Value('i', 0)
+
     # Register signal handler for CTRL-C
     signal.signal(signal.SIGINT, signal_handler)
     

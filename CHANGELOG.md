@@ -6,15 +6,34 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
+ - post-quantum test cases, covering the three NIST algorithms:
+   - `mlkem`: ML-KEM key encapsulation (`mlkemencap`) and decapsulation (`mlkemdecap`), through the PKCS#11 v3.2 functions `C_EncapsulateKey()` and `C_DecapsulateKey()`, for ML-KEM-512, ML-KEM-768 and ML-KEM-1024
+   - `mldsa`: ML-DSA signature over an externally computed digest (`CKM_HASH_ML_DSA`), for ML-DSA-44, ML-DSA-65 and ML-DSA-87
+   - `slhdsa`: SLH-DSA signature over an externally computed digest (`CKM_HASH_SLH_DSA`), for SLH-DSA-SHA2-128s, -192s and -256s ("small signature") as well as -128f, -192f and -256f ("fast signing")
+   The three of them are part of the default coverage. Hashing is deliberately performed on the client side: doing it in the HSM would add latency and send the whole message over the network, while this tool measures the cost of invoking the primitive.
+ - generation of ML-KEM, ML-DSA and SLH-DSA session key pairs, using `CKA_PARAMETER_SET`
+ - `scripts/createkeys.sh` now creates the twelve post-quantum key pairs, which requires [pkcs11-tools](https://github.com/Mastercard/pkcs11-tools) v3.0.0 or above
+ - `scripts/generatekeys.py` now creates the ML-DSA key pairs. ML-KEM and SLH-DSA are left out, as `python-pkcs11` exposes neither `CKK_ML_KEM` nor `CKK_SLH_DSA`; the script reports it rather than failing silently
+ - `buildx.sh` gained `--proxy`, `--noproxy`, `--local-source`, `--no-cache`, `--ignore-proxy`, `--proxyrootca`, `--extra-header`, `--config-args`, `--package` and `--help`
  - each benchmark test case now documents its purpose, key requirements, and supported algorithms
  - payload size detection support: test cases can now report the size of the payload being processed
 
 ### Changed
+ - **Botan 3.11.0 or above is now required**, as it is the first release shipping the PKCS#11 v3.2 headers needed by the post-quantum test cases. As a consequence, the project is now built with C++20.
+ - a forwarding `pkcs11.h` is shipped under `src/cryptoki`, since Botan expects the PKCS#11 header to be reachable as `<pkcs11.h>`. It is placed last on the include path, so a vendor-supplied header still takes precedence, and can be injected into container builds with `buildx.sh --extra-header`
+ - `buildx.sh` no longer relies on bash associative arrays nor on `nproc`, and therefore runs on macOS; it is aligned with the script of the `pkcs11-tools` project
+ - Docker builds now compile Botan 3.12.0 statically, build only the Botan static library (its CLI and test suite do not build against the Boost versions of some distributions), and use `gcc-toolset-13` on Oracle Linux 8, whose system compiler does not support C++20
  - benchmark exception handling refactored for improved clarity and consistency
+ - the Python helpers now require Python 3.13 or above, and their dependencies have been refreshed (notably pandas 3.0, matplotlib 3.11, NumPy 2.5, SciPy 1.18 and PyInstaller 6.21). Container builds provision that interpreter with `uv`, instead of falling back on whatever the distribution ships.
 
 ### Fixed
+ - `gengraphs.py` used to hang forever, or to restart itself endlessly, whenever the `multiprocessing` start method was not `fork`: it built its shared state at import time, which every worker re-runs under `spawn` and `forkserver`. It now sets that state up in the parent only and hands it to the workers, and calls `freeze_support()`. This affected the packaged `gengraphs` executable on macOS and Windows since 3.16.0, and would have affected Linux too as of Python 3.14, whose default start method is `forkserver`.
+ - `gengraphs.py` now reports transactions per second, rather than a byte throughput, for the test cases whose measured operation does not process the test vector: ML-KEM encapsulation and decapsulation take no input at all, and the vector size of `findobjects` is a number of objects
+ - `gengraphs.py` no longer produces an empty graph when a test case does not support a given test vector size
  - removed unnecessary key checks for AES in JWE benchmarks
  - fixed key generation issue for OAEP unwrap case
+ - the benchmarks that hash their payload on the client side no longer dereference a null pointer when the digest algorithm is missing from the Botan build: `HashFunction::create()` returns nothing in that case, and the result was used unchecked. They now use `create_or_throw()`, and `P11Benchmark::execute()` reports the Botan error before letting it propagate, rather than calling it an unmanaged exception
+ - `scripts/generatekeys.py` no longer drops into the debugger when a secret key cannot be generated: a leftover `breakpoint()` sat in the error path of `generate_key()`. It also raises a proper `ValueError` for an unsupported key type, instead of raising a string
 
 ## 3.16.0 - 2025-02-26
 ### Added

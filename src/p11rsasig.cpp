@@ -42,8 +42,8 @@ void P11RSASigBenchmark::prepare(Session &session, Object &obj, std::optional<si
     m_rsakey = std::unique_ptr<PKCS11_RSA_PrivateKey>(new PKCS11_RSA_PrivateKey(session, obj.handle()));
     m_signer = std::unique_ptr<Botan::PK_Signer>(new Botan::PK_Signer( *m_rsakey,
 								       m_rng,
-								       "EMSA3(SHA-256)",
-								       Botan::Signature_Format::IEEE_1363 ));
+								       "PKCS1v15(SHA-256)",
+								       Botan::Signature_Format::Standard ));
 }
 
 void P11RSASigBenchmark::crashtestdummy(Session &session)

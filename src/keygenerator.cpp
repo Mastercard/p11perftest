@@ -23,6 +23,7 @@
 #include <iomanip>
 #include <future>
 #include <array>
+#include <map>
 #include <botan/p11_rsa.h>
 #include <botan/p11_ecdsa.h>
 #include <botan/p11_ecdh.h>
@@ -230,7 +231,7 @@ bool KeyGenerator::generate_ecdsa_keypair(std::string alias, unsigned int unused
 	if(m_vendor!=Implementation::Vendor::marvell) { priv_generate_props.set_private( true ); } // not well supported on Marvell
 
 	Botan::PKCS11::EC_PublicKeyGenerationProperties pub_generate_props(
-	    Botan::EC_Group( curve ).DER_encode(Botan::EC_Group_Encoding::EC_DOMPAR_ENC_OID ) );
+	    Botan::EC_Group::from_name( curve ).DER_encode() );
 
 	pub_generate_props.set_label( alias );
 	pub_generate_props.set_token( false );
@@ -265,7 +266,7 @@ bool KeyGenerator::generate_ecdh_keypair(std::string alias, unsigned int unused,
 	if(m_vendor!=Implementation::Vendor::marvell) { priv_generate_props.set_private( true ); } // not well supported on Marvell
 
 	Botan::PKCS11::EC_PublicKeyGenerationProperties pub_generate_props(
-	    Botan::EC_Group( curve ).DER_encode(Botan::EC_Group_Encoding::EC_DOMPAR_ENC_OID ) );
+	    Botan::EC_Group::from_name( curve ).DER_encode() );
 
 	pub_generate_props.set_label( alias );
 	pub_generate_props.set_token( false );
@@ -289,8 +290,132 @@ bool KeyGenerator::generate_ecdh_keypair(std::string alias, unsigned int unused,
 }
 
 
-bool KeyGenerator::generate_key_generic(KeyGenerator::KeyType keytype, std::string alias, unsigned int bits, std::string curve)
+// generate_pqc_keypair(): common implementation for ML-KEM, ML-DSA and SLH-DSA.
+//
+// PKCS#11 v3.2 models these algorithms uniformly: the key pair generation
+// mechanism carries no parameter, and the parameter set (e.g. ML-DSA-65) is
+// selected through the CKA_PARAMETER_SET attribute of the public key template.
+bool KeyGenerator::generate_pqc_keypair(std::string alias,
+					MechanismType keygen_mechanism,
+					Ulong parameter_set,
+					bool for_signature,
+					Session *session)
 {
+    bool rv;
+    Byte btrue = CK_TRUE;
+    Byte bfalse = CK_FALSE;
+    ObjectHandle pubkey_handle, privkey_handle;
+    Mechanism mechanism { static_cast<CK_MECHANISM_TYPE>(keygen_mechanism), nullptr, 0 };
+
+    // CKA_VERIFY/CKA_SIGN for signature algorithms,
+    // CKA_ENCAPSULATE/CKA_DECAPSULATE for key encapsulation mechanisms
+    auto pub_usage = static_cast<CK_ATTRIBUTE_TYPE>(for_signature ? AttributeType::Verify : AttributeType::Encapsulate);
+    auto priv_usage = static_cast<CK_ATTRIBUTE_TYPE>(for_signature ? AttributeType::Sign : AttributeType::Decapsulate);
+
+    std::array<Attribute,5> pubkeytemplate {
+	{
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Label), const_cast< char* >(alias.c_str()), alias.size() },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Token), &bfalse, sizeof(Byte) },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::ParameterSet), &parameter_set, sizeof(Ulong) },
+	    { pub_usage, &btrue, sizeof(Byte) },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Private), &bfalse, sizeof(Byte) } // not well supported on Marvell
+	}
+    };
+
+    std::array<Attribute,4> privkeytemplate {
+	{
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Label), const_cast< char* >(alias.c_str()), alias.size() },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Token), &bfalse, sizeof(Byte) },
+	    { priv_usage, &btrue, sizeof(Byte) },
+	    { static_cast<CK_ATTRIBUTE_TYPE>(AttributeType::Private), &btrue, sizeof(Byte) } // not well supported on Marvell
+	}
+    };
+
+    auto marvell = m_vendor==Implementation::Vendor::marvell;
+
+    try {
+	session->module()->C_GenerateKeyPair( session->handle(),
+					      &mechanism,
+					      pubkeytemplate.data(),
+					      marvell ? pubkeytemplate.size()-1 : pubkeytemplate.size(),
+					      privkeytemplate.data(),
+					      marvell ? privkeytemplate.size()-1 : privkeytemplate.size(),
+					      &pubkey_handle,
+					      &privkey_handle );
+	rv = true;
+
+    } catch (Botan::PKCS11::PKCS11_ReturnError &bexc) {
+	std::cerr << "ERROR:: " << bexc.what()
+		  << " (" << errorcode(bexc.error_code()) << ")" << std::endl;
+	rv = false;
+    } catch (Botan::Exception &bexc) {
+	std::cerr << "ERROR:: " << bexc.what() << std::endl;
+	// we print the exception, and move on
+	rv = false;
+    }
+
+    return rv;
+}
+
+
+bool KeyGenerator::generate_mlkem_keypair(std::string alias, unsigned int unused, std::string paramset, Session *session)
+{
+    static const std::map<std::string, Ulong> paramsets {
+	{ "512",  CKP_ML_KEM_512  },
+	{ "768",  CKP_ML_KEM_768  },
+	{ "1024", CKP_ML_KEM_1024 }
+    };
+
+    auto match = paramsets.find(paramset);
+    if(match == paramsets.end()) {
+	std::cerr << "Invalid parameter set for ML-KEM: " << paramset << std::endl;
+	return false;
+    }
+
+    return generate_pqc_keypair(alias, MechanismType::MlKemKeyPairGen, match->second, false, session);
+}
+
+
+bool KeyGenerator::generate_mldsa_keypair(std::string alias, unsigned int unused, std::string paramset, Session *session)
+{
+    static const std::map<std::string, Ulong> paramsets {
+	{ "44", CKP_ML_DSA_44 },
+	{ "65", CKP_ML_DSA_65 },
+	{ "87", CKP_ML_DSA_87 }
+    };
+
+    auto match = paramsets.find(paramset);
+    if(match == paramsets.end()) {
+	std::cerr << "Invalid parameter set for ML-DSA: " << paramset << std::endl;
+	return false;
+    }
+
+    return generate_pqc_keypair(alias, MechanismType::MlDsaKeyPairGen, match->second, true, session);
+}
+
+
+bool KeyGenerator::generate_slhdsa_keypair(std::string alias, unsigned int unused, std::string paramset, Session *session)
+{
+    static const std::map<std::string, Ulong> paramsets {
+	{ "sha2-128s", CKP_SLH_DSA_SHA2_128S },
+	{ "sha2-192s", CKP_SLH_DSA_SHA2_192S },
+	{ "sha2-256s", CKP_SLH_DSA_SHA2_256S },
+	{ "sha2-128f", CKP_SLH_DSA_SHA2_128F },
+	{ "sha2-192f", CKP_SLH_DSA_SHA2_192F },
+	{ "sha2-256f", CKP_SLH_DSA_SHA2_256F }
+    };
+
+    auto match = paramsets.find(paramset);
+    if(match == paramsets.end()) {
+	std::cerr << "Invalid parameter set for SLH-DSA: " << paramset << std::endl;
+	return false;
+    }
+
+    return generate_pqc_keypair(alias, MechanismType::SlhDsaKeyPairGen, match->second, true, session);
+}
+
+
+bool KeyGenerator::generate_key_generic(KeyGenerator::KeyType keytype, std::string alias, unsigned int bits, std::string curve){
     int th;
     bool rv = true;
     std::vector<std::future<bool> > future_array(m_numthreads);
@@ -304,7 +429,10 @@ bool KeyGenerator::generate_key_generic(KeyGenerator::KeyType keytype, std::stri
 	{ KeyType::DES, &KeyGenerator::generate_des_key } ,
 	{ KeyType::ECDSA, &KeyGenerator::generate_ecdsa_keypair },
 	{ KeyType::ECDH, &KeyGenerator::generate_ecdh_keypair },
-	{ KeyType::GENERIC, &KeyGenerator::generate_generic_key }
+	{ KeyType::GENERIC, &KeyGenerator::generate_generic_key },
+	{ KeyType::MLKEM, &KeyGenerator::generate_mlkem_keypair },
+	{ KeyType::MLDSA, &KeyGenerator::generate_mldsa_keypair },
+	{ KeyType::SLHDSA, &KeyGenerator::generate_slhdsa_keypair }
     };
 
     auto chooser = [&fnmap](KeyGenerator::KeyType kt) { return fnmap.at(kt);  };
@@ -355,15 +483,27 @@ bool KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias
 bool KeyGenerator::generate_key(KeyGenerator::KeyType keytype, std::string alias, std::string curve) {
     std::set<std::string> allowed_curves { "secp256r1", "secp384r1", "secp521r1" };
 
-    if(keytype != KeyType::ECDH && keytype != KeyType::ECDSA) {
-	std::cerr << "WARNING: Invalid keytype/argument combination" << std::endl;
-	return false;
+    switch(keytype) {
+    case KeyType::ECDH:
+    case KeyType::ECDSA:
+    {
+	auto match = allowed_curves.find(curve);
+
+	if(match==allowed_curves.end()) {
+	    std::cerr << "WARNING: Unknown/unmanaged key curve given: " << curve << std::endl;
+	    return false;
+	}
+	break;
     }
 
-    auto match = allowed_curves.find(curve);
+    case KeyType::MLKEM:
+    case KeyType::MLDSA:
+    case KeyType::SLHDSA:
+	// the parameter set is validated by the algorithm-specific generator
+	break;
 
-    if(match==allowed_curves.end()) {
-	std::cerr << "WARNING: Unknown/unmanaged key curve given: " << curve << std::endl;
+    default:
+	std::cerr << "WARNING: Invalid keytype/argument combination" << std::endl;
 	return false;
     }
 

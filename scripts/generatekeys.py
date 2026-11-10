@@ -20,8 +20,16 @@ import pkcs11
 import os
 import sys
 import argparse
-from pkcs11 import KeyType, Attribute, MechanismFlag, Mechanism
+from pkcs11 import KeyType, Attribute, MechanismFlag, Mechanism, MLDSAParameterSet
 from pkcs11.util.ec import encode_named_curve_parameters
+
+
+# ML-DSA parameter sets, indexed by the suffix of the key label.
+MLDSA_PARAMETER_SETS = {
+    '44': MLDSAParameterSet.ML_DSA_44,
+    '65': MLDSAParameterSet.ML_DSA_65,
+    '87': MLDSAParameterSet.ML_DSA_87,
+}
 
 
 def generate_key(session, keytype, size, label, *args, **kwargs):
@@ -34,7 +42,6 @@ def generate_key(session, keytype, size, label, *args, **kwargs):
                                     **kwargs)
 
     except Exception as e:
-        breakpoint()
         print(f"Ouch caught an exception: {e}")
         print(f"key with label {label} has NOT been generated")
 
@@ -58,8 +65,20 @@ def generate_keypair(session, keytype, sizeorcurve, label, *args, **kwargs):
                                            *args,
                                            **kwargs)
 
+        elif keytype == KeyType.ML_DSA:
+            print(f"Generating {label} ML-DSA key pair")
+            # the parameter set is carried by the public key template, and the
+            # token derives the private key one from it
+            key = session.generate_keypair( keytype,
+                                            label=label,
+                                            public_template={
+                                                Attribute.PARAMETER_SET: MLDSA_PARAMETER_SETS[sizeorcurve]
+                                            },
+                                            *args,
+                                            **kwargs)
+
         else:
-            raise f"Unsupported keytype: {keytype}"
+            raise ValueError(f"Unsupported keytype: {keytype}")
 
     except Exception as e:
         print(f"Ouch caught an exception: {e}")
@@ -112,6 +131,10 @@ Token: {token}""")
                                                                          'mechanism': Mechanism.GENERIC_SECRET_KEY_GEN } ],
             [ generate_key, KeyType.AES, 128, 'rand-128', { } ],
 
+            [ generate_keypair, KeyType.ML_DSA, '44', 'mldsa-44', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY } ],
+            [ generate_keypair, KeyType.ML_DSA, '65', 'mldsa-65', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY } ],
+            [ generate_keypair, KeyType.ML_DSA, '87', 'mldsa-87', { 'capabilities': MechanismFlag.SIGN | MechanismFlag.VERIFY } ],
+
         ]
 
 
@@ -121,6 +144,12 @@ Token: {token}""")
 
             kwargs['store'] = store
             generator(session, keytype, sizeorcurve, label, **kwargs)
+
+        print()
+        print("Note: ML-KEM and SLH-DSA key pairs are not generated, as python-pkcs11")
+        print("      exposes neither CKK_ML_KEM nor CKK_SLH_DSA. Use createkeys.sh")
+        print("      (pkcs11-tools v3.0.0 or later) to obtain them, or let p11perftest")
+        print("      generate its own session keys by omitting --nogenerate.")
 
 
 

@@ -1,0 +1,8 @@
+{
+    "workbench.colorCustomizations": {
+        "minimap.background": "#00000000",
+        "scrollbar.shadow": "#00000000"
+    },
+    "window.autoDetectColorScheme": true,
+    "sonarlint.analysisExcludesStandalone": "configure,config.h,config.h.in,config.status,config.log,stamp-h1,libtool,aclocal.m4,build-aux/**,m4/**,**/autom4te.cache/**,**/Makefile,**/Makefile.in,**/.deps/**,**/*~,src/cryptoki/**,uv.lock,requirements.txt,bin/**,build/**,dist/**,scripts/build/**,scripts/dist/**"
+}

@@ -52,6 +52,11 @@ struct TestCoverage
 	oaepenc,		// PKCS#1 OAEP encryption (all hashing algorithms)
 	oaepencsha1,		// PKCS#1 OAEP encryption (SHA1)
     oaepencsha256,		// PKCS#1 OAEP encryption (SHA256)
+	mlkem,			// ML-KEM (encapsulation + decapsulation)
+	mlkemencap,		// ML-KEM encapsulation
+	mlkemdecap,		// ML-KEM decapsulation
+	mldsa,			// ML-DSA signature (externally hashed)
+	slhdsa,			// SLH-DSA signature (externally hashed)
     };
 
     TestCoverage(std::string tocover);

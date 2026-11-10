@@ -140,6 +140,26 @@ TestCoverage::TestCoverage(std::string tocover)
 	    m_algo_coverage.insert(AlgoCoverage::oaepencsha256);
 	    break;
 
+	case "mlkem"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::mlkem);
+	    break;
+
+	case "mlkemencap"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::mlkemencap);
+	    break;
+
+	case "mlkemdecap"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::mlkemdecap);
+	    break;
+
+	case "mldsa"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::mldsa);
+	    break;
+
+	case "slhdsa"_hash:
+	    m_algo_coverage.insert(AlgoCoverage::slhdsa);
+	    break;
+
 default:
 	    std::cerr << "Unknow coverage class: " << token << ", skipping." << std::endl;
 	}
@@ -268,6 +288,26 @@ bool TestCoverage::contains(std::string algo)
 
     case "oaepencsha256"_hash:
 	return contains(AlgoCoverage::oaepencsha256);
+	break;
+
+    case "mlkem"_hash:
+	return contains(AlgoCoverage::mlkem);
+	break;
+
+    case "mlkemencap"_hash:
+	return contains(AlgoCoverage::mlkemencap);
+	break;
+
+    case "mlkemdecap"_hash:
+	return contains(AlgoCoverage::mlkemdecap);
+	break;
+
+    case "mldsa"_hash:
+	return contains(AlgoCoverage::mldsa);
+	break;
+
+    case "slhdsa"_hash:
+	return contains(AlgoCoverage::slhdsa);
 	break;
 
     }

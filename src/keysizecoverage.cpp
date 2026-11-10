@@ -76,6 +76,54 @@ KeySizeCoverage::KeySizeCoverage(std::string tocover)
 	    m_keysize_coverage.insert(KeySize::aes_256);
 	    break;
 
+	case "mlkem512"_hash:
+	    m_keysize_coverage.insert(KeySize::mlkem_512);
+	    break;
+
+	case "mlkem768"_hash:
+	    m_keysize_coverage.insert(KeySize::mlkem_768);
+	    break;
+
+	case "mlkem1024"_hash:
+	    m_keysize_coverage.insert(KeySize::mlkem_1024);
+	    break;
+
+	case "mldsa44"_hash:
+	    m_keysize_coverage.insert(KeySize::mldsa_44);
+	    break;
+
+	case "mldsa65"_hash:
+	    m_keysize_coverage.insert(KeySize::mldsa_65);
+	    break;
+
+	case "mldsa87"_hash:
+	    m_keysize_coverage.insert(KeySize::mldsa_87);
+	    break;
+
+	case "slhdsa128s"_hash:
+	    m_keysize_coverage.insert(KeySize::slhdsa_128s);
+	    break;
+
+	case "slhdsa192s"_hash:
+	    m_keysize_coverage.insert(KeySize::slhdsa_192s);
+	    break;
+
+	case "slhdsa256s"_hash:
+	    m_keysize_coverage.insert(KeySize::slhdsa_256s);
+	    break;
+
+	case "slhdsa128f"_hash:
+	    m_keysize_coverage.insert(KeySize::slhdsa_128f);
+	    break;
+
+	case "slhdsa192f"_hash:
+	    m_keysize_coverage.insert(KeySize::slhdsa_192f);
+	    break;
+
+	case "slhdsa256f"_hash:
+	    m_keysize_coverage.insert(KeySize::slhdsa_256f);
+	    break;
+
 	default:
 	    std::cerr << "Uncovered key size or curve: " << token << ", skipping." << std::endl;
 	}
@@ -151,6 +199,54 @@ bool KeySizeCoverage::contains(std::string sizeorcurve)
 
     case "aes256"_hash:
 	return contains(KeySize::aes_256);
+	break;
+
+    case "mlkem512"_hash:
+	return contains(KeySize::mlkem_512);
+	break;
+
+    case "mlkem768"_hash:
+	return contains(KeySize::mlkem_768);
+	break;
+
+    case "mlkem1024"_hash:
+	return contains(KeySize::mlkem_1024);
+	break;
+
+    case "mldsa44"_hash:
+	return contains(KeySize::mldsa_44);
+	break;
+
+    case "mldsa65"_hash:
+	return contains(KeySize::mldsa_65);
+	break;
+
+    case "mldsa87"_hash:
+	return contains(KeySize::mldsa_87);
+	break;
+
+    case "slhdsa128s"_hash:
+	return contains(KeySize::slhdsa_128s);
+	break;
+
+    case "slhdsa192s"_hash:
+	return contains(KeySize::slhdsa_192s);
+	break;
+
+    case "slhdsa256s"_hash:
+	return contains(KeySize::slhdsa_256s);
+	break;
+
+    case "slhdsa128f"_hash:
+	return contains(KeySize::slhdsa_128f);
+	break;
+
+    case "slhdsa192f"_hash:
+	return contains(KeySize::slhdsa_192f);
+	break;
+
+    case "slhdsa256f"_hash:
+	return contains(KeySize::slhdsa_256f);
 	break;
     }
     return false;

@@ -27,8 +27,8 @@ AC_LANG(C++)
 dnl Let's set a C++ compiler
 AC_PROG_CXX
 
-dnl We want c++17 standard
-AX_CXX_COMPILE_STDCXX_17()
+dnl We want c++20 standard (required by Botan 3)
+AX_CXX_COMPILE_STDCXX([20], [noext], [mandatory])
 
 dnl This suppresses the error we get for also having the cc version of helper library.
 AC_SUBST([CC])
@@ -66,7 +66,9 @@ AX_PTHREAD(,[AC_MSG_ERROR[pthread is required to compile this project]])
 AX_BOOST_BASE([1.66],, [AC_MSG_ERROR([p11perftest needs Boost, but it was not found in your system])])
 AX_BOOST_PROGRAM_OPTIONS()
 
-PKG_CHECK_MODULES([BOTAN], [ botan-2 > 2.17.0 ])
+dnl Botan 3.11.0 is the first release shipping PKCS#11 v3.2 headers,
+dnl which are required for ML-KEM, ML-DSA and SLH-DSA support.
+PKG_CHECK_MODULES([BOTAN], [ botan-3 >= 3.11.0 ])
 PKG_CHECK_MODULES([LIBCRYPTO], [ libcrypto > 1 ])
 
 dnl check if a specific rpath is provided when linking.
