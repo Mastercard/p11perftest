@@ -146,7 +146,7 @@ function copy_root_ca() {
     local script_dir=$(get_script_dir)
 
     # Check if the file exists
-    if [ -f "$rootca" ]; then
+    if [[ -f "$rootca" ]]; then
         cp "$rootca" "$script_dir/proxyrootca.crt"
         echo "Root CA file copied to $script_dir/proxyrootca.crt"
     else
@@ -193,20 +193,20 @@ function create_build() {
     local proxy_url="${14}"
     local no_proxy_list="${15}"
 
-    if [ "$proxy_url" = "NONE" ]; then
+    if [[ "$proxy_url" = "NONE" ]]; then
         proxy_url=""
     fi
 
     local verbosearg="--quiet"
 
-    if [ "$verbose" -eq 1 ]; then
+    if [[ "$verbose" -eq 1 ]]; then
         verbosearg="--progress=auto"
-    elif [ "$verbose" -eq 2 ]; then
+    elif [[ "$verbose" -eq 2 ]]; then
         verbosearg="--progress=plain"
     fi
 
     local no_cachearg=""
-    if [ "$no_cache" -eq 1 ]; then
+    if [[ "$no_cache" -eq 1 ]]; then
         no_cachearg="--no-cache"
     fi
 
@@ -215,9 +215,9 @@ function create_build() {
     # predefined build arguments: BuildKit injects them into the environment of
     # every RUN instruction, so no ARG declaration is needed in the Dockerfiles.
     local proxy_build_args=""
-    if [ "$ignore_proxy" = "true" ]; then
+    if [[ "$ignore_proxy" = "true" ]]; then
         proxy_build_args="--build-arg HTTP_PROXY= --build-arg HTTPS_PROXY= --build-arg http_proxy= --build-arg https_proxy= --build-arg ALL_PROXY= --build-arg all_proxy= --build-arg NO_PROXY= --build-arg no_proxy="
-    elif [ -n "$proxy_url" ]; then
+    elif [[ -n "$proxy_url" ]]; then
         local container_proxy
         container_proxy="$(container_reachable_proxy "$proxy_url")"
         proxy_build_args="--build-arg HTTP_PROXY=$container_proxy --build-arg HTTPS_PROXY=$container_proxy --build-arg http_proxy=$container_proxy --build-arg https_proxy=$container_proxy --build-arg NO_PROXY=$no_proxy_list --build-arg no_proxy=$no_proxy_list"
@@ -226,12 +226,12 @@ function create_build() {
     # Make the host reachable as host.docker.internal, including on engines
     # where it is not provided out of the box (plain Docker on Linux).
     local add_host_arg=""
-    if [ "$ignore_proxy" != "true" ] && [ -n "$proxy_url" ]; then
+    if [[ "$ignore_proxy" != "true" ]] && [[ -n "$proxy_url" ]]; then
         add_host_arg="--add-host=host.docker.internal:host-gateway"
     fi
 
     local extra_headers_arg=""
-    if [ -n "$extra_headers_dir" ] && [ "$extra_headers_dir" != "NONE" ]; then
+    if [[ -n "$extra_headers_dir" ]] && [[ "$extra_headers_dir" != "NONE" ]]; then
         extra_headers_arg="--build-context extra-headers=$extra_headers_dir"
     fi
 
@@ -308,7 +308,7 @@ function parse_and_build() {
                 repo_commit="$1"
                 ;;
             --verbose|-v)
-                if [ "$verbose" -lt 2 ]; then
+                if [[ "$verbose" -lt 2 ]]; then
                     verbose=$(($verbose + 1))
                 fi
                 ;;
@@ -341,7 +341,7 @@ function parse_and_build() {
                 # Validate the number of processes:
                 # - Must be a positive integer
                 # - Must be less than or equal to the number of CPUs
-                if ! [[ "$numprocs" =~ ^[0-9]+$ ]] || [ "$numprocs" -le 0 ] || [ "$numprocs" -gt "$max_numprocs" ]; then
+                if ! [[ "$numprocs" =~ ^[0-9]+$ ]] || [[ "$numprocs" -le 0 ]] || [[ "$numprocs" -gt "$max_numprocs" ]]; then
                     echo "Invalid number of processes: $numprocs"
                     usage
                 fi
@@ -352,7 +352,7 @@ function parse_and_build() {
                 ;;
             --extra-header|-H)
                 shift
-                if [ ! -f "$1" ]; then
+                if [[ ! -f "$1" ]]; then
                     echo "Extra header file not found: $1"
                     exit 1
                 fi
@@ -376,7 +376,7 @@ function parse_and_build() {
     # proxy root CA must be treated from here
     # if proxyrootca is unset, create a dummy file
     # if proxyrootca is set, copy the root CA file to the script directory
-    if [ -z "$proxyrootca" ]; then
+    if [[ -z "$proxyrootca" ]]; then
         echo -n >$(get_script_dir)/proxyrootca.crt
     else
         copy_root_ca "$proxyrootca"
@@ -384,7 +384,7 @@ function parse_and_build() {
     proxyrootca="proxyrootca.crt"
 
     # If config_args is unset, set it to a dummy value
-    if [ -z "$config_args" ]; then
+    if [[ -z "$config_args" ]]; then
         config_args="DUMMY=dummy"
     fi
 
@@ -392,7 +392,7 @@ function parse_and_build() {
     # will be passed to docker buildx as the named build context "extra-headers".
     # The directory is bind-mounted read-only inside the build (see Dockerfiles).
     local extra_headers_dir="NONE"
-    if [ "${#extra_headers[@]}" -gt 0 ]; then
+    if [[ "${#extra_headers[@]}" -gt 0 ]]; then
         extra_headers_dir=$(mktemp -d -t p11perftest-extra-headers.XXXXXX)
         trap 'rm -rf "$extra_headers_dir"' EXIT
         for h in "${extra_headers[@]}"; do
@@ -405,11 +405,11 @@ function parse_and_build() {
     local args=("$@")
 
     # BSD xargs drops empty arguments, which would shift the ones that follow
-    if [ -z "$proxy_url" ]; then
+    if [[ -z "$proxy_url" ]]; then
         proxy_url="NONE"
     fi
 
-    if [ "${#args[@]}" -eq 0 ]; then
+    if [[ "${#args[@]}" -eq 0 ]]; then
         echo "No distro specified."
         usage
     fi
