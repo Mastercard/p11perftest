@@ -66,15 +66,15 @@ In order to execute the test, you will need to create the following keys upfront
 | `mlkem-512`        | an ML-KEM-512 key pair, with `CKA_ENCAPSULATE` and `CKA_DECAPSULATE`                         |
 | `mlkem-768`        | an ML-KEM-768 key pair, with `CKA_ENCAPSULATE` and `CKA_DECAPSULATE`                         |
 | `mlkem-1024`       | an ML-KEM-1024 key pair, with `CKA_ENCAPSULATE` and `CKA_DECAPSULATE`                        |
-| `mldsa-44`         | an ML-DSA-44 key pair, with `CKA_SIGN`                                                       |
-| `mldsa-65`         | an ML-DSA-65 key pair, with `CKA_SIGN`                                                       |
-| `mldsa-87`         | an ML-DSA-87 key pair, with `CKA_SIGN`                                                       |
-| `slhdsa-sha2-128s` | an SLH-DSA-SHA2-128s key pair, with `CKA_SIGN`                                               |
-| `slhdsa-sha2-192s` | an SLH-DSA-SHA2-192s key pair, with `CKA_SIGN`                                               |
-| `slhdsa-sha2-256s` | an SLH-DSA-SHA2-256s key pair, with `CKA_SIGN`                                               |
-| `slhdsa-sha2-128f` | an SLH-DSA-SHA2-128f key pair, with `CKA_SIGN`                                               |
-| `slhdsa-sha2-192f` | an SLH-DSA-SHA2-192f key pair, with `CKA_SIGN`                                               |
-| `slhdsa-sha2-256f` | an SLH-DSA-SHA2-256f key pair, with `CKA_SIGN`                                               |
+| `mldsa-44`         | an ML-DSA-44 key pair, with `CKA_SIGN` (private key) and `CKA_VERIFY` (public key)           |
+| `mldsa-65`         | an ML-DSA-65 key pair, with `CKA_SIGN` (private key) and `CKA_VERIFY` (public key)           |
+| `mldsa-87`         | an ML-DSA-87 key pair, with `CKA_SIGN` (private key) and `CKA_VERIFY` (public key)           |
+| `slhdsa-sha2-128s` | an SLH-DSA-SHA2-128s key pair, with `CKA_SIGN` (private key) and `CKA_VERIFY` (public key)   |
+| `slhdsa-sha2-192s` | an SLH-DSA-SHA2-192s key pair, with `CKA_SIGN` (private key) and `CKA_VERIFY` (public key)   |
+| `slhdsa-sha2-256s` | an SLH-DSA-SHA2-256s key pair, with `CKA_SIGN` (private key) and `CKA_VERIFY` (public key)   |
+| `slhdsa-sha2-128f` | an SLH-DSA-SHA2-128f key pair, with `CKA_SIGN` (private key) and `CKA_VERIFY` (public key)   |
+| `slhdsa-sha2-192f` | an SLH-DSA-SHA2-192f key pair, with `CKA_SIGN` (private key) and `CKA_VERIFY` (public key)   |
+| `slhdsa-sha2-256f` | an SLH-DSA-SHA2-256f key pair, with `CKA_SIGN` (private key) and `CKA_VERIFY` (public key)   |
 
 Note that ML-KEM decapsulation needs the public key as well, as it is used to produce the ciphertext to decapsulate.
 

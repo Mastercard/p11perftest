@@ -171,7 +171,7 @@ function copy_root_ca() {
 # $11 - ignore_proxy
 # $12 - source_mode
 # $13 - extra_headers_dir
-# $14 - proxy_url (empty when unused)
+# $14 - proxy_url ("NONE" when unused)
 # $15 - no_proxy_list
 
 function create_build() {
@@ -192,6 +192,10 @@ function create_build() {
     local extra_headers_dir="${13}"
     local proxy_url="${14}"
     local no_proxy_list="${15}"
+
+    if [ "$proxy_url" = "NONE" ]; then
+        proxy_url=""
+    fi
 
     local verbosearg="--quiet"
 
@@ -399,6 +403,11 @@ function parse_and_build() {
 
     # Collect remaining arguments
     local args=("$@")
+
+    # BSD xargs drops empty arguments, which would shift the ones that follow
+    if [ -z "$proxy_url" ]; then
+        proxy_url="NONE"
+    fi
 
     if [ "${#args[@]}" -eq 0 ]; then
         echo "No distro specified."

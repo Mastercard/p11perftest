@@ -62,7 +62,7 @@ RUN dnf update -y && \
     tar \
     gzip \
     rpm-build \
-    wget \
+    curl-minimal \
     boost-devel \
     openssl-devel \
     python3.11 \
@@ -78,7 +78,7 @@ RUN DISTROARCH=$(arch | sed 's/aarch64/arm64/;s/x86_64/amd64/') \
         arm64) PANDOC_SHA256=4377731a0c896193aeab75734fd5965c21232638fde117f30e4d591700405e0f ;; \
         *) echo "no pinned pandoc checksum for $DISTROARCH" >&2 && exit 1 ;; \
     esac \
-    && wget -q --https-only https://github.com/jgm/pandoc/releases/download/3.6/pandoc-3.6-linux-$DISTROARCH.tar.gz \
+    && curl --proto '=https' --tlsv1.2 -fsSLO https://github.com/jgm/pandoc/releases/download/3.6/pandoc-3.6-linux-$DISTROARCH.tar.gz \
     && echo "$PANDOC_SHA256  pandoc-3.6-linux-$DISTROARCH.tar.gz" | sha256sum -c - \
     && tar -xf pandoc-3.6-linux-$DISTROARCH.tar.gz -C /usr/local --strip-components 1 \
     && rm pandoc-3.6-linux-$DISTROARCH.tar.gz
@@ -88,6 +88,8 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/bin/
 # Provision the Python used by Botan's configure.py and by pyinstaller. uv
 # fetches a standalone build, so the version is the same on every distribution
 # and does not depend on what the platform happens to ship.
+# Some TLS-intercepting proxies truncate uv's default mirror (releases.astral.sh).
+ENV UV_PYTHON_INSTALL_MIRROR=https://github.com/astral-sh/python-build-standalone/releases/download
 RUN uv python install 3.13
 
 # Build and install Botan 3 statically.
@@ -141,9 +143,7 @@ RUN if [ -d .git ] && [ "$REPO_COMMIT_OR_TAG" != "HEAD" ]; then git checkout $RE
 ARG SOURCE_MODE
 FROM source-${SOURCE_MODE} AS gitcloned
 WORKDIR /src
-ENV GIT_CONFIG_COUNT=1
-ENV GIT_CONFIG_KEY_0=safe.directory
-ENV GIT_CONFIG_VALUE_0=/src
+RUN git config --system --add safe.directory /src
 
 # The meta directory is used to store the version and maintainer information
 # for the package built later on
@@ -210,9 +210,9 @@ RUN ./bootstrap.sh \
 # contract and --no-build forbids executing setup scripts from source distributions.
 RUN uv venv
 RUN uv pip install --require-hashes --no-build -r requirements.txt \
-    && uv run --no-sync pyinstaller scripts/json2xlsx.spec \
-    && uv run --no-sync pyinstaller scripts/gengraphs.spec \
-    && uv run --no-sync pyinstaller scripts/datapoints2xlsx.spec \
+    && .venv/bin/pyinstaller scripts/json2xlsx.spec \
+    && .venv/bin/pyinstaller scripts/gengraphs.spec \
+    && .venv/bin/pyinstaller scripts/datapoints2xlsx.spec \
     && install -s -m 755 -t /tar_build/usr/local/bin dist/json2xlsx dist/gengraphs dist/datapoints2xlsx
 
 # Install documentation
