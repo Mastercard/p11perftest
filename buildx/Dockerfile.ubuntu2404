@@ -94,7 +94,7 @@ RUN git clone --depth 1 --branch 3.12.0 https://github.com/randombit/botan.git .
 # Only the static library is needed: the Botan CLI and test suite pull in
 # boost::beast, which does not build against the Boost versions shipped by
 # some of the supported distributions, and p11perftest uses neither.
-RUN uv run python3 configure.py --cc=gcc \
+RUN "$(uv python find 3.13)" configure.py --cc=gcc \
     --disable-shared-library \
     --build-targets=static \
     --without-documentation \
